@@ -20,7 +20,6 @@ import {
 import { Avatar } from "@/components/ui/avatar";
 import { CsvUploadDialog } from "@/components/csv-upload-dialog";
 import { supabase } from "@/lib/supabase/client";
-import { GlassSurface } from "@/components/reactbits/glass-surface";
 import { OfferHover } from "@/components/ui/offer-button";
 import { useDashboardHeadline } from "@/components/dashboard/use-dashboard-headline";
 import { ShinyButton } from "@/components/ui/shiny-button";
@@ -158,7 +157,11 @@ function ProfileButton({
           {/* User info */}
           <div className="px-4 py-3 border-b border-line">
             <div className="flex items-center gap-3">
-              <AvatarCircle name={profile.full_name} src={avatarUrl} size={36} />
+              <AvatarCircle
+                name={profile.full_name}
+                src={avatarUrl}
+                size={36}
+              />
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-ink">
                   {profile.full_name ?? "—"}
@@ -542,6 +545,15 @@ export function NavbarView({
     : null;
   const groups = visibleGroups(profile?.role);
   const currentGroup = activeGroup(groups, pathname);
+  const hasSectionTabs = (currentGroup?.tabs.length ?? 0) > 1;
+
+  // Sticky in-page toolbars sit just under the app bar; publish its height.
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      "--app-bar-h",
+      hasSectionTabs ? "97px" : "57px",
+    );
+  }, [hasSectionTabs]);
 
   function handleUploadClick() {
     setUploadSession((current) => current + 1);
@@ -565,87 +577,87 @@ export function NavbarView({
 
   return (
     <>
-      {/* Ambient red glow — fixed behind page content */}
+      {/* ── Flat app bar: brand, nav and actions on one ruled strip, with the
+          current group's section tabs attached underneath. ── */}
       <div
-        aria-hidden="true"
-        className="pointer-events-none fixed inset-0 z-0 overflow-hidden"
+        className="sticky top-0 z-50 border-b border-line"
+        style={{
+          background: "var(--glass-strong)",
+          backdropFilter: "blur(18px) saturate(160%)",
+          WebkitBackdropFilter: "blur(18px) saturate(160%)",
+        }}
       >
-        <div
-          className="absolute -top-32 left-1/2 h-[600px] w-[900px] -translate-x-1/2 rounded-full"
-          style={{
-            background:
-              "radial-gradient(ellipse at center, rgba(198,40,40,0.055) 0%, transparent 68%)",
-            filter: "blur(64px)",
-          }}
-        />
-      </div>
+        <header className="mx-auto flex h-14 max-w-[2200px] items-center justify-between gap-4 pl-3 pr-2 sm:pl-4 sm:pr-3">
+          {/* Brand */}
+          <Link
+            href="/"
+            aria-label="Dojo Belt Analyzer home"
+            className="flex shrink-0 items-center rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-action/40"
+          >
+            <Brand />
+          </Link>
 
-      {/* ── Floating liquid-glass navbar ── */}
-      <div className="sticky top-0 z-50 px-3 pt-3 sm:px-4 lg:px-6">
-        <header className="relative mx-auto h-16 max-w-[1440px]">
-          <GlassSurface className="absolute inset-0" radius={20} />
+          <span
+            aria-hidden="true"
+            className="hidden h-full w-px shrink-0 bg-line lg:block"
+          />
 
-          <div className="relative z-10 flex h-full items-center justify-between gap-4 pl-4 pr-2.5 sm:pl-5">
-            {/* Brand */}
-            <Link
-              href="/"
-              aria-label="Dojo Belt Analyzer home"
-              className="flex shrink-0 items-center rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-action/40"
-            >
-              <Brand />
-            </Link>
+          <DesktopNav
+            groups={groups}
+            pathname={pathname}
+            dashboardHint={dashboardHint}
+          />
 
-            <DesktopNav
-              groups={groups}
-              pathname={pathname}
-              dashboardHint={dashboardHint}
-            />
-
-            {/* Right controls */}
-            <div className="flex shrink-0 items-center gap-2">
-              {/* Upload CSV — main import action */}
-              {canUploadCsv && (
-                <ShinyButton
-                  onClick={handleUploadClick}
-                  className="group hidden h-10 px-4 font-display text-[13.5px] font-semibold tracking-[-0.01em] sm:inline-flex sm:items-center"
-                >
-                  <FileUp
-                    size={15}
-                    strokeWidth={2.2}
-                    className="transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:-translate-y-0.5"
-                  />
-                  Upload CSV
-                </ShinyButton>
-              )}
-
-              <ThemeToggle />
-
-              {/* Profile dropdown button (desktop) */}
-              {profile ? (
-                <ProfileButton profile={profile} email={email} avatarUrl={avatarUrl} />
-              ) : (
-                /* Fallback placeholder while loading — keeps layout stable */
-                <div
-                  className="h-8 w-8 rounded-full bg-ink/5"
-                  aria-hidden="true"
-                />
-              )}
-
-              {/* Mobile hamburger */}
-              <button
-                type="button"
-                className="flex h-9 w-9 items-center justify-center rounded-xl text-ink-2 hover:bg-ink/5 lg:hidden"
-                onClick={() => setMobileOpenAtPath(pathname)}
-                aria-label="Open navigation"
+          {/* Right controls */}
+          <div className="flex shrink-0 items-center gap-2">
+            {/* Upload CSV — main import action */}
+            {canUploadCsv && (
+              <ShinyButton
+                onClick={handleUploadClick}
+                className="group hidden h-9 px-3.5 font-display text-[13px] font-semibold tracking-[-0.01em] sm:inline-flex sm:items-center"
               >
-                <Menu size={18} />
-              </button>
-            </div>
+                <FileUp
+                  size={15}
+                  strokeWidth={2.2}
+                  className="transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:-translate-y-0.5"
+                />
+                Upload CSV
+              </ShinyButton>
+            )}
+
+            <ThemeToggle />
+
+            {/* Profile dropdown button (desktop) */}
+            {profile ? (
+              <ProfileButton
+                profile={profile}
+                email={email}
+                avatarUrl={avatarUrl}
+              />
+            ) : (
+              /* Fallback placeholder while loading — keeps layout stable */
+              <div
+                className="h-8 w-8 rounded-full bg-ink/5"
+                aria-hidden="true"
+              />
+            )}
+
+            {/* Mobile hamburger */}
+            <button
+              type="button"
+              className="flex h-9 w-9 items-center justify-center rounded-xl text-ink-2 hover:bg-ink/5 lg:hidden"
+              onClick={() => setMobileOpenAtPath(pathname)}
+              aria-label="Open navigation"
+            >
+              <Menu size={18} />
+            </button>
           </div>
         </header>
-      </div>
 
-      {currentGroup && <SectionTabs group={currentGroup} pathname={pathname} />}
+        {currentGroup && (
+          <SectionTabs group={currentGroup} pathname={pathname} />
+        )}
+      </div>
 
       {/* ── Mobile menu ── */}
       {mobileOpen && (
@@ -742,7 +754,11 @@ export function NavbarView({
                 <>
                   {/* User info */}
                   <div className="flex items-center gap-3 rounded-xl px-2 py-2">
-                    <AvatarCircle name={profile.full_name} src={avatarUrl} size={34} />
+                    <AvatarCircle
+                      name={profile.full_name}
+                      src={avatarUrl}
+                      size={34}
+                    />
                     <div className="min-w-0">
                       <p className="truncate text-xs font-semibold text-ink">
                         {profile.full_name ?? "—"}

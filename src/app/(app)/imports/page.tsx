@@ -15,6 +15,7 @@ import {
 } from "@/lib/auth/profile";
 import { formatWeekLabel } from "@/lib/weeks";
 import { PageState, PanelSkeleton } from "@/components/ui/skeleton";
+import { Frame, FrameTitle, Page } from "@/components/ui/frame";
 import { useCachedProfile } from "@/lib/auth/use-cached-profile";
 
 type ImportRecord = {
@@ -246,226 +247,223 @@ export default function ImportsPage() {
   );
 
   return (
-    <div className="mx-auto max-w-[1440px] px-4 pb-12 lg:px-8">
-      <div className="mb-8 pt-2">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-text">
-          Data management
-        </p>
-        <h1 className="mt-2 text-3xl font-bold tracking-[-0.03em]">
-          Import History
-        </h1>
-        <p className="mt-2 text-sm text-muted">
-          Review uploaded weekly CSV imports for your university.
-        </p>
-      </div>
+    <Page>
+      <Frame>
+        <FrameTitle
+          eyebrow="Data management"
+          title="Import history"
+          description="Review uploaded weekly CSV imports for your university."
+          actions={
+            currentProfile.role === "super_admin" && (
+              <label className="flex w-full min-w-[240px] flex-col gap-1.5 text-xs font-semibold text-ink-2 sm:w-auto">
+                University
+                <select
+                  value={selectedUniversityId}
+                  onChange={(event) => {
+                    setSelectedUniversityId(event.target.value);
+                    setPagination((current) => ({ ...current, page: 1 }));
+                  }}
+                  className="rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm"
+                >
+                  {universities.map((university) => (
+                    <option key={university.id} value={university.id}>
+                      {university.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )
+          }
+        />
 
-      {currentProfile.role === "super_admin" && (
-        <label className="mb-5 flex max-w-md flex-col gap-1.5 text-xs font-semibold text-ink-2">
-          University
-          <select
-            value={selectedUniversityId}
-            onChange={(event) => {
-              setSelectedUniversityId(event.target.value);
-              setPagination((current) => ({ ...current, page: 1 }));
-            }}
-            className="rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-sm"
-          >
-            {universities.map((university) => (
-              <option key={university.id} value={university.id}>
-                {university.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
+        <div className="grid gap-3 bg-surface-2 px-4 py-3 sm:px-5 md:grid-cols-[minmax(0,1fr)_180px_150px] md:items-end">
+          <label className="flex items-center gap-2 rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm text-muted">
+            <Search size={16} />
+            <span className="sr-only">Search imports</span>
+            <input
+              className="min-w-0 flex-1 bg-transparent outline-none"
+              placeholder="Search file name or import ID"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </label>
+          <label className="space-y-1 text-xs font-semibold text-muted">
+            <span>Status</span>
+            <select
+              className="w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm font-normal text-ink-2 outline-none focus:border-action"
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value)}
+            >
+              <option value="all">All statuses</option>
+              <option value="imported">Imported</option>
+              <option value="failed">Failed</option>
+              <option value="processing">Processing</option>
+              <option value="validated">Validated</option>
+            </select>
+          </label>
+          <label className="space-y-1 text-xs font-semibold text-muted">
+            <span>Week</span>
+            <select
+              className="w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm font-normal text-ink-2 outline-none focus:border-action"
+              value={weekFilter}
+              onChange={(event) => setWeekFilter(event.target.value)}
+            >
+              <option value="all">All weeks</option>
+              {weeks.map((week) => (
+                <option key={week.week_id} value={week.week_id}>
+                  {formatWeekLabel(week)}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
 
-      <div className="mb-6 grid gap-3 rounded-2xl border border-line bg-surface p-4 shadow-sm md:grid-cols-[minmax(0,1fr)_180px_150px]">
-        <label className="flex items-center gap-2 rounded-lg border border-line-strong px-3 py-2.5 text-sm text-muted">
-          <Search size={16} />
-          <span className="sr-only">Search imports</span>
-          <input
-            className="min-w-0 flex-1 outline-none"
-            placeholder="Search file name or import ID"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-        </label>
-        <label className="space-y-1 text-xs font-semibold text-muted">
-          <span>Status</span>
-          <select
-            className="w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm font-normal text-ink-2 outline-none focus:border-action"
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value)}
-          >
-            <option value="all">All statuses</option>
-            <option value="imported">Imported</option>
-            <option value="failed">Failed</option>
-            <option value="processing">Processing</option>
-            <option value="validated">Validated</option>
-          </select>
-        </label>
-        <label className="space-y-1 text-xs font-semibold text-muted">
-          <span>Week</span>
-          <select
-            className="w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm font-normal text-ink-2 outline-none focus:border-action"
-            value={weekFilter}
-            onChange={(event) => setWeekFilter(event.target.value)}
-          >
-            <option value="all">All weeks</option>
-            {weeks.map((week) => (
-              <option key={week.week_id} value={week.week_id}>
-                {formatWeekLabel(week)}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      {error ? (
-        <div className="rounded-2xl border border-brand-line bg-surface p-8 text-center shadow-sm">
-          <p className="text-sm font-semibold text-brand-text">
-            Unable to load import history
-          </p>
-          <p className="mt-2 text-sm text-muted">{error}</p>
-        </div>
-      ) : isLoading ? (
-        <PanelSkeleton rows={6} label="Loading import history" />
-      ) : imports.length === 0 ? (
-        <div className="rounded-2xl border border-line bg-surface p-10 text-center shadow-sm">
-          <p className="text-lg font-bold">No imports yet</p>
-          <p className="mt-2 text-sm text-muted">
-            Uploaded weekly CSV files will appear here.
-          </p>
-        </div>
-      ) : visibleImports.length === 0 ? (
-        <div className="rounded-2xl border border-line bg-surface p-10 text-center shadow-sm">
-          <p className="text-lg font-bold">No matching imports</p>
-          <p className="mt-2 text-sm text-muted">
-            Try a different search or filter.
-          </p>
-        </div>
-      ) : (
-        <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[850px] text-left text-sm">
-              <thead className="bg-surface-2 text-[11px] uppercase tracking-[0.12em] text-muted">
-                <tr>
-                  <th className="px-6 py-3 font-semibold">File name</th>
-                  <th className="px-4 py-3 font-semibold">Import ID</th>
-                  <th className="px-4 py-3 font-semibold">Academic year</th>
-                  <th className="px-4 py-3 font-semibold">Week</th>
-                  <th className="px-4 py-3 font-semibold">Rows</th>
-                  <th className="px-4 py-3 font-semibold">Status</th>
-                  <th className="px-4 py-3 font-semibold">Uploaded</th>
-                  <th className="px-6 py-3 font-semibold">Current</th>
-                  <th className="px-6 py-3 font-semibold">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-line">
-                {visibleImports.map((importRecord) => (
-                  <tr
-                    key={importRecord.id}
-                    className={importRecord.is_current ? "bg-brand-soft" : ""}
-                  >
-                    <td className="max-w-[280px] truncate px-6 py-4 font-semibold">
-                      {importRecord.file_name}
-                    </td>
-                    <td
-                      className="px-4 py-4 font-mono text-xs text-muted"
-                      title={importRecord.id}
-                    >
-                      {shortId(importRecord.id)}
-                    </td>
-                    <td className="px-4 py-4 text-ink-2">
-                      {importRecord.academic_year ?? "-"}
-                    </td>
-                    <td className="px-4 py-4 text-ink-2">
-                      {importRecord.week_number ?? "-"}
-                    </td>
-                    <td className="px-4 py-4 text-ink-2">
-                      {importRecord.row_count}
-                    </td>
-                    <td className="px-4 py-4">
-                      <span
-                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
-                          importRecord.status === "imported"
-                            ? "bg-success-soft text-success-text"
-                            : importRecord.status === "failed"
-                              ? "bg-brand-soft text-brand-text"
-                              : "bg-warning-soft text-warning-text"
-                        }`}
-                      >
-                        {formatStatus(importRecord.status)}
-                      </span>
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-4 text-muted">
-                      {new Date(importRecord.uploaded_at).toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4">
-                      {importRecord.is_current ? (
-                        <span className="inline-flex rounded-full bg-success-soft px-2.5 py-1 text-xs font-semibold text-success-text">
-                          Current
-                        </span>
-                      ) : (
-                        <span className="inline-flex rounded-full bg-sunken px-2.5 py-1 text-xs font-semibold text-muted">
-                          Historical
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      <Link
-                        href={`/imports/${importRecord.id}`}
-                        className="inline-flex items-center gap-2 rounded-lg border border-line-strong px-3 py-2 text-xs font-semibold text-ink-2 transition hover:border-action hover:text-brand-text"
-                      >
-                        <Eye size={14} /> View
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {error ? (
+          <div className="bg-brand-soft p-8 text-center">
+            <p className="text-sm font-semibold text-brand-text">
+              Unable to load import history
+            </p>
+            <p className="mt-2 text-sm text-muted">{error}</p>
           </div>
-
-          {pagination.totalPages > 1 ? (
-            <div className="flex items-center justify-between border-t border-line px-6 py-4">
-              <p className="text-sm text-muted">
-                Page {pagination.page} of {pagination.totalPages}
-              </p>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  aria-label="Previous page"
-                  disabled={pagination.page <= 1}
-                  onClick={() =>
-                    setPagination((current) => ({
-                      ...current,
-                      page: current.page - 1,
-                    }))
-                  }
-                  className="rounded-lg border border-line-strong p-2 text-ink-2 transition hover:border-action hover:text-brand-text disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <ChevronLeft size={17} />
-                </button>
-                <button
-                  type="button"
-                  aria-label="Next page"
-                  disabled={pagination.page >= pagination.totalPages}
-                  onClick={() =>
-                    setPagination((current) => ({
-                      ...current,
-                      page: current.page + 1,
-                    }))
-                  }
-                  className="rounded-lg border border-line-strong p-2 text-ink-2 transition hover:border-action hover:text-brand-text disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <ChevronRight size={17} />
-                </button>
-              </div>
+        ) : isLoading ? (
+          <PanelSkeleton rows={6} label="Loading import history" flat />
+        ) : imports.length === 0 ? (
+          <div className="p-10 text-center">
+            <p className="text-lg font-bold">No imports yet</p>
+            <p className="mt-2 text-sm text-muted">
+              Uploaded weekly CSV files will appear here.
+            </p>
+          </div>
+        ) : visibleImports.length === 0 ? (
+          <div className="p-10 text-center">
+            <p className="text-lg font-bold">No matching imports</p>
+            <p className="mt-2 text-sm text-muted">
+              Try a different search or filter.
+            </p>
+          </div>
+        ) : (
+          <div>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[850px] text-left text-sm">
+                <thead className="border-b border-line text-[11px] uppercase tracking-[0.12em] text-muted">
+                  <tr>
+                    <th className="px-4 py-3 font-semibold sm:px-5">File name</th>
+                    <th className="px-4 py-3 font-semibold">Import ID</th>
+                    <th className="px-4 py-3 font-semibold">Academic year</th>
+                    <th className="px-4 py-3 font-semibold">Week</th>
+                    <th className="px-4 py-3 font-semibold">Rows</th>
+                    <th className="px-4 py-3 font-semibold">Status</th>
+                    <th className="px-4 py-3 font-semibold">Uploaded</th>
+                    <th className="px-4 py-3 font-semibold sm:px-5">Current</th>
+                    <th className="px-4 py-3 font-semibold sm:px-5">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line">
+                  {visibleImports.map((importRecord) => (
+                    <tr
+                      key={importRecord.id}
+                      className={importRecord.is_current ? "bg-brand-soft" : ""}
+                    >
+                      <td className="max-w-[280px] truncate px-4 py-3.5 sm:px-5 font-semibold">
+                        {importRecord.file_name}
+                      </td>
+                      <td
+                        className="px-4 py-3.5 font-mono text-xs text-muted"
+                        title={importRecord.id}
+                      >
+                        {shortId(importRecord.id)}
+                      </td>
+                      <td className="px-4 py-3.5 text-ink-2">
+                        {importRecord.academic_year ?? "-"}
+                      </td>
+                      <td className="px-4 py-3.5 text-ink-2">
+                        {importRecord.week_number ?? "-"}
+                      </td>
+                      <td className="px-4 py-3.5 text-ink-2">
+                        {importRecord.row_count}
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+                            importRecord.status === "imported"
+                              ? "bg-success-soft text-success-text"
+                              : importRecord.status === "failed"
+                                ? "bg-brand-soft text-brand-text"
+                                : "bg-warning-soft text-warning-text"
+                          }`}
+                        >
+                          {formatStatus(importRecord.status)}
+                        </span>
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3.5 text-muted">
+                        {new Date(importRecord.uploaded_at).toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3.5 sm:px-5">
+                        {importRecord.is_current ? (
+                          <span className="inline-flex rounded-full bg-success-soft px-2.5 py-1 text-xs font-semibold text-success-text">
+                            Current
+                          </span>
+                        ) : (
+                          <span className="inline-flex rounded-full bg-sunken px-2.5 py-1 text-xs font-semibold text-muted">
+                            Historical
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3.5 sm:px-5">
+                        <Link
+                          href={`/imports/${importRecord.id}`}
+                          className="inline-flex items-center gap-2 rounded-lg border border-line-strong px-3 py-2 text-xs font-semibold text-ink-2 transition hover:border-action hover:text-brand-text"
+                        >
+                          <Eye size={14} /> View
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          ) : null}
-        </div>
-      )}
-    </div>
+
+            {pagination.totalPages > 1 ? (
+              <div className="flex items-center justify-between border-t border-line px-4 py-3 sm:px-5">
+                <p className="text-sm text-muted">
+                  Page {pagination.page} of {pagination.totalPages}
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    aria-label="Previous page"
+                    disabled={pagination.page <= 1}
+                    onClick={() =>
+                      setPagination((current) => ({
+                        ...current,
+                        page: current.page - 1,
+                      }))
+                    }
+                    className="rounded-lg border border-line-strong p-2 text-ink-2 transition hover:border-action hover:text-brand-text disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <ChevronLeft size={17} />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Next page"
+                    disabled={pagination.page >= pagination.totalPages}
+                    onClick={() =>
+                      setPagination((current) => ({
+                        ...current,
+                        page: current.page + 1,
+                      }))
+                    }
+                    className="rounded-lg border border-line-strong p-2 text-ink-2 transition hover:border-action hover:text-brand-text disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <ChevronRight size={17} />
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        )}
+      </Frame>
+    </Page>
   );
 }
 

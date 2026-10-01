@@ -10,7 +10,7 @@ import {
   School,
 } from "lucide-react";
 import { useState } from "react";
-import { SpotlightCard } from "@/components/reactbits/spotlight-card";
+import { Cell, cellsClass } from "@/components/ui/frame";
 import { StudentAvatar } from "@/components/students/avatar";
 import { BeltBadge } from "@/components/belts/belts";
 import { LANGUAGES, type Language } from "@/lib/dashboard/metrics";
@@ -57,7 +57,7 @@ export function StudentCollection({
       {view === "cards" ? (
         <motion.div
           layout={!reduced}
-          className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3"
+          className={`${cellsClass} sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4`}
         >
           <AnimatePresence>
             {visible.map((student, index) => (
@@ -71,7 +71,7 @@ export function StudentCollection({
           </AnimatePresence>
         </motion.div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-[var(--card-shadow)]">
+        <div>
           <div
             className={`hidden gap-4 border-b border-line bg-surface-2 px-5 py-2.5 text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted md:grid ${listColumns(shared)}`}
           >
@@ -98,16 +98,14 @@ export function StudentCollection({
       )}
 
       {students.length > limit ? (
-        <div className="mt-5 flex justify-center">
+        <div className="flex justify-center border-t border-line py-3">
           <button
             type="button"
             onClick={() => setLimit((current) => current + PAGE)}
-            className="group inline-flex items-center gap-2 rounded-full border border-line-strong bg-surface px-4 py-2 text-[13px] font-semibold text-ink-2 shadow-[var(--card-shadow)] transition hover:border-ink/40 hover:text-ink"
+            className="group inline-flex items-center gap-2 rounded-full border border-line-strong bg-surface px-4 py-2 text-[13px] font-semibold text-ink-2 transition hover:border-ink/40 hover:text-ink"
           >
             Show {Math.min(PAGE, students.length - limit)} more
-            <span className="text-muted">
-              · {students.length - limit} left
-            </span>
+            <span className="text-muted">· {students.length - limit} left</span>
             <ChevronDown
               size={15}
               className="transition group-hover:translate-y-0.5"
@@ -242,10 +240,14 @@ function StudentCard({
         damping: 30,
       }}
     >
-      <SpotlightCard className="group h-full transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-[var(--pop-shadow)]">
+      <Cell className="group h-full">
         <div className="flex h-full flex-col p-4">
           <div className="flex items-start gap-3">
-            <StudentAvatar id={student.id} name={student.name} email={student.email} />
+            <StudentAvatar
+              id={student.id}
+              name={student.name}
+              email={student.email}
+            />
             <div className="min-w-0 flex-1">
               <p className="truncate font-display text-[15px] font-semibold tracking-[-0.01em] text-ink">
                 {student.name ?? "Unnamed student"}
@@ -301,7 +303,7 @@ function StudentCard({
             </div>
           </div>
         </div>
-      </SpotlightCard>
+      </Cell>
     </motion.div>
   );
 }
@@ -327,7 +329,12 @@ function StudentRow({
       className={`group grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-2 px-5 py-3 transition-colors hover:bg-surface-2 ${listColumns({ showUniversity, monitor })}`}
     >
       <div className="flex min-w-0 items-center gap-3">
-        <StudentAvatar id={student.id} name={student.name} email={student.email} size={36} />
+        <StudentAvatar
+          id={student.id}
+          name={student.name}
+          email={student.email}
+          size={36}
+        />
         <div className="min-w-0">
           <p className="truncate text-[14px] font-semibold text-ink">
             {student.name ?? "Unnamed student"}
@@ -367,11 +374,7 @@ function StudentRow({
             <Pencil size={13} />
           </IconAction>
         ) : null}
-        <IconAction
-          label="History"
-          primary
-          onClick={() => onHistory(student)}
-        >
+        <IconAction label="History" primary onClick={() => onHistory(student)}>
           <History size={13} />
         </IconAction>
       </div>

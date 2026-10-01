@@ -41,13 +41,13 @@ import {
   type Student,
 } from "@/components/students/types";
 
-type Membership = {
+export type Membership = {
   squad_number: string | null;
   start_date: string | null;
   end_date: string | null;
 };
 
-type WeeklyRecord = {
+export type WeeklyRecord = {
   academic_year: number | null;
   week_number: number | null;
   start_time: string | null;
@@ -57,7 +57,7 @@ type WeeklyRecord = {
   final_belt_levels: Record<string, number> | null;
 };
 
-type HistoryResponse = {
+export type HistoryResponse = {
   student: { id: string; name: string | null; email: string | null };
   memberships: Membership[];
   weeklyRecords: WeeklyRecord[];
@@ -223,15 +223,15 @@ function HistoryHeader({
   );
 }
 
-function recordKey(record: WeeklyRecord) {
+export function recordKey(record: WeeklyRecord) {
   return (record.academic_year ?? 0) * 100 + (record.week_number ?? 0);
 }
 
-function weekLabel(record: WeeklyRecord) {
+export function weekLabel(record: WeeklyRecord) {
   return `W${record.week_number ?? "?"} '${String(record.academic_year ?? "").slice(-2)}`;
 }
 
-function gained(record: WeeklyRecord) {
+export function gained(record: WeeklyRecord) {
   let total = 0;
   for (const language of LANGUAGES) {
     const before = record.initial_belt_levels?.[language];
@@ -401,19 +401,28 @@ function HistoryBody({
 }
 
 /** Coding-workouts style: one row per language with its belt ladder. */
-function BeltsPanel({
+export function BeltsPanel({
   levels,
   previous,
+  flat = false,
 }: {
   levels: Partial<Record<Language, number>> | null | undefined;
   previous?: Partial<Record<Language, number>> | null;
+  /** Inside a page Frame: panes divided by rules instead of bordered cards. */
+  flat?: boolean;
 }) {
   const reduced = useReducedMotion();
   const best = [...LANGUAGES].sort((a, b) => (levels?.[b] ?? 0) - (levels?.[a] ?? 0))[0];
   const bestBelt = beltOf(levels?.[best] ?? 0);
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_240px]">
-      <section className="rounded-2xl border border-line">
+    <div
+      className={
+        flat
+          ? "grid divide-y divide-line lg:grid-cols-[1fr_280px] lg:divide-x lg:divide-y-0"
+          : "grid gap-4 lg:grid-cols-[1fr_240px]"
+      }
+    >
+      <section className={flat ? "min-w-0" : "rounded-2xl border border-line"}>
         <div className="flex items-center gap-3 border-b border-line px-5 py-3.5">
           <h3 className="font-display text-[15px] font-semibold">Coding belts</h3>
           <span className="h-px flex-1 bg-line" />
@@ -465,7 +474,7 @@ function BeltsPanel({
         </ul>
       </section>
       <aside
-        className="relative overflow-hidden rounded-2xl border border-line p-5"
+        className={`relative overflow-hidden p-5 ${flat ? "" : "rounded-2xl border border-line"}`}
         style={{
           background: `radial-gradient(120% 80% at 50% 0%, color-mix(in srgb, ${bestBelt.color} 26%, transparent), transparent 70%), var(--surface-2)`,
         }}
@@ -489,14 +498,16 @@ function BeltsPanel({
   );
 }
 
-function ProgressPanel({
+export function ProgressPanel({
   records,
   latest,
   promotedWeeks,
+  flat = false,
 }: {
   records: WeeklyRecord[];
   latest: WeeklyRecord | undefined;
   promotedWeeks: number;
+  flat?: boolean;
 }) {
   if (!records.length)
     return <Empty message="No weekly belt records yet for this student." />;
@@ -516,15 +527,21 @@ function ProgressPanel({
   );
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">
-      <div className="rounded-2xl border border-line p-4">
+    <div
+      className={
+        flat
+          ? "grid divide-y divide-line lg:grid-cols-[1.6fr_1fr] lg:divide-x lg:divide-y-0"
+          : "grid gap-4 lg:grid-cols-[1.6fr_1fr]"
+      }
+    >
+      <div className={flat ? "min-w-0 px-4 py-4 sm:px-5" : "rounded-2xl border border-line p-4"}>
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <p className="font-display text-[14px] font-semibold">
             Belt level by language
           </p>
           <ChartLegend series={SERIES} />
         </div>
-        <div className="h-56">
+        <div className={flat ? "h-72" : "h-56"}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
               data={chartData}
@@ -573,7 +590,7 @@ function ProgressPanel({
         </div>
       </div>
 
-      <div className="rounded-2xl border border-line p-4">
+      <div className={flat ? "px-4 py-4 sm:px-5" : "rounded-2xl border border-line p-4"}>
         <p className="font-display text-[14px] font-semibold">Where they are now</p>
         <p className="text-[12px] text-muted">
           {latest ? `As of ${weekLabel(latest)}` : ""} · promoted in{" "}
@@ -623,7 +640,7 @@ function ProgressPanel({
   );
 }
 
-function WeeklyLog({ records }: { records: WeeklyRecord[] }) {
+export function WeeklyLog({ records }: { records: WeeklyRecord[] }) {
   if (!records.length)
     return <Empty message="No weekly belt records yet for this student." />;
   const newestFirst = [...records].reverse();
@@ -702,7 +719,7 @@ function WeeklyLog({ records }: { records: WeeklyRecord[] }) {
   );
 }
 
-function SquadTimeline({ memberships }: { memberships: Membership[] }) {
+export function SquadTimeline({ memberships }: { memberships: Membership[] }) {
   if (!memberships.length)
     return <Empty message="No squad memberships recorded." />;
   const newestFirst = [...memberships].reverse();

@@ -21,6 +21,7 @@ import {
 import { formatWeekLabel } from "@/lib/weeks";
 import { PageState as AccountState } from "@/components/ui/skeleton";
 import { DojoLoader } from "@/components/ui/dojo-loader";
+import { Frame, Page } from "@/components/ui/frame";
 import { ShinyButton } from "@/components/ui/shiny-button";
 import { PillSelect, RingStat, ShareBar } from "@/components/insights/kit";
 import { StudentAvatar } from "@/components/students/avatar";
@@ -350,296 +351,299 @@ function WeeklyComparisonContent() {
   }
 
   return (
-    <div className="mx-auto max-w-[1440px] px-4 pb-16 lg:px-8">
-      {/* ── Hero with the week range ─────────────────────── */}
-      <section className="relative mt-2 overflow-hidden rounded-3xl border border-line bg-surface shadow-[var(--card-shadow)]">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(45% 140% at 100% 0%, color-mix(in srgb, var(--status-up) 12%, transparent), transparent 60%), radial-gradient(45% 120% at 0% 0%, color-mix(in srgb, var(--brand) 10%, transparent), transparent 60%)",
-          }}
-        />
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(var(--line-strong)_1px,transparent_1px)] [background-size:18px_18px] [mask-image:radial-gradient(ellipse_at_top_right,black,transparent_60%)]"
-        />
-        <div className="relative flex flex-wrap items-end justify-between gap-5 px-6 pt-7 sm:px-8">
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-brand-text">
-              Insights · Weekly comparison
-            </p>
-            <h1 className="mt-2 font-display text-3xl font-bold tracking-[-0.035em] sm:text-[40px] sm:leading-[1.05]">
-              Who moved between weeks
-            </h1>
-            <p className="mt-2 text-[14px] text-muted">
-              Pick two weeks to see every student’s belt change, language by language.
-            </p>
-          </div>
-          <ShinyButton
-            className="h-10 px-4 font-display text-[13.5px] font-semibold"
-            onClick={exportCsv}
-            disabled={rows.length === 0}
-          >
-            <Download size={15} /> Export CSV
-          </ShinyButton>
-        </div>
-
-        {/* Week range */}
-        <div className="relative mx-6 mt-6 flex flex-wrap items-stretch gap-2 sm:mx-8">
-          <WeekPicker label="From" value={fromWeekId} weeks={weeks} onChange={setFromWeekId} />
-          <button
-            type="button"
-            onClick={() => {
-              setFromWeekId(toWeekId);
-              setToWeekId(fromWeekId);
+    <Page>
+      <Frame>
+        {/* ── Hero with the week range ─────────────────────── */}
+        <section className="relative overflow-hidden bg-surface">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background:
+                "radial-gradient(45% 140% at 100% 0%, color-mix(in srgb, var(--status-up) 12%, transparent), transparent 60%), radial-gradient(45% 120% at 0% 0%, color-mix(in srgb, var(--brand) 10%, transparent), transparent 60%)",
             }}
-            title="Swap weeks"
-            className="group grid w-11 place-items-center rounded-2xl border border-line bg-surface text-muted transition hover:border-ink/30 hover:text-ink"
-          >
-            <ArrowLeftRight size={16} className="transition group-hover:rotate-180" />
-          </button>
-          <WeekPicker label="To" value={toWeekId} weeks={weeks} onChange={setToWeekId} />
-        </div>
-
-        <div className="relative mt-5 flex flex-wrap items-center gap-2 border-t border-line bg-surface-2/70 px-6 py-3 backdrop-blur sm:px-8">
-          <div className="relative min-w-[220px] flex-1">
-            <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
-            <input
-              value={searchInput}
-              onChange={(event) => setSearchInput(event.target.value)}
-              placeholder="Search student name or email"
-              aria-label="Search students"
-              className="w-full rounded-xl border border-transparent bg-sunken py-2 pl-9 pr-8 text-[13.5px] outline-none transition placeholder:text-faint focus:border-line-strong focus:bg-surface"
-            />
-            {searchInput ? (
-              <button
-                type="button"
-                onClick={() => setSearchInput("")}
-                aria-label="Clear search"
-                className="absolute right-2 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-md text-muted hover:text-ink"
-              >
-                <X size={14} />
-              </button>
-            ) : null}
-          </div>
-          {currentProfile.role === "super_admin" ? (
-            <PillSelect
-              label="University"
-              value={universityId}
-              onChange={(id) => {
-                setUniversityId(id);
-                setFromWeekId("");
-                setToWeekId("");
-              }}
+          />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(var(--line-strong)_1px,transparent_1px)] [background-size:18px_18px] [mask-image:radial-gradient(ellipse_at_top_right,black,transparent_60%)]"
+          />
+          <div className="relative flex flex-wrap items-end justify-between gap-5 px-4 pt-5 sm:px-5">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-brand-text">
+                Insights · Weekly comparison
+              </p>
+              <h1 className="mt-1 font-display text-[26px] font-bold tracking-[-0.035em] sm:text-[30px] sm:leading-[1.1]">
+                Who moved between weeks
+              </h1>
+              <p className="mt-2 text-[14px] text-muted">
+                Pick two weeks to see every student’s belt change, language by language.
+              </p>
+            </div>
+            <ShinyButton
+              className="h-9 px-3.5 font-display text-[13px] font-semibold"
+              onClick={exportCsv}
+              disabled={rows.length === 0}
             >
+              <Download size={15} /> Export CSV
+            </ShinyButton>
+          </div>
+
+          {/* Week range */}
+          <div className="relative mx-4 mt-5 flex flex-wrap items-stretch gap-2 sm:mx-5">
+            <WeekPicker label="From" value={fromWeekId} weeks={weeks} onChange={setFromWeekId} />
+            <button
+              type="button"
+              onClick={() => {
+                setFromWeekId(toWeekId);
+                setToWeekId(fromWeekId);
+              }}
+              title="Swap weeks"
+              className="group grid w-11 place-items-center rounded-2xl border border-line bg-surface text-muted transition hover:border-ink/30 hover:text-ink"
+            >
+              <ArrowLeftRight size={16} className="transition group-hover:rotate-180" />
+            </button>
+            <WeekPicker label="To" value={toWeekId} weeks={weeks} onChange={setToWeekId} />
+          </div>
+
+          <div className="relative mt-5 flex flex-wrap items-center gap-2 border-t border-line bg-surface-2 px-4 py-2.5 sm:px-5">
+            <div className="relative min-w-[220px] flex-1">
+              <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
+              <input
+                value={searchInput}
+                onChange={(event) => setSearchInput(event.target.value)}
+                placeholder="Search student name or email"
+                aria-label="Search students"
+                className="w-full rounded-xl border border-transparent bg-sunken py-2 pl-9 pr-8 text-[13.5px] outline-none transition placeholder:text-faint focus:border-line-strong focus:bg-surface"
+              />
+              {searchInput ? (
+                <button
+                  type="button"
+                  onClick={() => setSearchInput("")}
+                  aria-label="Clear search"
+                  className="absolute right-2 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-md text-muted hover:text-ink"
+                >
+                  <X size={14} />
+                </button>
+              ) : null}
+            </div>
+            {currentProfile.role === "super_admin" ? (
+              <PillSelect
+                label="University"
+                value={universityId}
+                onChange={(id) => {
+                  setUniversityId(id);
+                  setFromWeekId("");
+                  setToWeekId("");
+                }}
+              >
+                <option value="">All</option>
+                {universities.map((university) => (
+                  <option key={university.id} value={university.id}>
+                    {university.name}
+                  </option>
+                ))}
+              </PillSelect>
+            ) : null}
+            <PillSelect label="Squad" value={squadId} onChange={setSquadId}>
               <option value="">All</option>
-              {universities.map((university) => (
-                <option key={university.id} value={university.id}>
-                  {university.name}
+              {squads.map((squad) => (
+                <option key={squad.id} value={squad.id}>
+                  Squad {squad.number}
                 </option>
               ))}
             </PillSelect>
-          ) : null}
-          <PillSelect label="Squad" value={squadId} onChange={setSquadId}>
-            <option value="">All</option>
-            {squads.map((squad) => (
-              <option key={squad.id} value={squad.id}>
-                Squad {squad.number}
-              </option>
-            ))}
-          </PillSelect>
-          <PillSelect label="Status" value={status} onChange={(value) => setStatus(value as VisibleStatus)}>
-            {statusChoices.map((value) => (
-              <option key={value} value={value}>
-                {value === "none" ? "All" : STATUS_META[value].label}
-              </option>
-            ))}
-          </PillSelect>
-          <AnimatePresence>
-            {isLoading && comparisons ? (
-              <motion.span
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="inline-flex items-center gap-2 text-[12px] font-medium text-muted"
-              >
-                <span className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                Updating
-              </motion.span>
-            ) : null}
-          </AnimatePresence>
-        </div>
-      </section>
-
-      {/* ── Body ─────────────────────────────────────────── */}
-      <div className="mt-4">
-        {error ? (
-          <div className="flex flex-col items-center rounded-3xl border border-brand-line bg-brand-soft px-6 py-14 text-center">
-            <AlertTriangle className="text-brand-text" size={22} />
-            <p className="mt-3 font-display text-lg font-bold">Couldn’t load the comparison</p>
-            <p className="mt-1 text-sm text-muted">{error}</p>
+            <PillSelect label="Status" value={status} onChange={(value) => setStatus(value as VisibleStatus)}>
+              {statusChoices.map((value) => (
+                <option key={value} value={value}>
+                  {value === "none" ? "All" : STATUS_META[value].label}
+                </option>
+              ))}
+            </PillSelect>
+            <AnimatePresence>
+              {isLoading && comparisons ? (
+                <motion.span
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="inline-flex items-center gap-2 text-[12px] font-medium text-muted"
+                >
+                  <span className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  Updating
+                </motion.span>
+              ) : null}
+            </AnimatePresence>
           </div>
-        ) : !fromWeekId || !toWeekId ? (
-          weeks.length || comparisons !== null ? (
-            <Empty title="Pick two weeks" detail="Choose a from week and a to week to compare records." />
-          ) : (
-            <div className="grid min-h-[50vh] place-items-center rounded-3xl border border-line bg-surface">
-              <DojoLoader lines={["Finding your weeks", "Lining up both weeks"]} />
+        </section>
+
+        {/* ── Body ─────────────────────────────────────────── */}
+        <div>
+          {error ? (
+            <div className="flex flex-col items-center bg-brand-soft px-6 py-14 text-center">
+              <AlertTriangle className="text-brand-text" size={22} />
+              <p className="mt-3 font-display text-lg font-bold">Couldn’t load the comparison</p>
+              <p className="mt-1 text-sm text-muted">{error}</p>
             </div>
-          )
-        ) : firstLoad ? (
-          <div className="grid min-h-[50vh] place-items-center rounded-3xl border border-line bg-surface">
-            <DojoLoader lines={["Lining up both weeks", "Comparing belts", "Spotting the climbers"]} />
-          </div>
-        ) : (
-          <div
-            className={`space-y-4 transition-[opacity,filter] duration-300 ${isLoading ? "pointer-events-none opacity-55 saturate-50" : ""}`}
-            aria-busy={isLoading}
-          >
-            {summary ? (
-              <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">
-                <section className="rounded-3xl border border-line bg-surface p-6 shadow-[var(--card-shadow)]">
-                  <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-                    <h2 className="font-display text-[16px] font-semibold">
-                      {summary.total} students ·{" "}
-                      <span className="text-muted">
-                        {fromWeek ? formatWeekLabel(fromWeek) : "—"} → {toWeek ? formatWeekLabel(toWeek) : "—"}
-                      </span>
-                    </h2>
-                    <span className="text-[12px] text-muted">Click a segment to filter</span>
-                  </div>
-                  <ShareBar
-                    active={status === "none" ? undefined : status}
-                    onSelect={(key) =>
-                      setStatus((current) => (current === key ? "none" : (key as VisibleStatus)))
-                    }
-                    segments={(["improved", "no_change", "missing_data"] as const).map((key) => ({
-                      key,
-                      label: STATUS_META[key].label,
-                      value: summary[key],
-                      color: STATUS_META[key].color,
-                    }))}
-                  />
-                </section>
-                <section className="rounded-3xl border border-line bg-surface p-6 shadow-[var(--card-shadow)]">
-                  <RingStat
-                    value={summary.total ? summary.improved / summary.total : 0}
-                    label="Moved up"
-                    caption={
-                      <>
-                        <span className="font-semibold text-ink">{summary.improved}</span> students earned at
-                        least one belt between these weeks.
-                      </>
-                    }
-                  />
-                </section>
-              </div>
-            ) : null}
-
-            {rows.length ? (
-              <div className="grid gap-4 lg:grid-cols-2">
-                <section className="rounded-3xl border border-line bg-surface p-5 shadow-[var(--card-shadow)]">
-                  <h2 className="flex items-center gap-2 font-display text-[16px] font-semibold">
-                    <Rocket size={16} className="text-brand-text" /> Top climbers
-                  </h2>
-                  {climbers.length ? (
-                    <ol className="mt-3 space-y-1">
-                      {climbers.map((row, index) => (
-                        <motion.li
-                          key={row.student_id}
-                          initial={reduced ? false : { opacity: 0, x: -8 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: index * 0.05 }}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => openHistory(row)}
-                            className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition hover:bg-surface-2"
-                          >
-                            <span className="w-4 text-center font-display text-[13px] font-bold text-faint">
-                              {index + 1}
-                            </span>
-                            <StudentAvatar id={row.student_id} name={row.student_name} email={row.email} size={32} />
-                            <span className="min-w-0 flex-1">
-                              <span className="block truncate text-[13.5px] font-semibold">
-                                {row.student_name ?? "Unnamed student"}
-                              </span>
-                              <span className="block text-[11.5px] text-muted">
-                                {row.squad_number ? `Squad ${row.squad_number}` : "No squad"} · {row.from_total ?? "—"} → {row.to_total ?? "—"}
-                              </span>
-                            </span>
-                            <span className="rounded-full bg-success-soft px-2 py-0.5 text-[12px] font-bold tabular-nums text-success-text">
-                              +{row.net_change}
-                            </span>
-                          </button>
-                        </motion.li>
-                      ))}
-                    </ol>
-                  ) : (
-                    <p className="mt-6 text-center text-sm text-muted">Nobody moved up in this view.</p>
-                  )}
-                </section>
-                <section className="rounded-3xl border border-line bg-surface p-5 shadow-[var(--card-shadow)]">
-                  <h2 className="font-display text-[16px] font-semibold">Change in belts</h2>
-                  <p className="text-[12px] text-muted">How many students gained or lost how many belts</p>
-                  <Histogram data={distribution} />
-                </section>
-              </div>
-            ) : null}
-
-            {rows.length === 0 ? (
-              <Empty title="No matching students" detail="Try a different squad, status or search." icon />
+          ) : !fromWeekId || !toWeekId ? (
+            weeks.length || comparisons !== null ? (
+              <Empty title="Pick two weeks" detail="Choose a from week and a to week to compare records." />
             ) : (
-              <section className="overflow-hidden rounded-3xl border border-line bg-surface shadow-[var(--card-shadow)]">
-                <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
-                  <h2 className="font-display text-[15px] font-semibold">Every student</h2>
-                  <span className="text-[12px] text-muted">
-                    {rows.length} {rows.length === 1 ? "record" : "records"}
-                  </span>
-                </div>
-                <div className="overflow-x-auto">
-                  <div className="min-w-[980px]">
-                    <div className="grid grid-cols-[minmax(0,2.2fr)_0.8fr_1.2fr_1fr_2.6fr] gap-4 bg-surface-2 px-5 py-2.5 text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted">
-                      <span>Student</span>
-                      <span>Squad</span>
-                      <span>Belts</span>
-                      <span>Status</span>
-                      <span>By language</span>
+              <div className="grid min-h-[50vh] place-items-center">
+                <DojoLoader lines={["Finding your weeks", "Lining up both weeks"]} />
+              </div>
+            )
+          ) : firstLoad ? (
+            <div className="grid min-h-[50vh] place-items-center">
+              <DojoLoader lines={["Lining up both weeks", "Comparing belts", "Spotting the climbers"]} />
+            </div>
+          ) : (
+            <div
+              className={`divide-y divide-line transition-[opacity,filter] duration-300 ${isLoading ? "pointer-events-none opacity-55 saturate-50" : ""}`}
+              aria-busy={isLoading}
+            >
+              {summary ? (
+                <div className="grid divide-y divide-line lg:grid-cols-[1.6fr_1fr] lg:divide-x lg:divide-y-0">
+                  <section className="px-4 py-5 sm:px-5">
+                    <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+                      <h2 className="font-display text-[16px] font-semibold">
+                        {summary.total} students ·{" "}
+                        <span className="text-muted">
+                          {fromWeek ? formatWeekLabel(fromWeek) : "—"} → {toWeek ? formatWeekLabel(toWeek) : "—"}
+                        </span>
+                      </h2>
+                      <span className="text-[12px] text-muted">Click a segment to filter</span>
                     </div>
-                    <ul className="divide-y divide-line">
-                      {rows.slice(0, limit).map((row, index) => (
-                        <ComparisonRow
-                          key={row.student_id}
-                          row={row}
-                          index={index}
-                          status={status === "decreased" ? "decreased" : row.status}
-                          onOpen={() => openHistory(row)}
-                        />
-                      ))}
-                    </ul>
-                  </div>
+                    <ShareBar
+                      active={status === "none" ? undefined : status}
+                      onSelect={(key) =>
+                        setStatus((current) => (current === key ? "none" : (key as VisibleStatus)))
+                      }
+                      segments={(["improved", "no_change", "missing_data"] as const).map((key) => ({
+                        key,
+                        label: STATUS_META[key].label,
+                        value: summary[key],
+                        color: STATUS_META[key].color,
+                      }))}
+                    />
+                  </section>
+                  <section className="px-4 py-5 sm:px-5">
+                    <RingStat
+                      value={summary.total ? summary.improved / summary.total : 0}
+                      label="Moved up"
+                      caption={
+                        <>
+                          <span className="font-semibold text-ink">{summary.improved}</span> students earned at
+                          least one belt between these weeks.
+                        </>
+                      }
+                    />
+                  </section>
                 </div>
-                {rows.length > limit ? (
-                  <div className="flex justify-center border-t border-line p-3">
-                    <button
-                      type="button"
-                      onClick={() => setLimit((current) => current + PAGE)}
-                      className="inline-flex items-center gap-2 rounded-full border border-line-strong px-4 py-1.5 text-[13px] font-semibold text-ink-2 hover:text-ink"
-                    >
-                      Show {Math.min(PAGE, rows.length - limit)} more <ChevronDown size={14} />
-                    </button>
+              ) : null}
+
+              {rows.length ? (
+                <div className="grid divide-y divide-line lg:grid-cols-2 lg:divide-x lg:divide-y-0">
+                  <section className="px-4 py-4 sm:px-5">
+                    <h2 className="flex items-center gap-2 font-display text-[16px] font-semibold">
+                      <Rocket size={16} className="text-brand-text" /> Top climbers
+                    </h2>
+                    {climbers.length ? (
+                      <ol className="mt-3 space-y-1">
+                        {climbers.map((row, index) => (
+                          <motion.li
+                            key={row.student_id}
+                            initial={reduced ? false : { opacity: 0, x: -8 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.05 }}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => openHistory(row)}
+                              className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition hover:bg-surface-2"
+                            >
+                              <span className="w-4 text-center font-display text-[13px] font-bold text-faint">
+                                {index + 1}
+                              </span>
+                              <StudentAvatar id={row.student_id} name={row.student_name} email={row.email} size={32} />
+                              <span className="min-w-0 flex-1">
+                                <span className="block truncate text-[13.5px] font-semibold">
+                                  {row.student_name ?? "Unnamed student"}
+                                </span>
+                                <span className="block text-[11.5px] text-muted">
+                                  {row.squad_number ? `Squad ${row.squad_number}` : "No squad"} · {row.from_total ?? "—"} → {row.to_total ?? "—"}
+                                </span>
+                              </span>
+                              <span className="rounded-full bg-success-soft px-2 py-0.5 text-[12px] font-bold tabular-nums text-success-text">
+                                +{row.net_change}
+                              </span>
+                            </button>
+                          </motion.li>
+                        ))}
+                      </ol>
+                    ) : (
+                      <p className="mt-6 text-center text-sm text-muted">Nobody moved up in this view.</p>
+                    )}
+                  </section>
+                  <section className="px-4 py-4 sm:px-5">
+                    <h2 className="font-display text-[16px] font-semibold">Change in belts</h2>
+                    <p className="text-[12px] text-muted">How many students gained or lost how many belts</p>
+                    <Histogram data={distribution} />
+                  </section>
+                </div>
+              ) : null}
+
+              {rows.length === 0 ? (
+                <Empty title="No matching students" detail="Try a different squad, status or search." icon />
+              ) : (
+                <section className="min-w-0">
+                  <div className="flex items-center justify-between border-b border-line px-4 py-3 sm:px-5">
+                    <h2 className="font-display text-[15px] font-semibold">Every student</h2>
+                    <span className="text-[12px] text-muted">
+                      {rows.length} {rows.length === 1 ? "record" : "records"}
+                    </span>
                   </div>
-                ) : null}
-              </section>
-            )}
-          </div>
-        )}
-      </div>
+                  <div className="overflow-x-auto">
+                    <div className="min-w-[980px]">
+                      <div className="grid grid-cols-[minmax(0,2.2fr)_0.8fr_1.2fr_1fr_2.6fr] gap-4 bg-surface-2 px-5 py-2.5 text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted">
+                        <span>Student</span>
+                        <span>Squad</span>
+                        <span>Belts</span>
+                        <span>Status</span>
+                        <span>By language</span>
+                      </div>
+                      <ul className="divide-y divide-line">
+                        {rows.slice(0, limit).map((row, index) => (
+                          <ComparisonRow
+                            key={row.student_id}
+                            row={row}
+                            index={index}
+                            status={status === "decreased" ? "decreased" : row.status}
+                            onOpen={() => openHistory(row)}
+                          />
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                  {rows.length > limit ? (
+                    <div className="flex justify-center border-t border-line p-3">
+                      <button
+                        type="button"
+                        onClick={() => setLimit((current) => current + PAGE)}
+                        className="inline-flex items-center gap-2 rounded-full border border-line-strong px-4 py-1.5 text-[13px] font-semibold text-ink-2 hover:text-ink"
+                      >
+                        Show {Math.min(PAGE, rows.length - limit)} more <ChevronDown size={14} />
+                      </button>
+                    </div>
+                  ) : null}
+                </section>
+              )}
+            </div>
+          )}
+        </div>
+
+      </Frame>
 
       <HistoryDialog student={historyFor} onClose={() => setHistoryFor(null)} />
-    </div>
+    </Page>
   );
 }
 
@@ -784,7 +788,7 @@ function Histogram({ data }: { data: Array<{ change: number; count: number }> })
 
 function Empty({ title, detail, icon = false }: { title: string; detail: string; icon?: boolean }) {
   return (
-    <div className="flex flex-col items-center rounded-3xl border border-dashed border-line-strong bg-surface px-6 py-16 text-center">
+    <div className="flex flex-col items-center px-6 py-16 text-center">
       {icon ? (
         <span className="mb-4 grid h-12 w-12 place-items-center rounded-2xl bg-sunken text-muted">
           <SearchX size={22} />

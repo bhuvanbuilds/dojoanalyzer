@@ -1,6 +1,13 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
@@ -24,9 +31,9 @@ import {
 } from "@/lib/auth/profile";
 import { CsvUploadDialog } from "@/components/csv-upload-dialog";
 import { CountUp } from "@/components/reactbits/count-up";
-import { SpotlightCard } from "@/components/reactbits/spotlight-card";
 import { ShinyButton } from "@/components/ui/shiny-button";
 import { PageState, Skeleton } from "@/components/ui/skeleton";
+import { Cell, Cells, cellsClass, Frame, Page } from "@/components/ui/frame";
 import { Toast, type ToastMessage } from "@/components/ui/toast";
 import { StudentAvatar } from "@/components/students/avatar";
 import {
@@ -98,7 +105,9 @@ function StudentsPageContent() {
     requestedWeek <= 52
       ? requestedStatus
       : null;
-  const needsWeekData = Boolean(issueFilter || (monitorView && hasRequestedPeriod));
+  const needsWeekData = Boolean(
+    issueFilter || (monitorView && hasRequestedPeriod),
+  );
 
   const cachedProfile = useCachedProfile();
 
@@ -243,7 +252,9 @@ function StudentsPageContent() {
           throw new Error(studentsResult.error ?? "Unable to load students.");
         if (dashboardResponse && !dashboardResponse.ok) {
           const result = (await dashboardResponse.json()) as { error?: string };
-          throw new Error(result.error ?? "Unable to load weekly student data.");
+          throw new Error(
+            result.error ?? "Unable to load weekly student data.",
+          );
         }
         const dashboardResult = dashboardResponse
           ? ((await dashboardResponse.json()) as { students?: WeekStudent[] })
@@ -253,9 +264,12 @@ function StudentsPageContent() {
         setStudents(studentsResult.students ?? []);
         setWeekStudents(dashboardResult?.students ?? null);
       } catch (error) {
-        if (error instanceof DOMException && error.name === "AbortError") return;
+        if (error instanceof DOMException && error.name === "AbortError")
+          return;
         setLoadError(
-          error instanceof Error ? error.message : "Unable to load management data.",
+          error instanceof Error
+            ? error.message
+            : "Unable to load management data.",
         );
       } finally {
         if (!controller.signal.aborted) setIsLoading(false);
@@ -296,7 +310,11 @@ function StudentsPageContent() {
             new Map(
               (result.leaderboard ?? []).map((row) => [
                 row.student_id,
-                { rank: row.rank, levels: row.language_belts, total: row.total_belts_earned },
+                {
+                  rank: row.rank,
+                  levels: row.language_belts,
+                  total: row.total_belts_earned,
+                },
               ]),
             ),
           ),
@@ -314,7 +332,10 @@ function StudentsPageContent() {
         .filter((student) => !student.has_weekly_data)
         .map((student) => student.student_id),
     );
-    const coverageBySquad = new Map<string, { total: number; recorded: number }>();
+    const coverageBySquad = new Map<
+      string,
+      { total: number; recorded: number }
+    >();
     for (const student of weekStudents ?? []) {
       if (!student.squad_number) continue;
       const coverage = coverageBySquad.get(student.squad_number) ?? {
@@ -335,7 +356,9 @@ function StudentsPageContent() {
       issueFilter === "incomplete"
         ? squads.filter((squad) => incomplete.has(squad.squad_number))
         : requestedSquadNumber
-          ? squads.filter((squad) => squad.squad_number === requestedSquadNumber)
+          ? squads.filter(
+              (squad) => squad.squad_number === requestedSquadNumber,
+            )
           : squads
     ).filter(
       (squad) => !universityFilter || squad.university_id === universityFilter,
@@ -529,120 +552,120 @@ function StudentsPageContent() {
           : "Campus monitoring view";
 
   return (
-    <div className="mx-auto max-w-[1440px] px-4 pb-16 lg:px-8">
-      {/* ── Hero ─────────────────────────────────────────────── */}
-      <section className="relative mt-2 overflow-hidden rounded-3xl border border-line bg-surface px-6 py-7 shadow-[var(--card-shadow)] sm:px-8">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 opacity-60 [background-image:radial-gradient(var(--line-strong)_1px,transparent_1px)] [background-size:18px_18px] [mask-image:radial-gradient(ellipse_at_top_right,black,transparent_65%)]"
-        />
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -right-24 -top-32 h-80 w-80 rounded-full blur-3xl"
-          style={{
-            background:
-              "radial-gradient(circle, color-mix(in srgb, var(--brand) 20%, transparent), transparent 70%)",
-          }}
-        />
-        <div className="relative flex flex-wrap items-end justify-between gap-6">
-          <div className="min-w-0 max-w-2xl">
-            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-brand-text">
-              {isSuperAdmin
-                ? "Global management"
-                : isManager
-                  ? "Dojo operations"
-                  : "Campus monitoring"}
-            </p>
-            <h1 className="mt-2 font-display text-3xl font-bold tracking-[-0.035em] sm:text-[40px] sm:leading-[1.05]">
-              {isCampusManager
-                ? "Students & squads"
-                : isSuperAdmin
-                  ? "Every student, every squad"
-                  : "Campus students"}
-            </h1>
-            <p className="mt-2 text-[14px] leading-6 text-muted">
-              {isSuperAdmin
-                ? "Manage students and squads across every university."
-                : isManager
-                  ? "Add, move and review the students connected to your campus."
-                  : "Review students across your campus and open their belt history."}
-            </p>
-            {students.length ? (
-              <div className="mt-4 flex items-center gap-3">
-                <div className="flex -space-x-2">
-                  {students.slice(0, 5).map((student, index) => (
-                    <motion.span
-                      key={student.id}
-                      initial={reduced ? false : { opacity: 0, x: -8 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.1 + index * 0.05 }}
-                    >
-                      <StudentAvatar
-                        id={student.id}
-                        name={student.name}
-                        size={30}
-                        ring
-                      />
-                    </motion.span>
-                  ))}
+    <Page>
+      <Frame>
+        {/* ── Hero ─────────────────────────────────────────────── */}
+        <section className="relative overflow-hidden bg-surface-2 px-4 py-5 sm:px-5">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 opacity-60 [background-image:radial-gradient(var(--line-strong)_1px,transparent_1px)] [background-size:18px_18px] [mask-image:radial-gradient(ellipse_at_top_right,black,transparent_65%)]"
+          />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -right-24 -top-32 h-80 w-80 rounded-full blur-3xl"
+            style={{
+              background:
+                "radial-gradient(circle, color-mix(in srgb, var(--brand) 20%, transparent), transparent 70%)",
+            }}
+          />
+          <div className="relative flex flex-wrap items-end justify-between gap-6">
+            <div className="min-w-0 max-w-2xl">
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-brand-text">
+                {isSuperAdmin
+                  ? "Global management"
+                  : isManager
+                    ? "Dojo operations"
+                    : "Campus monitoring"}
+              </p>
+              <h1 className="mt-1 font-display text-[26px] font-bold tracking-[-0.035em] sm:text-[30px] sm:leading-[1.1]">
+                {isCampusManager
+                  ? "Students & squads"
+                  : isSuperAdmin
+                    ? "Every student, every squad"
+                    : "Campus students"}
+              </h1>
+              <p className="mt-2 text-[14px] leading-6 text-muted">
+                {isSuperAdmin
+                  ? "Manage students and squads across every university."
+                  : isManager
+                    ? "Add, move and review the students connected to your campus."
+                    : "Review students across your campus and open their belt history."}
+              </p>
+              {students.length ? (
+                <div className="mt-4 flex items-center gap-3">
+                  <div className="flex -space-x-2">
+                    {students.slice(0, 5).map((student, index) => (
+                      <motion.span
+                        key={student.id}
+                        initial={reduced ? false : { opacity: 0, x: -8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.1 + index * 0.05 }}
+                      >
+                        <StudentAvatar
+                          id={student.id}
+                          name={student.name}
+                          size={30}
+                          ring
+                        />
+                      </motion.span>
+                    ))}
+                  </div>
+                  <span className="text-[12.5px] text-muted">
+                    {students.length > 5
+                      ? `+${students.length - 5} more in your dojo`
+                      : "in your dojo"}
+                  </span>
                 </div>
-                <span className="text-[12.5px] text-muted">
-                  {students.length > 5
-                    ? `+${students.length - 5} more in your dojo`
-                    : "in your dojo"}
-                </span>
+              ) : null}
+            </div>
+            {isManager ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => openCreate("squad")}
+                  className="inline-flex h-9 items-center gap-2 rounded-full border border-line-strong bg-surface px-3.5 text-[13px] font-semibold text-ink-2 transition hover:border-ink/40 hover:text-ink active:scale-[0.98]"
+                >
+                  <Plus size={15} /> New squad
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openCreate("student")}
+                  className="inline-flex h-9 items-center gap-2 rounded-full bg-ink px-3.5 text-[13px] font-semibold text-page transition hover:opacity-90 active:scale-[0.98]"
+                >
+                  <UserPlus size={15} /> Add student
+                </button>
+                <ShinyButton
+                  className="h-9 px-3.5 font-display text-[13px] font-semibold"
+                  onClick={() => {
+                    setCsvSession((current) => current + 1);
+                    setCsvOpen(true);
+                  }}
+                >
+                  <FileUp size={15} /> Import CSV
+                </ShinyButton>
               </div>
             ) : null}
           </div>
-          {isManager ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => openCreate("squad")}
-                className="inline-flex items-center gap-2 rounded-full border border-line-strong bg-surface px-4 py-2.5 text-[13.5px] font-semibold text-ink-2 transition hover:border-ink/40 hover:text-ink active:scale-[0.98]"
-              >
-                <Plus size={15} /> New squad
-              </button>
-              <button
-                type="button"
-                onClick={() => openCreate("student")}
-                className="inline-flex items-center gap-2 rounded-full bg-ink px-4 py-2.5 text-[13.5px] font-semibold text-page transition hover:opacity-90 active:scale-[0.98]"
-              >
-                <UserPlus size={15} /> Add student
-              </button>
-              <ShinyButton
-                className="h-10 px-4 font-display text-[13.5px] font-semibold"
-                onClick={() => {
-                  setCsvSession((current) => current + 1);
-                  setCsvOpen(true);
-                }}
-              >
-                <FileUp size={15} /> Import CSV
-              </ShinyButton>
-            </div>
-          ) : null}
-        </div>
-      </section>
+        </section>
 
-      {/* ── Stats ────────────────────────────────────────────── */}
-      <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {stats.map((stat, index) => (
-          <motion.div
-            key={stat.label}
-            initial={reduced ? false : { opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.05 * index }}
-          >
-            <SpotlightCard className="h-full p-4">
-              <span
-                className="grid h-9 w-9 place-items-center rounded-xl"
-                style={{
-                  color: stat.tint,
-                  background: `color-mix(in srgb, ${stat.tint} 13%, transparent)`,
-                }}
-              >
-                <stat.icon size={17} />
-              </span>
+        {/* ── Stats ────────────────────────────────────────────── */}
+        <Cells className="grid-cols-2 lg:grid-cols-4">
+          {stats.map((stat) => (
+            <Cell key={stat.label} className="px-4 py-4 sm:px-5">
+              <div className="flex items-center gap-3">
+                <span
+                  className="grid h-9 w-9 place-items-center rounded-xl"
+                  style={{
+                    color: stat.tint,
+                    background: `color-mix(in srgb, ${stat.tint} 13%, transparent)`,
+                  }}
+                >
+                  <stat.icon size={17} />
+                </span>
+                <p className="text-[13px] font-semibold text-ink-2">
+                  {stat.label}
+                </p>
+              </div>
               <div className="mt-3 h-7 font-display text-[28px] font-bold leading-none tracking-[-0.035em] tabular-nums">
                 {isLoading ? (
                   <Skeleton className="h-7 w-14" />
@@ -650,316 +673,319 @@ function StudentsPageContent() {
                   <CountUp to={stat.value} decimals={stat.decimals ?? 0} />
                 )}
               </div>
-              <p className="mt-1.5 text-[13px] font-semibold text-ink-2">
-                {stat.label}
-              </p>
-              <p className="text-[11.5px] text-muted">{stat.hint}</p>
-            </SpotlightCard>
-          </motion.div>
-        ))}
-      </div>
+              <p className="mt-1.5 text-[11.5px] text-muted">{stat.hint}</p>
+            </Cell>
+          ))}
+        </Cells>
 
-      {/* ── Banners ─────────────────────────────────────────── */}
-      <AnimatePresence>
-        {loadError ? (
+        {/* ── Banners ─────────────────────────────────────────── */}
+        <AnimatePresence>
+          {loadError ? (
+            <motion.div
+              key="error"
+              role="alert"
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="flex items-center justify-between gap-3 bg-brand-soft px-4 py-3 text-sm text-brand-text sm:px-5"
+            >
+              <span className="flex items-center gap-2">
+                <AlertTriangle size={16} /> {loadError}
+              </span>
+              <button
+                type="button"
+                onClick={() => setRefreshKey((current) => current + 1)}
+                className="font-semibold underline-offset-2 hover:underline"
+              >
+                Retry
+              </button>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+        {scoped ? (
           <motion.div
-            key="error"
-            role="alert"
-            initial={{ opacity: 0, y: -6 }}
+            initial={reduced ? false : { opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-brand-line bg-brand-soft px-4 py-3 text-sm text-brand-text"
+            className="flex flex-wrap items-center justify-between gap-3 bg-warning-soft px-4 py-3 text-sm sm:px-5"
           >
-            <span className="flex items-center gap-2">
-              <AlertTriangle size={16} /> {loadError}
-            </span>
+            <p className="flex flex-wrap items-center gap-2 text-ink">
+              <AlertTriangle size={16} className="text-warning-text" />
+              <span className="font-semibold">{bannerTitle}</span>
+              {hasRequestedPeriod ? (
+                <span className="text-muted">
+                  Academic year {requestedAcademicYear}, week {requestedWeek}
+                </span>
+              ) : null}
+            </p>
             <button
               type="button"
-              onClick={() => setRefreshKey((current) => current + 1)}
-              className="font-semibold underline-offset-2 hover:underline"
+              onClick={() => router.replace("/students")}
+              className="inline-flex items-center gap-1.5 rounded-full bg-surface px-3 py-1 text-[12.5px] font-semibold text-ink-2 shadow-[var(--card-shadow)] transition hover:text-ink"
             >
-              Retry
+              <X size={13} /> Clear filter
             </button>
           </motion.div>
         ) : null}
-      </AnimatePresence>
-      {scoped ? (
-        <motion.div
-          initial={reduced ? false : { opacity: 0, y: -6 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-warning-text/25 bg-warning-soft px-4 py-3 text-sm"
-        >
-          <p className="flex flex-wrap items-center gap-2 text-ink">
-            <AlertTriangle size={16} className="text-warning-text" />
-            <span className="font-semibold">{bannerTitle}</span>
-            {hasRequestedPeriod ? (
-              <span className="text-muted">
-                Academic year {requestedAcademicYear}, week {requestedWeek}
-              </span>
-            ) : null}
-          </p>
-          <button
-            type="button"
-            onClick={() => router.replace("/students")}
-            className="inline-flex items-center gap-1.5 rounded-full bg-surface px-3 py-1 text-[12.5px] font-semibold text-ink-2 shadow-[var(--card-shadow)] transition hover:text-ink"
-          >
-            <X size={13} /> Clear filter
-          </button>
-        </motion.div>
-      ) : null}
 
-      {/* ── Squad rail ──────────────────────────────────────── */}
-      <section className="mt-6">
-        <div className="mb-2.5 flex items-baseline justify-between gap-3">
-          <h2 className="font-display text-[15px] font-semibold">Squads</h2>
-          {activeSquad && isCampusManager ? (
-            <button
-              type="button"
-              onClick={() => {
-                navigator.clipboard
-                  ?.writeText(activeSquad.id)
-                  .then(() => notify("Squad ID copied"))
-                  .catch(() => notify("Couldn’t copy the ID", "error"));
-              }}
-              className="inline-flex items-center gap-1.5 font-mono text-[11.5px] text-muted transition hover:text-ink"
-              title="Copy squad ID"
-            >
-              <Copy size={12} /> {activeSquad.id.slice(0, 8)}…
-            </button>
-          ) : null}
-        </div>
-        {isLoading ? (
-          <div className="flex gap-2 overflow-hidden">
-            {[0, 1, 2, 3, 4, 5].map((i) => (
-              <Skeleton key={i} className="h-11 w-28 shrink-0 rounded-2xl" />
-            ))}
-          </div>
-        ) : issueDataUnavailable ? (
-          <p className="text-sm text-muted">
-            Weekly data is unavailable for this period.
-          </p>
-        ) : visibleSquads.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-line-strong px-4 py-4 text-sm text-muted">
-            {issueFilter === "incomplete"
-              ? "No incomplete squads for this week."
-              : isManager
-                ? "No squads yet — create one to start adding students."
-                : "No squads have been created yet."}
-          </p>
-        ) : (
-          <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2 [scrollbar-width:thin]">
-            <SquadChip
-              active={!squadFilter}
-              onClick={() => setSquadFilter("")}
-              label="All squads"
-              count={visibleStudents.length}
-            />
-            {visibleSquads.map((squad) => {
-              const coverage = coverageBySquad.get(squad.squad_number);
-              return (
-                <SquadChip
-                  key={squad.id}
-                  active={squadFilter === squad.id}
-                  onClick={() =>
-                    setSquadFilter((current) =>
-                      current === squad.id ? "" : squad.id,
-                    )
-                  }
-                  label={`Squad ${squad.squad_number}`}
-                  sub={
-                    isSuperAdmin && !universityFilter
-                      ? (squad.university_name ?? undefined)
-                      : undefined
-                  }
-                  count={countBySquad.get(squad.id) ?? 0}
-                  coverage={monitorView ? coverage : undefined}
-                />
-              );
-            })}
-          </div>
-        )}
-      </section>
-
-      {/* ── Toolbar ─────────────────────────────────────────── */}
-      <div className="sticky top-[76px] z-20 mt-4 rounded-2xl border border-line bg-surface/85 p-2 shadow-[var(--card-shadow)] backdrop-blur-xl">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative min-w-[220px] flex-1">
-            <Search
-              size={15}
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint"
-            />
-            <input
-              ref={searchRef}
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Escape") {
-                  setSearch("");
-                  event.currentTarget.blur();
-                }
-              }}
-              placeholder="Search by name or email"
-              aria-label="Search students"
-              className="w-full rounded-xl border border-transparent bg-sunken py-2 pl-9 pr-16 text-[13.5px] outline-none transition placeholder:text-faint focus:border-line-strong focus:bg-surface"
-            />
-            {search ? (
-              <button
-                type="button"
-                onClick={() => setSearch("")}
-                aria-label="Clear search"
-                className="absolute right-2 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-md text-muted hover:bg-sunken hover:text-ink"
-              >
-                <X size={14} />
-              </button>
-            ) : (
-              <kbd className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md border border-line-strong bg-surface px-1.5 font-mono text-[11px] text-muted">
-                /
-              </kbd>
-            )}
-          </div>
-          {isSuperAdmin ? (
-            <ToolbarSelect
-              label="University"
-              value={universityFilter}
-              onChange={(value) => {
-                setUniversityFilter(value);
-                setSquadFilter("");
-              }}
-            >
-              <option value="">All universities</option>
-              {universities.map((university) => (
-                <option key={university.id} value={university.id}>
-                  {university.name}
-                </option>
-              ))}
-            </ToolbarSelect>
-          ) : null}
-          <ToolbarSelect
-            label="Sort"
-            value={sort}
-            onChange={(value) => setSort(value as SortKey)}
-            icon={<ArrowDownAZ size={14} />}
-          >
-            <option value="name">Name A–Z</option>
-            <option value="squad">Squad</option>
-            <option value="recent">Recently joined</option>
-          </ToolbarSelect>
-          <div
-            role="radiogroup"
-            aria-label="Layout"
-            className="flex rounded-xl bg-sunken p-1"
-          >
-            {(
-              [
-                ["cards", LayoutGrid, "Cards"],
-                ["list", List, "List"],
-              ] as const
-            ).map(([id, Icon, label]) => (
-              <button
-                key={id}
-                type="button"
-                role="radio"
-                aria-checked={view === id}
-                onClick={() => chooseView(id)}
-                className={`relative flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12.5px] font-semibold transition-colors ${view === id ? "text-ink" : "text-muted hover:text-ink-2"}`}
-              >
-                {view === id ? (
-                  <motion.span
-                    layoutId="students-view"
-                    className="absolute inset-0 rounded-lg bg-surface shadow-[0_1px_3px_rgba(0,0,0,0.12)]"
-                    transition={{ type: "spring", stiffness: 420, damping: 34 }}
-                  />
-                ) : null}
-                <Icon size={14} className="relative" />
-                <span className="relative">{label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="mb-3 mt-4 flex flex-wrap items-center gap-2 text-[12.5px] text-muted">
-        {isLoading ? (
-          <Skeleton className="h-3 w-40" />
-        ) : (
-          <>
-            <span>
-              Showing{" "}
-              <span className="font-semibold text-ink">{filtered.length}</span>{" "}
-              of {visibleStudents.length} students
-            </span>
-            {activeSquad ? (
-              <FilterPill
-                label={`Squad ${activeSquad.squad_number}`}
-                onClear={() => setSquadFilter("")}
-              />
-            ) : null}
-            {search.trim() ? (
-              <FilterPill
-                label={`“${search.trim()}”`}
-                onClear={() => setSearch("")}
-              />
-            ) : null}
-          </>
-        )}
-      </div>
-
-      {/* ── Students ────────────────────────────────────────── */}
-      {isLoading ? (
-        <CollectionSkeleton view={view} />
-      ) : issueDataUnavailable ? (
-        <EmptyPanel
-          title="No weekly data for this period"
-          detail="Import this week's CSV to see who is missing data."
-        />
-      ) : filtered.length === 0 ? (
-        <EmptyPanel
-          title={
-            issueFilter === "missing"
-              ? "Everyone has data this week"
-              : visibleStudents.length === 0
-                ? "No students yet"
-                : "No matches"
-          }
-          detail={
-            issueFilter === "missing"
-              ? "No students are missing data for this week."
-              : visibleStudents.length === 0
-                ? isManager
-                  ? "Add a student or import a CSV to get started."
-                  : "Students will appear here once they are added."
-                : "Try a different name, email or squad."
-          }
-          action={
-            visibleStudents.length > 0 && (search || squadFilter) ? (
+        {/* ── Squad rail ──────────────────────────────────────── */}
+        <section className="px-4 pb-2 pt-3.5 sm:px-5">
+          <div className="mb-2.5 flex items-baseline justify-between gap-3">
+            <h2 className="font-display text-[15px] font-semibold">Squads</h2>
+            {activeSquad && isCampusManager ? (
               <button
                 type="button"
                 onClick={() => {
-                  setSearch("");
+                  navigator.clipboard
+                    ?.writeText(activeSquad.id)
+                    .then(() => notify("Squad ID copied"))
+                    .catch(() => notify("Couldn’t copy the ID", "error"));
+                }}
+                className="inline-flex items-center gap-1.5 font-mono text-[11.5px] text-muted transition hover:text-ink"
+                title="Copy squad ID"
+              >
+                <Copy size={12} /> {activeSquad.id.slice(0, 8)}…
+              </button>
+            ) : null}
+          </div>
+          {isLoading ? (
+            <div className="flex gap-2 overflow-hidden">
+              {[0, 1, 2, 3, 4, 5].map((i) => (
+                <Skeleton key={i} className="h-11 w-28 shrink-0 rounded-2xl" />
+              ))}
+            </div>
+          ) : issueDataUnavailable ? (
+            <p className="text-sm text-muted">
+              Weekly data is unavailable for this period.
+            </p>
+          ) : visibleSquads.length === 0 ? (
+            <p className="mb-2 rounded-2xl border border-dashed border-line-strong px-4 py-4 text-sm text-muted">
+              {issueFilter === "incomplete"
+                ? "No incomplete squads for this week."
+                : isManager
+                  ? "No squads yet — create one to start adding students."
+                  : "No squads have been created yet."}
+            </p>
+          ) : (
+            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2 [scrollbar-width:thin]">
+              <SquadChip
+                active={!squadFilter}
+                onClick={() => setSquadFilter("")}
+                label="All squads"
+                count={visibleStudents.length}
+              />
+              {visibleSquads.map((squad) => {
+                const coverage = coverageBySquad.get(squad.squad_number);
+                return (
+                  <SquadChip
+                    key={squad.id}
+                    active={squadFilter === squad.id}
+                    onClick={() =>
+                      setSquadFilter((current) =>
+                        current === squad.id ? "" : squad.id,
+                      )
+                    }
+                    label={`Squad ${squad.squad_number}`}
+                    sub={
+                      isSuperAdmin && !universityFilter
+                        ? (squad.university_name ?? undefined)
+                        : undefined
+                    }
+                    count={countBySquad.get(squad.id) ?? 0}
+                    coverage={monitorView ? coverage : undefined}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {/* ── Toolbar ─────────────────────────────────────────── */}
+        <div className="sticky top-[var(--app-bar-h,57px)] z-20 bg-surface/90 px-3 py-2 backdrop-blur-xl sm:px-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative min-w-[220px] flex-1">
+              <Search
+                size={15}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint"
+              />
+              <input
+                ref={searchRef}
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") {
+                    setSearch("");
+                    event.currentTarget.blur();
+                  }
+                }}
+                placeholder="Search by name or email"
+                aria-label="Search students"
+                className="w-full rounded-xl border border-transparent bg-sunken py-2 pl-9 pr-16 text-[13.5px] outline-none transition placeholder:text-faint focus:border-line-strong focus:bg-surface"
+              />
+              {search ? (
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  aria-label="Clear search"
+                  className="absolute right-2 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-md text-muted hover:bg-sunken hover:text-ink"
+                >
+                  <X size={14} />
+                </button>
+              ) : (
+                <kbd className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md border border-line-strong bg-surface px-1.5 font-mono text-[11px] text-muted">
+                  /
+                </kbd>
+              )}
+            </div>
+            {isSuperAdmin ? (
+              <ToolbarSelect
+                label="University"
+                value={universityFilter}
+                onChange={(value) => {
+                  setUniversityFilter(value);
                   setSquadFilter("");
                 }}
-                className="rounded-full border border-line-strong px-3.5 py-1.5 text-[13px] font-semibold text-ink-2 hover:text-ink"
               >
-                Clear search & squad
-              </button>
-            ) : null
-          }
-        />
-      ) : (
-        <StudentCollection
-          key={`${squadFilter}|${search.trim()}|${sort}|${universityFilter}`}
-          students={filtered}
-          view={view}
-          monitor={monitorView && Boolean(weekStudents)}
-          weekById={weekById}
-          showUniversity={isSuperAdmin && !universityFilter}
-          canEdit={isManager}
-          onEdit={setEditing}
-          onHistory={setHistoryFor}
-          belts={belts}
-          onSquad={setSquadFilter}
-        />
-      )}
+                <option value="">All universities</option>
+                {universities.map((university) => (
+                  <option key={university.id} value={university.id}>
+                    {university.name}
+                  </option>
+                ))}
+              </ToolbarSelect>
+            ) : null}
+            <ToolbarSelect
+              label="Sort"
+              value={sort}
+              onChange={(value) => setSort(value as SortKey)}
+              icon={<ArrowDownAZ size={14} />}
+            >
+              <option value="name">Name A–Z</option>
+              <option value="squad">Squad</option>
+              <option value="recent">Recently joined</option>
+            </ToolbarSelect>
+            <div
+              role="radiogroup"
+              aria-label="Layout"
+              className="flex rounded-xl bg-sunken p-1"
+            >
+              {(
+                [
+                  ["cards", LayoutGrid, "Cards"],
+                  ["list", List, "List"],
+                ] as const
+              ).map(([id, Icon, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="radio"
+                  aria-checked={view === id}
+                  onClick={() => chooseView(id)}
+                  className={`relative flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12.5px] font-semibold transition-colors ${view === id ? "text-ink" : "text-muted hover:text-ink-2"}`}
+                >
+                  {view === id ? (
+                    <motion.span
+                      layoutId="students-view"
+                      className="absolute inset-0 rounded-lg bg-surface shadow-[0_1px_3px_rgba(0,0,0,0.12)]"
+                      transition={{
+                        type: "spring",
+                        stiffness: 420,
+                        damping: 34,
+                      }}
+                    />
+                  ) : null}
+                  <Icon size={14} className="relative" />
+                  <span className="relative">{label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 bg-surface-2 px-4 py-2 text-[12.5px] text-muted sm:px-5">
+          {isLoading ? (
+            <Skeleton className="h-3 w-40" />
+          ) : (
+            <>
+              <span>
+                Showing{" "}
+                <span className="font-semibold text-ink">
+                  {filtered.length}
+                </span>{" "}
+                of {visibleStudents.length} students
+              </span>
+              {activeSquad ? (
+                <FilterPill
+                  label={`Squad ${activeSquad.squad_number}`}
+                  onClear={() => setSquadFilter("")}
+                />
+              ) : null}
+              {search.trim() ? (
+                <FilterPill
+                  label={`“${search.trim()}”`}
+                  onClear={() => setSearch("")}
+                />
+              ) : null}
+            </>
+          )}
+        </div>
+
+        {/* ── Students ────────────────────────────────────────── */}
+        {isLoading ? (
+          <CollectionSkeleton view={view} />
+        ) : issueDataUnavailable ? (
+          <EmptyPanel
+            title="No weekly data for this period"
+            detail="Import this week's CSV to see who is missing data."
+          />
+        ) : filtered.length === 0 ? (
+          <EmptyPanel
+            title={
+              issueFilter === "missing"
+                ? "Everyone has data this week"
+                : visibleStudents.length === 0
+                  ? "No students yet"
+                  : "No matches"
+            }
+            detail={
+              issueFilter === "missing"
+                ? "No students are missing data for this week."
+                : visibleStudents.length === 0
+                  ? isManager
+                    ? "Add a student or import a CSV to get started."
+                    : "Students will appear here once they are added."
+                  : "Try a different name, email or squad."
+            }
+            action={
+              visibleStudents.length > 0 && (search || squadFilter) ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearch("");
+                    setSquadFilter("");
+                  }}
+                  className="rounded-full border border-line-strong px-3.5 py-1.5 text-[13px] font-semibold text-ink-2 hover:text-ink"
+                >
+                  Clear search & squad
+                </button>
+              ) : null
+            }
+          />
+        ) : (
+          <StudentCollection
+            key={`${squadFilter}|${search.trim()}|${sort}|${universityFilter}`}
+            students={filtered}
+            view={view}
+            monitor={monitorView && Boolean(weekStudents)}
+            weekById={weekById}
+            showUniversity={isSuperAdmin && !universityFilter}
+            canEdit={isManager}
+            onEdit={setEditing}
+            onHistory={setHistoryFor}
+            belts={belts}
+            onSquad={setSquadFilter}
+          />
+        )}
+      </Frame>
 
       {/* ── Dialogs ─────────────────────────────────────────── */}
       <HistoryDialog
@@ -1040,7 +1066,7 @@ function StudentsPageContent() {
         </>
       ) : null}
       <Toast toast={toast} onDone={clearToast} />
-    </div>
+    </Page>
   );
 }
 
@@ -1156,7 +1182,13 @@ function ToolbarSelect({
   );
 }
 
-function FilterPill({ label, onClear }: { label: string; onClear: () => void }) {
+function FilterPill({
+  label,
+  onClear,
+}: {
+  label: string;
+  onClear: () => void;
+}) {
   return (
     <motion.span
       initial={{ opacity: 0, scale: 0.9 }}
@@ -1189,7 +1221,7 @@ function EmptyPanel({
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex flex-col items-center rounded-3xl border border-dashed border-line-strong bg-surface px-6 py-16 text-center"
+      className="flex flex-col items-center px-6 py-16 text-center"
     >
       <span className="grid h-12 w-12 place-items-center rounded-2xl bg-sunken text-muted">
         <SearchX size={22} />
@@ -1204,7 +1236,7 @@ function EmptyPanel({
 function CollectionSkeleton({ view }: { view: CollectionView }) {
   if (view === "list")
     return (
-      <div className="overflow-hidden rounded-2xl border border-line bg-surface">
+      <div>
         {Array.from({ length: 8 }, (_, i) => (
           <div
             key={i}
@@ -1212,7 +1244,10 @@ function CollectionSkeleton({ view }: { view: CollectionView }) {
           >
             <Skeleton className="h-9 w-9 rounded-full" />
             <div className="flex-1 space-y-1.5">
-              <Skeleton className="h-3" style={{ width: `${30 + (i % 3) * 8}%` }} />
+              <Skeleton
+                className="h-3"
+                style={{ width: `${30 + (i % 3) * 8}%` }}
+              />
               <Skeleton className="h-2.5 w-1/4" />
             </div>
             <Skeleton className="hidden h-6 w-14 rounded-full md:block" />
@@ -1222,17 +1257,22 @@ function CollectionSkeleton({ view }: { view: CollectionView }) {
       </div>
     );
   return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+    <div
+      className={`${cellsClass} sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4`}
+    >
       {Array.from({ length: 9 }, (_, i) => (
         <div
           key={i}
-          className="rounded-2xl border border-line bg-surface p-4"
+          className="bg-surface p-4"
           style={{ animationDelay: `${i * 60}ms` }}
         >
           <div className="flex items-center gap-3">
             <Skeleton className="h-11 w-11 rounded-full" />
             <div className="flex-1 space-y-1.5">
-              <Skeleton className="h-3.5" style={{ width: `${50 + (i % 3) * 10}%` }} />
+              <Skeleton
+                className="h-3.5"
+                style={{ width: `${50 + (i % 3) * 10}%` }}
+              />
               <Skeleton className="h-2.5 w-2/3" />
             </div>
           </div>

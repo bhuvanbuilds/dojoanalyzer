@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { CountUp } from "@/components/reactbits/count-up";
-import { SpotlightCard } from "@/components/reactbits/spotlight-card";
+import { Cell, Cells } from "@/components/ui/frame";
 import { ShinyButton } from "@/components/ui/shiny-button";
 import {
   LANGUAGE_COLORS,
@@ -175,11 +175,11 @@ export function RangeExplorer({ model, week }: { model: Model; week: number }) {
   ];
 
   return (
-    <section className="rounded-2xl border border-line bg-surface shadow-[var(--card-shadow)]">
+    <section className="min-w-0">
       {/* Header & range controls */}
-      <div className="flex flex-col gap-4 border-b border-line px-5 py-5 lg:flex-row lg:items-end lg:justify-between lg:px-6">
+      <div className="flex flex-col gap-4 border-b border-line px-4 py-4 sm:px-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h2 className="font-display text-[17px] font-bold tracking-[-0.02em]">
+          <h2 className="font-display text-[15px] font-bold tracking-[-0.015em]">
             Progress between weeks
           </h2>
           <p className="mt-0.5 text-[13px] text-muted">
@@ -233,9 +233,9 @@ export function RangeExplorer({ model, week }: { model: Model; week: number }) {
       </div>
 
       {/* Totals */}
-      <div className="grid gap-3 px-5 pt-5 sm:grid-cols-2 xl:grid-cols-4 lg:px-6">
+      <Cells className="border-b border-line sm:grid-cols-2 xl:grid-cols-4">
         {stats.map((stat) => (
-          <SpotlightCard key={stat.label} className="p-4">
+          <Cell key={stat.label} className="px-4 py-4 sm:px-5">
             <p className="text-[12.5px] font-medium text-muted">{stat.label}</p>
             <p className="mt-1.5 font-display text-[28px] font-bold leading-none tracking-[-0.03em] text-ink">
               <CountUp
@@ -246,12 +246,12 @@ export function RangeExplorer({ model, week }: { model: Model; week: number }) {
               />
             </p>
             <p className="mt-2 text-[12px] text-muted">{stat.detail}</p>
-          </SpotlightCard>
+          </Cell>
         ))}
-      </div>
+      </Cells>
 
       {/* Per-language gains */}
-      <div className="grid gap-x-8 gap-y-3 px-5 py-5 sm:grid-cols-2 lg:grid-cols-4 lg:px-6">
+      <div className="grid gap-x-8 gap-y-3 px-4 py-4 sm:grid-cols-2 sm:px-5 lg:grid-cols-4">
         {LANGUAGES.map((language, index) => {
           const value = range.languageGain[index];
           return (
@@ -281,7 +281,7 @@ export function RangeExplorer({ model, week }: { model: Model; week: number }) {
       </div>
 
       {/* Student table controls */}
-      <div className="flex flex-col gap-3 border-t border-line px-5 py-4 md:flex-row md:items-center md:justify-between lg:px-6">
+      <div className="flex flex-col gap-3 border-t border-line bg-surface-2 px-4 py-3 sm:px-5 md:flex-row md:items-center md:justify-between">
         <div className="flex flex-wrap items-center gap-2">
           <label className="relative">
             <span className="sr-only">Search students</span>

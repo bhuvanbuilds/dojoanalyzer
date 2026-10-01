@@ -9,6 +9,7 @@ import {
   type CurrentUserProfile,
 } from "@/lib/auth/profile";
 import { PageState } from "@/components/ui/skeleton";
+import { cellsClass, Frame, FrameTitle, Page } from "@/components/ui/frame";
 import { useCachedProfile } from "@/lib/auth/use-cached-profile";
 
 type ImportMetadata = {
@@ -225,172 +226,217 @@ export default function ImportDetailPage() {
   }));
 
   return (
-    <div className="mx-auto max-w-[1440px] px-4 pb-12 lg:px-8">
-      <div className="mb-8 pt-2">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-text">
-          Data management
-        </p>
-        <h1 className="mt-2 text-3xl font-bold tracking-[-0.03em]">
-          Import Details
-        </h1>
-        <p className="mt-2 text-sm text-muted">
-          Review the uploaded file and its preserved validation data.
-        </p>
-      </div>
+    <Page>
+      <Frame>
+        <FrameTitle
+          eyebrow="Data management"
+          title="Import details"
+          description="Review the uploaded file and its preserved validation data."
+          actions={<BackLink />}
+        />
 
-      <section className="mb-8 rounded-2xl border border-line bg-surface p-6 shadow-sm sm:p-8">
-        <div className="flex flex-col justify-between gap-5 border-b border-line pb-6 sm:flex-row sm:items-start">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">
-              File name
-            </p>
-            <h2 className="mt-2 break-words text-xl font-bold">
-              {detail.import.file_name}
-            </h2>
+        <section>
+          <div className="flex flex-col justify-between gap-5 border-b border-line px-4 py-3.5 sm:flex-row sm:items-start sm:px-5">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">
+                File name
+              </p>
+              <h2 className="mt-2 break-words text-xl font-bold">
+                {detail.import.file_name}
+              </h2>
+            </div>
+            <ImportState
+              isCurrent={detail.import.is_current}
+              status={detail.import.status}
+            />
           </div>
-          <ImportState
-            isCurrent={detail.import.is_current}
-            status={detail.import.status}
-          />
+
+          <dl className={`${cellsClass} sm:grid-cols-3 xl:grid-cols-6`}>
+            <MetadataItem
+              label="Academic year"
+              value={detail.import.academic_year ?? "-"}
+            />
+            <MetadataItem label="Week" value={detail.import.week_number ?? "-"} />
+            <MetadataItem label="Rows" value={detail.import.row_count} />
+            <MetadataItem
+              label="Uploaded"
+              value={new Date(detail.import.uploaded_at).toLocaleString()}
+            />
+            <MetadataItem label="Import ID" value={shortId(detail.import.id)} />
+            <MetadataItem
+              label="Validation errors"
+              value={detail.errors.length}
+            />
+          </dl>
+        </section>
+
+        <div
+          className={`px-4 py-3.5 sm:px-5 ${detail.import.is_current ? "bg-success-soft" : "bg-surface-2"}`}
+        >
+          <p className="text-sm font-bold">
+            {detail.import.is_current
+              ? "Current import version"
+              : "Historical import version"}
+          </p>
+          <p className="mt-1 text-sm text-muted">
+            {detail.import.is_current
+              ? "This is the active import used for this week."
+              : "This version is preserved for audit history and is not the active import."}
+          </p>
         </div>
 
-        <dl className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          <MetadataItem
-            label="Academic year"
-            value={detail.import.academic_year ?? "-"}
-          />
-          <MetadataItem label="Week" value={detail.import.week_number ?? "-"} />
-          <MetadataItem label="Rows" value={detail.import.row_count} />
-          <MetadataItem
-            label="Uploaded"
-            value={new Date(detail.import.uploaded_at).toLocaleString()}
-          />
-          <MetadataItem label="Import ID" value={shortId(detail.import.id)} />
-          <MetadataItem
-            label="Validation errors"
-            value={detail.errors.length}
-          />
-        </dl>
-      </section>
-
-      <div
-        className={`mb-8 rounded-2xl border p-5 shadow-sm ${detail.import.is_current ? "border-success-line bg-success-soft" : "border-line bg-surface"}`}
-      >
-        <p className="text-sm font-bold">
-          {detail.import.is_current
-            ? "Current import version"
-            : "Historical import version"}
-        </p>
-        <p className="mt-1 text-sm text-muted">
-          {detail.import.is_current
-            ? "This is the active import used for this week."
-            : "This version is preserved for audit history and is not the active import."}
-        </p>
-      </div>
-
-      {detail.errors.length > 0 ? (
-        <DetailSection
-          title="Validation Errors"
-          count={detail.errors.length}
-          emptyMessage="No validation errors"
-        >
-          <>
-            <div className="mb-4 flex justify-end">
-              <button
-                type="button"
-                className="inline-flex items-center gap-2 rounded-lg border border-line-strong px-3 py-2 text-sm font-semibold text-ink-2 hover:border-action hover:text-brand-text"
-                onClick={() =>
-                  downloadErrorReport(detail.import.file_name, errorRows)
-                }
-              >
-                <Download size={15} /> Download error report
-              </button>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[760px] text-left text-sm">
-                <thead className="bg-surface-2 text-[11px] uppercase tracking-[0.12em] text-muted">
-                  <tr>
-                    <th className="px-6 py-3 font-semibold">Row</th>
-                    <th className="px-4 py-3 font-semibold">Student</th>
-                    <th className="px-4 py-3 font-semibold">Field</th>
-                    <th className="px-4 py-3 font-semibold">Problem</th>
-                    <th className="px-6 py-3 font-semibold">Raw value</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-line">
-                  {detail.errors.map((item) => (
-                    <tr key={item.id}>
-                      <td className="px-6 py-4 font-semibold">
-                        {item.row_number}
-                      </td>
-                      <td className="px-4 py-4 text-ink-2">
-                        {getRawValue(
-                          detail.rawRows,
-                          item.row_number,
-                          "student_name",
-                        )}
-                      </td>
-                      <td className="px-4 py-4 text-ink-2">
-                        {item.field_name}
-                      </td>
-                      <td className="max-w-[360px] whitespace-normal px-4 py-4 text-ink-2">
-                        {item.error_message}
-                      </td>
-                      <td className="max-w-[280px] whitespace-pre-wrap break-words px-6 py-4 text-muted">
-                        {item.raw_value}
-                      </td>
+        {detail.errors.length > 0 ? (
+          <DetailSection
+            title="Validation Errors"
+            count={detail.errors.length}
+            emptyMessage="No validation errors"
+          >
+            <>
+              <div className="flex justify-end border-b border-line bg-surface-2 px-4 py-2.5 sm:px-5">
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 rounded-lg border border-line-strong bg-surface px-3 py-1.5 text-sm font-semibold text-ink-2 hover:border-action hover:text-brand-text"
+                  onClick={() =>
+                    downloadErrorReport(detail.import.file_name, errorRows)
+                  }
+                >
+                  <Download size={15} /> Download error report
+                </button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[760px] text-left text-sm">
+                  <thead className="border-b border-line text-[11px] uppercase tracking-[0.12em] text-muted">
+                    <tr>
+                      <th className="px-4 py-3 font-semibold sm:px-5">Row</th>
+                      <th className="px-4 py-3 font-semibold">Student</th>
+                      <th className="px-4 py-3 font-semibold">Field</th>
+                      <th className="px-4 py-3 font-semibold">Problem</th>
+                      <th className="px-4 py-3 font-semibold sm:px-5">Raw value</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        </DetailSection>
-      ) : null}
+                  </thead>
+                  <tbody className="divide-y divide-line">
+                    {detail.errors.map((item) => (
+                      <tr key={item.id}>
+                        <td className="px-4 py-3.5 sm:px-5 font-semibold">
+                          {item.row_number}
+                        </td>
+                        <td className="px-4 py-3.5 text-ink-2">
+                          {getRawValue(
+                            detail.rawRows,
+                            item.row_number,
+                            "student_name",
+                          )}
+                        </td>
+                        <td className="px-4 py-3.5 text-ink-2">
+                          {item.field_name}
+                        </td>
+                        <td className="max-w-[360px] whitespace-normal px-4 py-3.5 text-ink-2">
+                          {item.error_message}
+                        </td>
+                        <td className="max-w-[280px] whitespace-pre-wrap break-words px-4 py-3.5 sm:px-5 text-muted">
+                          {item.raw_value}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          </DetailSection>
+        ) : null}
 
-      {detail.import.status === "imported" ? (
+        {detail.import.status === "imported" ? (
+          <DetailSection
+            title="Imported Student Records"
+            count={detail.rawRows.length}
+            emptyMessage="No imported student records"
+          >
+            {detail.rawRows.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[900px] text-left text-sm">
+                  <thead className="border-b border-line text-[11px] uppercase tracking-[0.12em] text-muted">
+                    <tr>
+                      <th className="px-4 py-3 font-semibold sm:px-5">Student</th>
+                      <th className="px-4 py-3 font-semibold">Email</th>
+                      <th className="px-4 py-3 font-semibold">Squad</th>
+                      <th className="px-4 py-3 font-semibold">Initial belts</th>
+                      <th className="px-4 py-3 font-semibold sm:px-5">Final belts</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-line">
+                    {detail.rawRows.map((row) => (
+                      <tr key={row.id}>
+                        <td className="px-4 py-3.5 sm:px-5 font-semibold">
+                          {getRawValue([row], row.row_number, "student_name")}
+                        </td>
+                        <td className="px-4 py-3.5 text-muted">
+                          {getRawValue([row], row.row_number, "email")}
+                        </td>
+                        <td className="px-4 py-3.5">
+                          {getRawValue([row], row.row_number, "squad_number")}
+                        </td>
+                        <td className="max-w-[260px] whitespace-pre-wrap break-words px-4 py-3.5 text-xs text-muted">
+                          {getRawValue(
+                            [row],
+                            row.row_number,
+                            "initial_belt_levels",
+                          )}
+                        </td>
+                        <td className="max-w-[260px] whitespace-pre-wrap break-words px-4 py-3.5 sm:px-5 text-xs text-muted">
+                          {getRawValue(
+                            [row],
+                            row.row_number,
+                            "final_belt_levels",
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+          </DetailSection>
+        ) : null}
+
         <DetailSection
-          title="Imported Student Records"
+          title="Raw Import Rows"
           count={detail.rawRows.length}
-          emptyMessage="No imported student records"
+          emptyMessage="No raw import rows"
         >
           {detail.rawRows.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[900px] text-left text-sm">
-                <thead className="bg-surface-2 text-[11px] uppercase tracking-[0.12em] text-muted">
+                <thead className="border-b border-line text-[11px] uppercase tracking-[0.12em] text-muted">
                   <tr>
-                    <th className="px-6 py-3 font-semibold">Student</th>
-                    <th className="px-4 py-3 font-semibold">Email</th>
-                    <th className="px-4 py-3 font-semibold">Squad</th>
-                    <th className="px-4 py-3 font-semibold">Initial belts</th>
-                    <th className="px-6 py-3 font-semibold">Final belts</th>
+                    <th className="px-4 py-3 font-semibold sm:px-5">Row</th>
+                    <th className="px-4 py-3 font-semibold">Source record ID</th>
+                    <th className="px-4 py-3 font-semibold sm:px-5">
+                      Original CSV values
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line">
-                  {detail.rawRows.map((row) => (
-                    <tr key={row.id}>
-                      <td className="px-6 py-4 font-semibold">
-                        {getRawValue([row], row.row_number, "student_name")}
+                  {detail.rawRows.map((item) => (
+                    <tr key={item.id}>
+                      <td className="px-4 py-3.5 sm:px-5 align-top font-semibold">
+                        {item.row_number}
                       </td>
-                      <td className="px-4 py-4 text-muted">
-                        {getRawValue([row], row.row_number, "email")}
+                      <td className="max-w-[220px] break-words px-4 py-3.5 align-top text-ink-2">
+                        {item.source_record_id}
                       </td>
-                      <td className="px-4 py-4">
-                        {getRawValue([row], row.row_number, "squad_number")}
-                      </td>
-                      <td className="max-w-[260px] whitespace-pre-wrap break-words px-4 py-4 text-xs text-muted">
-                        {getRawValue(
-                          [row],
-                          row.row_number,
-                          "initial_belt_levels",
-                        )}
-                      </td>
-                      <td className="max-w-[260px] whitespace-pre-wrap break-words px-6 py-4 text-xs text-muted">
-                        {getRawValue(
-                          [row],
-                          row.row_number,
-                          "final_belt_levels",
-                        )}
+                      <td className="px-4 py-3.5 sm:px-5">
+                        <div className="grid max-w-4xl gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
+                          {Object.entries(item.raw_data).map(([field, value]) => (
+                            <div key={field} className="min-w-0">
+                              <p className="truncate text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
+                                {field}
+                              </p>
+                              <p className="break-words text-ink-2">
+                                {formatRawValue(value)}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -399,56 +445,8 @@ export default function ImportDetailPage() {
             </div>
           ) : null}
         </DetailSection>
-      ) : null}
-
-      <DetailSection
-        title="Raw Import Rows"
-        count={detail.rawRows.length}
-        emptyMessage="No raw import rows"
-      >
-        {detail.rawRows.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px] text-left text-sm">
-              <thead className="bg-surface-2 text-[11px] uppercase tracking-[0.12em] text-muted">
-                <tr>
-                  <th className="px-6 py-3 font-semibold">Row</th>
-                  <th className="px-4 py-3 font-semibold">Source record ID</th>
-                  <th className="px-6 py-3 font-semibold">
-                    Original CSV values
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-line">
-                {detail.rawRows.map((item) => (
-                  <tr key={item.id}>
-                    <td className="px-6 py-4 align-top font-semibold">
-                      {item.row_number}
-                    </td>
-                    <td className="max-w-[220px] break-words px-4 py-4 align-top text-ink-2">
-                      {item.source_record_id}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="grid max-w-4xl gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
-                        {Object.entries(item.raw_data).map(([field, value]) => (
-                          <div key={field} className="min-w-0">
-                            <p className="truncate text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
-                              {field}
-                            </p>
-                            <p className="break-words text-ink-2">
-                              {formatRawValue(value)}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : null}
-      </DetailSection>
-    </div>
+      </Frame>
+    </Page>
   );
 }
 
@@ -456,7 +454,7 @@ function BackLink() {
   return (
     <Link
       href="/imports"
-      className="mt-4 inline-flex shrink-0 items-center gap-2 rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm font-semibold text-ink-2 transition hover:border-action hover:text-brand-text"
+      className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm font-semibold text-ink-2 transition hover:border-action hover:text-brand-text"
     >
       ← Import History
     </Link>
@@ -471,7 +469,7 @@ function MetadataItem({
   value: string | number;
 }) {
   return (
-    <div>
+    <div className="bg-surface px-4 py-3.5 sm:px-5">
       <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">
         {label}
       </dt>
@@ -527,9 +525,9 @@ function DetailSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="mb-8 overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
-      <div className="flex items-center justify-between gap-4 border-b border-line px-6 py-5">
-        <h2 className="text-lg font-bold">{title}</h2>
+    <section className="min-w-0">
+      <div className="flex items-center justify-between gap-4 border-b border-line px-4 py-3 sm:px-5">
+        <h2 className="font-display text-[15px] font-bold">{title}</h2>
         <span className="text-xs font-semibold text-muted">
           {count > 0
             ? `${count} record${count === 1 ? "" : "s"}`
@@ -539,7 +537,7 @@ function DetailSection({
       {count > 0 ? (
         children
       ) : (
-        <p className="px-6 py-8 text-sm text-muted">{emptyMessage}</p>
+        <p className="px-4 py-8 text-sm text-muted sm:px-5">{emptyMessage}</p>
       )}
     </section>
   );

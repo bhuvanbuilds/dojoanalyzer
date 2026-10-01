@@ -28,9 +28,7 @@ import { CountUp } from "@/components/reactbits/count-up";
 import { GlowCursor } from "@/components/reactbits/glow-cursor";
 import { Grainient } from "@/components/reactbits/grainient";
 import { useChartSlides } from "@/components/dashboard/chart-slides";
-import {
-  formatNumber,
-} from "@/components/dashboard/chart-kit";
+import { formatNumber } from "@/components/dashboard/chart-kit";
 import {
   LANGUAGE_LABELS,
   buildModel,
@@ -46,6 +44,14 @@ import {
   type Model,
 } from "@/lib/dashboard/metrics";
 import { formatWeekDateRange } from "@/lib/weeks";
+import {
+  Cell,
+  Cells,
+  Frame,
+  FrameMessage,
+  Page,
+  Split,
+} from "@/components/ui/frame";
 import { LanguageLogo } from "@/components/belts/belts";
 
 type LoadState =
@@ -148,11 +154,7 @@ export function DashboardView() {
 }
 
 function Shell({ children }: { children: ReactNode }) {
-  return (
-    <div className="mx-auto max-w-[1440px] px-4 pb-16 pt-2 lg:px-8">
-      {children}
-    </div>
-  );
+  return <Page>{children}</Page>;
 }
 
 // ─── Loaded dashboard ─────────────────────────────────────────────────────────
@@ -179,29 +181,28 @@ function LoadedDashboard({
   return (
     <ClickSpark sparkColor="#ef3837">
       <Shell>
-        <Header
-          model={model}
-          week={week}
-          scopeName={scopeName}
-          onChange={onChange}
-        />
+        <Frame>
+          <Header
+            model={model}
+            week={week}
+            scopeName={scopeName}
+            onChange={onChange}
+          />
 
-        {data.academicYears.length === 0 || week === null ? (
-          <div className="rounded-2xl border border-line bg-surface px-6 py-16 text-center">
-            <p className="font-display text-lg font-bold">No belt data yet</p>
-            <p className="mt-1.5 text-sm text-muted">
+          {data.academicYears.length === 0 || week === null ? (
+            <FrameMessage title="No belt data yet">
               {data.role === "mentor"
                 ? "Your campus manager hasn't imported any weekly belt results yet."
                 : "Upload a weekly belt CSV to start seeing progress here."}
-            </p>
-          </div>
-        ) : (
-          <DashboardBody
-            model={model}
-            week={week}
-            isSuperAdmin={isSuperAdmin}
-          />
-        )}
+            </FrameMessage>
+          ) : (
+            <DashboardBody
+              model={model}
+              week={week}
+              isSuperAdmin={isSuperAdmin}
+            />
+          )}
+        </Frame>
       </Shell>
     </ClickSpark>
   );
@@ -217,18 +218,20 @@ function DashboardBody({
   isSuperAdmin: boolean;
 }) {
   const slides = useChartSlides(model, week);
+  // Fragments keep every block a direct child of the Frame, so each one is
+  // separated by the frame's own hairline rule.
   return (
-    <div className="space-y-6">
+    <>
       <KpiRow model={model} week={week} />
       <ChartCarousel slides={slides} />
       <RangeExplorer key={week} model={model} week={week} />
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+      <Split className="xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
         <NeedsAttention model={model} week={week} />
         <TopMovers model={model} week={week} />
-      </div>
+      </Split>
       <GroupTable model={model} week={week} />
       {isSuperAdmin && <PlatformPanel />}
-    </div>
+    </>
   );
 }
 
@@ -254,7 +257,7 @@ function Header({
   const prev = week === null ? null : previousWeek(model, week);
 
   return (
-    <header className="relative isolate mb-6 overflow-hidden rounded-3xl bg-[#0e0e10] text-white [clip-path:inset(0_round_1.5rem)]">
+    <header className="relative isolate overflow-hidden bg-[#0e0e10] text-white">
       <div aria-hidden="true" className="absolute inset-0 opacity-80">
         <Grainient
           color1="#0e0e10"
@@ -284,7 +287,7 @@ function Header({
         glowIntensity={1.6}
         opacity={0.7}
       >
-        <div className="flex flex-col gap-8 p-6 sm:p-8 xl:flex-row xl:items-end xl:justify-between">
+        <div className="flex flex-col gap-8 px-5 py-6 sm:px-6 sm:py-7 xl:flex-row xl:items-end xl:justify-between">
           <div className="min-w-0">
             <p className="text-[13px] font-medium text-white/55">Dashboard</p>
             <h1 className="mt-1 font-display text-[32px] font-bold leading-tight tracking-[-0.035em] sm:text-[40px]">
@@ -432,11 +435,10 @@ function relativeTime(iso: string) {
 }
 
 // ─── KPI bento (layout after the stats-06 block) ───────────────────────────────
-/** Soft card tint from a theme colour; text stays in ink tokens. */
+/** Faint cell wash from a theme colour; text stays in ink tokens. */
 function tint(color: string) {
   return {
-    background: `color-mix(in srgb, ${color} 7%, var(--surface))`,
-    borderColor: `color-mix(in srgb, ${color} 24%, var(--line))`,
+    background: `color-mix(in srgb, ${color} 4%, var(--surface))`,
   };
 }
 
@@ -464,7 +466,7 @@ function KpiRow({ model, week }: { model: Model; week: number }) {
   }));
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <Cells className="sm:grid-cols-2 lg:grid-cols-3">
       <KpiTile
         label="Students tested"
         icon={<Users />}
@@ -554,7 +556,7 @@ function KpiRow({ model, week }: { model: Model; week: number }) {
           </span>
         }
       />
-    </div>
+    </Cells>
   );
 }
 
@@ -598,7 +600,7 @@ function KpiTile({
       <div className="flex items-start justify-between gap-2">
         <span
           aria-hidden="true"
-          className="[&>svg]:h-8 [&>svg]:w-8 [&>svg]:stroke-[1.75px]"
+          className="[&>svg]:h-7 [&>svg]:w-7 [&>svg]:stroke-[1.75px]"
           style={{ color }}
         >
           {icon}
@@ -625,7 +627,7 @@ function KpiTile({
           </span>
         )}
       </div>
-      <p className="mt-6 font-display text-[44px] font-bold leading-none tracking-[-0.04em] text-ink">
+      <p className="mt-5 font-display text-[40px] font-bold leading-none tracking-[-0.04em] text-ink">
         <CountUp key={value} to={value} decimals={decimals} />
         {suffix && (
           <span className="ml-1.5 text-[20px] font-semibold tracking-[-0.02em] text-faint">
@@ -633,21 +635,26 @@ function KpiTile({
           </span>
         )}
       </p>
-      <p className="mt-3 text-[15px] font-medium text-ink-2">{label}</p>
+      <p className="mt-2.5 text-[14px] font-medium text-ink-2">{label}</p>
       <div className="mt-auto flex-1 pt-4 text-[12.5px] text-muted">
         {footer}
       </div>
     </>
   );
-  const classes = `group/kpi flex flex-col rounded-2xl border p-6 transition duration-300 hover:-translate-y-1 hover:shadow-[var(--pop-shadow)] ${className}`;
-  return href ? (
-    <Link href={href} className={classes} style={tint(color)}>
-      {body}
-    </Link>
-  ) : (
-    <div className={classes} style={tint(color)}>
-      {body}
-    </div>
+  const spot = `color-mix(in srgb, ${color} 12%, transparent)`;
+  return (
+    <Cell className={className} style={tint(color)} spotlightColor={spot}>
+      {href ? (
+        <Link
+          href={href}
+          className="flex flex-1 flex-col px-5 py-5 outline-none focus-visible:bg-ink/[0.03] sm:px-6"
+        >
+          {body}
+        </Link>
+      ) : (
+        <div className="flex flex-1 flex-col px-5 py-5 sm:px-6">{body}</div>
+      )}
+    </Cell>
   );
 }
 
@@ -808,9 +815,9 @@ function NeedsAttention({ model, week }: { model: Model; week: number }) {
   ].filter((item) => item.show);
 
   return (
-    <section className="rounded-2xl border border-line bg-surface shadow-[var(--card-shadow)]">
-      <div className="flex items-center justify-between border-b border-line px-5 py-4 lg:px-6">
-        <h2 className="font-display text-[17px] font-bold tracking-[-0.02em]">
+    <section className="min-w-0">
+      <div className="flex items-center justify-between border-b border-line px-4 py-3 sm:px-5">
+        <h2 className="font-display text-[15px] font-bold tracking-[-0.015em]">
           Needs attention
         </h2>
         <span className="rounded-md bg-ink/[0.05] px-2 py-0.5 text-[12px] font-semibold text-ink-2">
@@ -857,12 +864,14 @@ function NeedsAttention({ model, week }: { model: Model; week: number }) {
                 {item.href ? (
                   <Link
                     href={item.href}
-                    className="group flex gap-3 px-5 py-4 transition hover:bg-surface-2 lg:px-6"
+                    className="group flex gap-3 px-4 py-3.5 transition hover:bg-surface-2 sm:px-5"
                   >
                     {content}
                   </Link>
                 ) : (
-                  <div className="flex gap-3 px-5 py-4 lg:px-6">{content}</div>
+                  <div className="flex gap-3 px-4 py-3.5 sm:px-5">
+                    {content}
+                  </div>
                 )}
               </li>
             );
@@ -887,10 +896,10 @@ function TopMovers({ model, week }: { model: Model; week: number }) {
   const canOpenHistory = model.data.role !== "mentor";
 
   return (
-    <section className="rounded-2xl border border-line bg-surface shadow-[var(--card-shadow)]">
-      <div className="flex items-center justify-between border-b border-line px-5 py-4 lg:px-6">
+    <section className="min-w-0">
+      <div className="flex items-center justify-between border-b border-line px-4 py-3 sm:px-5">
         <div>
-          <h2 className="font-display text-[17px] font-bold tracking-[-0.02em]">
+          <h2 className="font-display text-[15px] font-bold tracking-[-0.015em]">
             Top movers
           </h2>
           <p className="text-[12.5px] text-muted">
@@ -943,12 +952,12 @@ function TopMovers({ model, week }: { model: Model; week: number }) {
             return canOpenHistory ? (
               <Link
                 href={`/students/${mover.studentId}/history`}
-                className="flex items-center gap-3 border-b border-line px-5 py-3 transition hover:bg-surface-2 lg:px-6"
+                className="flex items-center gap-3 border-b border-line px-4 py-3 transition hover:bg-surface-2 sm:px-5"
               >
                 {row}
               </Link>
             ) : (
-              <div className="flex items-center gap-3 border-b border-line px-5 py-3 lg:px-6">
+              <div className="flex items-center gap-3 border-b border-line px-4 py-3 sm:px-5">
                 {row}
               </div>
             );
@@ -988,10 +997,10 @@ function GroupTable({ model, week }: { model: Model; week: number }) {
   const canManage = model.data.role !== "mentor";
 
   return (
-    <section className="rounded-2xl border border-line bg-surface shadow-[var(--card-shadow)]">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-4 lg:px-6">
+    <section className="min-w-0">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3 sm:px-5">
         <div>
-          <h2 className="font-display text-[17px] font-bold tracking-[-0.02em]">
+          <h2 className="font-display text-[15px] font-bold tracking-[-0.015em]">
             {effectiveGroupBy === "squad" ? "Squads" : "Universities"} at a
             glance
           </h2>
@@ -1019,9 +1028,9 @@ function GroupTable({ model, week }: { model: Model; week: number }) {
       </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[720px] text-left text-[13.5px]">
-          <thead className="text-[11.5px] font-medium text-muted">
+          <thead className="bg-surface-2 text-[11.5px] font-medium text-muted">
             <tr className="border-b border-line">
-              <th className="px-5 py-3 font-medium lg:px-6">
+              <th className="px-4 sm:px-5 py-3 font-medium">
                 {effectiveGroupBy === "squad" ? "Squad" : "University"}
               </th>
               <th className="px-4 py-3 text-right font-medium">Students</th>
@@ -1030,7 +1039,7 @@ function GroupTable({ model, week }: { model: Model; week: number }) {
               <th className="px-4 py-3 text-right font-medium">
                 vs Week {prev ?? "—"}
               </th>
-              <th className="px-5 py-3 font-medium lg:px-6">Strongest in</th>
+              <th className="px-4 sm:px-5 py-3 font-medium">Strongest in</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
@@ -1043,7 +1052,7 @@ function GroupTable({ model, week }: { model: Model; week: number }) {
                   : null;
               return (
                 <tr key={row.key} className="hover:bg-surface-2">
-                  <td className="px-5 py-3.5 font-display font-semibold text-ink lg:px-6">
+                  <td className="px-4 sm:px-5 py-3.5 font-display font-semibold text-ink">
                     {href ? (
                       <Link href={href} className="hover:underline">
                         {row.label}
@@ -1074,7 +1083,7 @@ function GroupTable({ model, week }: { model: Model; week: number }) {
                   <td className="px-4 py-3.5 text-right tabular-nums">
                     <Delta value={row.avgDelta} />
                   </td>
-                  <td className="px-5 py-3.5 lg:px-6">
+                  <td className="px-4 sm:px-5 py-3.5">
                     {row.strongest ? (
                       <span className="inline-flex items-center gap-1.5 text-ink-2">
                         <LanguageLogo language={row.strongest} size={16} />
@@ -1167,10 +1176,10 @@ function PlatformPanel() {
   ];
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)]">
-      <section className="rounded-2xl border border-line bg-surface shadow-[var(--card-shadow)]">
-        <div className="border-b border-line px-5 py-4 lg:px-6">
-          <h2 className="font-display text-[17px] font-bold tracking-[-0.02em]">
+    <Split className="xl:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)]">
+      <section className="min-w-0">
+        <div className="border-b border-line px-4 py-3 sm:px-5">
+          <h2 className="font-display text-[15px] font-bold tracking-[-0.015em]">
             Platform
           </h2>
         </div>
@@ -1184,7 +1193,7 @@ function PlatformPanel() {
                 </dd>
               </>
             );
-            const className = `block px-5 py-4 lg:px-6 ${index % 2 === 0 ? "border-r border-line" : ""} ${index < 2 ? "border-b border-line" : ""}`;
+            const className = `block px-5 py-4 ${index % 2 === 0 ? "border-r border-line" : ""} ${index < 2 ? "border-b border-line" : ""}`;
             return stat.href ? (
               <Link
                 key={stat.label}
@@ -1202,9 +1211,9 @@ function PlatformPanel() {
         </dl>
       </section>
 
-      <section className="rounded-2xl border border-line bg-surface shadow-[var(--card-shadow)]">
-        <div className="flex items-center justify-between border-b border-line px-5 py-4 lg:px-6">
-          <h2 className="font-display text-[17px] font-bold tracking-[-0.02em]">
+      <section className="min-w-0">
+        <div className="flex items-center justify-between border-b border-line px-4 py-3 sm:px-5">
+          <h2 className="font-display text-[15px] font-bold tracking-[-0.015em]">
             Recent activity
           </h2>
           <Link
@@ -1223,7 +1232,7 @@ function PlatformPanel() {
             {overview.recentActivity.slice(0, 5).map((entry, index) => (
               <li
                 key={`${entry.created_at}-${index}`}
-                className="flex items-center justify-between gap-4 px-5 py-3 text-[13.5px] lg:px-6"
+                className="flex items-center justify-between gap-4 px-5 py-3 text-[13.5px]"
               >
                 <span className="min-w-0">
                   <span className="font-semibold text-ink">{entry.actor}</span>{" "}
@@ -1239,6 +1248,6 @@ function PlatformPanel() {
           </ul>
         )}
       </section>
-    </div>
+    </Split>
   );
 }

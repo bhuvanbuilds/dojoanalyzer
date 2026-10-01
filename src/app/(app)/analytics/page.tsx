@@ -19,6 +19,7 @@ import {
 } from "@/lib/auth/profile";
 import { PageState as CenterState } from "@/components/ui/skeleton";
 import { DojoLoader } from "@/components/ui/dojo-loader";
+import { cellsClass, Frame, Page } from "@/components/ui/frame";
 import {
   Delta,
   Em,
@@ -219,173 +220,175 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[1440px] px-4 pb-16 lg:px-8">
-      {/* ── Hero + filters ───────────────────────────────── */}
-      <section className="relative mt-2 overflow-hidden rounded-3xl border border-line bg-surface shadow-[var(--card-shadow)]">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(50% 140% at 100% 0%, color-mix(in srgb, var(--brand) 12%, transparent), transparent 60%), radial-gradient(40% 120% at 0% 100%, color-mix(in srgb, var(--lang-nodejs) 10%, transparent), transparent 60%)",
-          }}
-        />
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(var(--line-strong)_1px,transparent_1px)] [background-size:18px_18px] [mask-image:radial-gradient(ellipse_at_top_right,black,transparent_60%)]"
-        />
-        <div className="relative flex flex-wrap items-end justify-between gap-5 px-6 pt-7 sm:px-8">
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-brand-text">
-              Insights
-            </p>
-            <h1 className="mt-2 font-display text-3xl font-bold tracking-[-0.035em] sm:text-[40px] sm:leading-[1.05]">
-              Belt progress, month by month
-            </h1>
-            <p className="mt-2 text-[14px] text-muted">
-              How many belts your students earned, who improved, and which
-              language is moving fastest.
-            </p>
-          </div>
-          <Segmented
-            id="analytics-tab"
-            value={tab}
-            onChange={setTab}
-            options={[
-              { value: "monthly", label: "Monthly", icon: <CalendarDays size={14} /> },
-              { value: "yearly", label: "Yearly", icon: <CalendarRange size={14} /> },
-            ]}
-          />
-        </div>
-        <div className="relative mt-6 flex flex-wrap items-center gap-2 border-t border-line bg-surface-2/70 px-6 py-3 backdrop-blur sm:px-8">
-          <PillSelect
-            label="Year"
-            value={(tab === "monthly" ? mYear : yYear)?.toString() ?? ""}
-            onChange={(value) => {
-              if (tab === "monthly") {
-                setMYear(Number(value));
-                setMMonth(null);
-              } else setYYear(Number(value));
+    <Page>
+      <Frame>
+        {/* ── Hero + filters ───────────────────────────────── */}
+        <section className="relative overflow-hidden bg-surface">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background:
+                "radial-gradient(50% 140% at 100% 0%, color-mix(in srgb, var(--brand) 12%, transparent), transparent 60%), radial-gradient(40% 120% at 0% 100%, color-mix(in srgb, var(--lang-nodejs) 10%, transparent), transparent 60%)",
             }}
-          >
-            {!filters?.years.length ? <option value="">—</option> : null}
-            {filters?.years.map((year) => (
-              <option key={year} value={year}>
-                {year}
-              </option>
-            ))}
-          </PillSelect>
-          {tab === "monthly" ? (
+          />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(var(--line-strong)_1px,transparent_1px)] [background-size:18px_18px] [mask-image:radial-gradient(ellipse_at_top_right,black,transparent_60%)]"
+          />
+          <div className="relative flex flex-wrap items-end justify-between gap-5 px-4 pt-5 sm:px-5">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-brand-text">
+                Insights
+              </p>
+              <h1 className="mt-1 font-display text-[26px] font-bold tracking-[-0.035em] sm:text-[30px] sm:leading-[1.1]">
+                Belt progress, month by month
+              </h1>
+              <p className="mt-2 text-[14px] text-muted">
+                How many belts your students earned, who improved, and which
+                language is moving fastest.
+              </p>
+            </div>
+            <Segmented
+              id="analytics-tab"
+              value={tab}
+              onChange={setTab}
+              options={[
+                { value: "monthly", label: "Monthly", icon: <CalendarDays size={14} /> },
+                { value: "yearly", label: "Yearly", icon: <CalendarRange size={14} /> },
+              ]}
+            />
+          </div>
+          <div className="relative mt-5 flex flex-wrap items-center gap-2 border-t border-line bg-surface-2 px-4 py-2.5 sm:px-5">
             <PillSelect
-              label="Month"
-              value={mMonth?.toString() ?? ""}
-              onChange={(value) => setMMonth(Number(value))}
+              label="Year"
+              value={(tab === "monthly" ? mYear : yYear)?.toString() ?? ""}
+              onChange={(value) => {
+                if (tab === "monthly") {
+                  setMYear(Number(value));
+                  setMMonth(null);
+                } else setYYear(Number(value));
+              }}
             >
-              {!mData?.filters?.months.length ? <option value="">—</option> : null}
-              {mData?.filters?.months.map((month) => (
-                <option key={month} value={month}>
-                  {monthName(month)}
+              {!filters?.years.length ? <option value="">—</option> : null}
+              {filters?.years.map((year) => (
+                <option key={year} value={year}>
+                  {year}
                 </option>
               ))}
             </PillSelect>
-          ) : null}
-          <PillSelect
-            label="University"
-            value={universityValue}
-            onChange={changeUniversity}
-            disabled={!isSuperAdmin}
-          >
-            {isSuperAdmin ? <option value="">All</option> : null}
-            {filters?.universities.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name}
-              </option>
-            ))}
-          </PillSelect>
-          <PillSelect
-            label="Squad"
-            value={tab === "monthly" ? mSquad : ySquad}
-            onChange={tab === "monthly" ? setMSquad : setYSquad}
-          >
-            <option value="">All</option>
-            {filters?.squads.map((squad) => (
-              <option key={squad.id} value={squad.id}>
-                Squad {squad.squad_number}
-              </option>
-            ))}
-          </PillSelect>
-          {tab === "monthly" ? (
-            <PillSelect
-              label="Language"
-              value={mLang}
-              onChange={(value) => setMLang(value as Language)}
-            >
-              <option value="all">All</option>
-              {LANGUAGES.map((language) => (
-                <option key={language} value={language}>
-                  {LANGUAGE_LABELS[language]}
-                </option>
-              ))}
-            </PillSelect>
-          ) : null}
-          <AnimatePresence>
-            {(tab === "monthly" ? mLoading : yLoading) && data ? (
-              <motion.span
-                initial={{ opacity: 0, x: -6 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0 }}
-                className="ml-auto inline-flex items-center gap-2 text-[12px] font-medium text-muted"
+            {tab === "monthly" ? (
+              <PillSelect
+                label="Month"
+                value={mMonth?.toString() ?? ""}
+                onChange={(value) => setMMonth(Number(value))}
               >
-                <span className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                Updating
-              </motion.span>
+                {!mData?.filters?.months.length ? <option value="">—</option> : null}
+                {mData?.filters?.months.map((month) => (
+                  <option key={month} value={month}>
+                    {monthName(month)}
+                  </option>
+                ))}
+              </PillSelect>
             ) : null}
-          </AnimatePresence>
-        </div>
-      </section>
+            <PillSelect
+              label="University"
+              value={universityValue}
+              onChange={changeUniversity}
+              disabled={!isSuperAdmin}
+            >
+              {isSuperAdmin ? <option value="">All</option> : null}
+              {filters?.universities.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </PillSelect>
+            <PillSelect
+              label="Squad"
+              value={tab === "monthly" ? mSquad : ySquad}
+              onChange={tab === "monthly" ? setMSquad : setYSquad}
+            >
+              <option value="">All</option>
+              {filters?.squads.map((squad) => (
+                <option key={squad.id} value={squad.id}>
+                  Squad {squad.squad_number}
+                </option>
+              ))}
+            </PillSelect>
+            {tab === "monthly" ? (
+              <PillSelect
+                label="Language"
+                value={mLang}
+                onChange={(value) => setMLang(value as Language)}
+              >
+                <option value="all">All</option>
+                {LANGUAGES.map((language) => (
+                  <option key={language} value={language}>
+                    {LANGUAGE_LABELS[language]}
+                  </option>
+                ))}
+              </PillSelect>
+            ) : null}
+            <AnimatePresence>
+              {(tab === "monthly" ? mLoading : yLoading) && data ? (
+                <motion.span
+                  initial={{ opacity: 0, x: -6 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="ml-auto inline-flex items-center gap-2 text-[12px] font-medium text-muted"
+                >
+                  <span className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  Updating
+                </motion.span>
+              ) : null}
+            </AnimatePresence>
+          </div>
+        </section>
 
-      <div className="mt-4">
-        {tab === "monthly" ? (
-          <Body
-            loading={mLoading}
-            error={mError}
-            hasData={Boolean(mData?.summary?.total_students)}
-            firstLoad={!mData}
-          >
-            {mData?.summary ? (
-              <MonthlyView
-                data={mData}
-                month={mMonth}
-                language={mLang}
-                onMonth={setMMonth}
-                onLanguage={(language) =>
-                  setMLang((current) => (current === language ? "all" : language))
-                }
-              />
-            ) : null}
-          </Body>
-        ) : (
-          <Body
-            loading={yLoading}
-            error={yError}
-            hasData={Boolean(yData?.summary?.total_students)}
-            firstLoad={!yData}
-          >
-            {yData?.summary ? (
-              <YearlyView
-                data={yData}
-                year={yYear}
-                onMonth={(month) => {
-                  setMYear(yYear);
-                  setMMonth(month);
-                  setTab("monthly");
-                }}
-              />
-            ) : null}
-          </Body>
-        )}
-      </div>
-    </div>
+        <div>
+          {tab === "monthly" ? (
+            <Body
+              loading={mLoading}
+              error={mError}
+              hasData={Boolean(mData?.summary?.total_students)}
+              firstLoad={!mData}
+            >
+              {mData?.summary ? (
+                <MonthlyView
+                  data={mData}
+                  month={mMonth}
+                  language={mLang}
+                  onMonth={setMMonth}
+                  onLanguage={(language) =>
+                    setMLang((current) => (current === language ? "all" : language))
+                  }
+                />
+              ) : null}
+            </Body>
+          ) : (
+            <Body
+              loading={yLoading}
+              error={yError}
+              hasData={Boolean(yData?.summary?.total_students)}
+              firstLoad={!yData}
+            >
+              {yData?.summary ? (
+                <YearlyView
+                  data={yData}
+                  year={yYear}
+                  onMonth={(month) => {
+                    setMYear(yYear);
+                    setMMonth(month);
+                    setTab("monthly");
+                  }}
+                />
+              ) : null}
+            </Body>
+          )}
+        </div>
+      </Frame>
+    </Page>
   );
 }
 
@@ -405,13 +408,13 @@ function Body({
 }) {
   if (firstLoad && !error)
     return (
-      <div className="grid min-h-[50vh] place-items-center rounded-3xl border border-line bg-surface">
+      <div className="grid min-h-[50vh] place-items-center">
         <DojoLoader lines={["Crunching the months", "Counting promotions", "Comparing languages"]} />
       </div>
     );
   if (error)
     return (
-      <div className="flex flex-col items-center rounded-3xl border border-brand-line bg-brand-soft px-6 py-14 text-center">
+      <div className="flex flex-col items-center bg-brand-soft px-6 py-14 text-center">
         <AlertTriangle className="text-brand-text" size={22} />
         <p className="mt-3 font-display text-lg font-bold text-ink">Couldn’t load insights</p>
         <p className="mt-1 text-sm text-muted">{error}</p>
@@ -419,7 +422,7 @@ function Body({
     );
   if (!hasData && !loading)
     return (
-      <div className="flex flex-col items-center rounded-3xl border border-dashed border-line-strong bg-surface px-6 py-16 text-center">
+      <div className="flex flex-col items-center px-6 py-16 text-center">
         <span className="grid h-12 w-12 place-items-center rounded-2xl bg-sunken text-muted">
           <CalendarDays size={22} />
         </span>
@@ -431,7 +434,7 @@ function Body({
     );
   return (
     <div
-      className={`space-y-4 transition-[opacity,filter] duration-300 ${loading ? "pointer-events-none opacity-55 saturate-50" : ""}`}
+      className={`divide-y divide-line transition-[opacity,filter] duration-300 ${loading ? "pointer-events-none opacity-55 saturate-50" : ""}`}
       aria-busy={loading}
     >
       {children}
@@ -482,8 +485,8 @@ function MonthlyView({
 
   return (
     <>
-      <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">
-        <section className="rounded-3xl border border-line bg-surface p-6 shadow-[var(--card-shadow)]">
+      <div className="grid divide-y divide-line lg:grid-cols-[1.6fr_1fr] lg:divide-x lg:divide-y-0">
+        <section className="px-4 py-5 sm:px-5">
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted">
             {name} {data.filters?.year} at a glance
           </p>
@@ -521,7 +524,7 @@ function MonthlyView({
             </p>
           ) : null}
         </section>
-        <section className="rounded-3xl border border-line bg-surface p-6 shadow-[var(--card-shadow)]">
+        <section className="px-4 py-5 sm:px-5">
           <RingStat
             value={rate}
             label="Improvement rate"
@@ -536,7 +539,7 @@ function MonthlyView({
         </section>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+      <div className={`${cellsClass} grid-cols-2 xl:grid-cols-4`}>
         <StatTile
           index={0}
           label="Belts earned"
@@ -573,7 +576,7 @@ function MonthlyView({
       </div>
 
       {trend.length > 1 ? (
-        <section className="rounded-3xl border border-line bg-surface p-5 shadow-[var(--card-shadow)]">
+        <section className="px-4 py-4 sm:px-5">
           <div className="mb-3 flex items-baseline justify-between">
             <h2 className="font-display text-[16px] font-semibold">Pick a month</h2>
             <span className="text-[12px] text-muted">Darker = more belts earned</span>
@@ -583,7 +586,7 @@ function MonthlyView({
       ) : null}
 
       <section>
-        <div className="mb-3 flex items-baseline justify-between px-1">
+        <div className="flex items-baseline justify-between border-b border-line px-4 py-3 sm:px-5">
           <h2 className="font-display text-[16px] font-semibold">By language</h2>
           <span className="text-[12px] text-muted">Click a language to focus on it</span>
         </div>
@@ -622,8 +625,8 @@ function YearlyView({
 
   return (
     <>
-      <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">
-        <section className="rounded-3xl border border-line bg-surface p-6 shadow-[var(--card-shadow)]">
+      <div className="grid divide-y divide-line lg:grid-cols-[1.6fr_1fr] lg:divide-x lg:divide-y-0">
+        <section className="px-4 py-5 sm:px-5">
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted">
             {year} in review
           </p>
@@ -648,7 +651,7 @@ function YearlyView({
             </Headline>
           </div>
         </section>
-        <section className="rounded-3xl border border-line bg-surface p-6 shadow-[var(--card-shadow)]">
+        <section className="px-4 py-5 sm:px-5">
           <RingStat
             value={rate}
             label="Improved this year"
@@ -663,7 +666,7 @@ function YearlyView({
         </section>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+      <div className={`${cellsClass} grid-cols-2 xl:grid-cols-4`}>
         <StatTile index={0} label="Belts earned" value={summary.belts_earned} icon={<Award size={17} />} tint="var(--series-2)" />
         <StatTile index={1} label="Students" value={summary.total_students} icon={<Users size={17} />} tint="var(--series-1)" />
         <StatTile index={2} label="Total belts" value={summary.total_belts} icon={<Layers size={17} />} tint="var(--series-3)" />
@@ -678,7 +681,7 @@ function YearlyView({
       </div>
 
       {trend.length ? (
-        <section className="rounded-3xl border border-line bg-surface p-5 shadow-[var(--card-shadow)]">
+        <section className="px-4 py-4 sm:px-5">
           <div className="mb-3 flex items-baseline justify-between">
             <h2 className="font-display text-[16px] font-semibold">Month by month</h2>
             <span className="text-[12px] text-muted">Click a month to open it</span>
@@ -688,7 +691,7 @@ function YearlyView({
       ) : null}
 
       <section>
-        <h2 className="mb-3 px-1 font-display text-[16px] font-semibold">By language</h2>
+        <h2 className="border-b border-line px-4 py-3 font-display text-[16px] font-semibold sm:px-5">By language</h2>
         <LanguageCards breakdown={data.languageBreakdown} />
       </section>
 

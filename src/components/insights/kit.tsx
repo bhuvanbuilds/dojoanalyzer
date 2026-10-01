@@ -13,7 +13,7 @@ import {
   YAxis,
 } from "recharts";
 import { CountUp } from "@/components/reactbits/count-up";
-import { SpotlightCard } from "@/components/reactbits/spotlight-card";
+import { Cell, cellsClass } from "@/components/ui/frame";
 import {
   AXIS_TICK,
   CHART,
@@ -170,7 +170,7 @@ export function StatTile({
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05, duration: 0.4 }}
     >
-      <SpotlightCard className="h-full p-4">
+      <Cell className="h-full px-4 py-4 sm:px-5">
         <div className="flex items-start justify-between gap-2">
           <span
             className="grid h-9 w-9 place-items-center rounded-xl"
@@ -187,7 +187,7 @@ export function StatTile({
         </div>
         <p className="mt-1.5 text-[13px] font-semibold text-ink-2">{label}</p>
         {footer ? <div className="mt-1.5">{footer}</div> : null}
-      </SpotlightCard>
+      </Cell>
     </motion.div>
   );
 }
@@ -320,7 +320,7 @@ export function LanguageCards({
     (a, b) => (breakdown?.[b]?.belts_earned ?? 0) - (breakdown?.[a]?.belts_earned ?? 0),
   )[0];
   return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <div className={`${cellsClass} sm:grid-cols-2 xl:grid-cols-4`}>
       {LANGUAGES.map((language, index) => {
         const metric = breakdown?.[language];
         const color = LANGUAGE_COLORS[language];
@@ -335,8 +335,13 @@ export function LanguageCards({
             initial={reduced ? false : { opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05 * index }}
-            className={`group relative overflow-hidden rounded-2xl border bg-surface p-4 text-left transition ${isSelected ? "border-ink shadow-[var(--pop-shadow)]" : "border-line hover:border-line-strong hover:shadow-[var(--card-shadow)]"} ${onSelect ? "" : "cursor-default"}`}
+            className={`group relative overflow-hidden px-4 py-4 text-left transition-colors sm:px-5 ${isSelected ? "bg-surface-2" : "bg-surface hover:bg-surface-2"} ${onSelect ? "" : "cursor-default"}`}
           >
+            <span
+              aria-hidden="true"
+              className="absolute inset-x-0 bottom-0 h-[2px] transition-opacity"
+              style={{ background: color, opacity: isSelected ? 1 : 0 }}
+            />
             <span
               aria-hidden="true"
               className="absolute -right-8 -top-8 h-24 w-24 rounded-full opacity-20 blur-2xl transition group-hover:opacity-35"
@@ -426,7 +431,7 @@ export function TrendPanel({
   const decimals = metric === "average_belts_per_student" ? 2 : 0;
 
   return (
-    <section className="rounded-3xl border border-line bg-surface p-5 shadow-[var(--card-shadow)]">
+    <section className="px-4 py-4 sm:px-5">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="font-display text-[16px] font-semibold">{title}</h2>

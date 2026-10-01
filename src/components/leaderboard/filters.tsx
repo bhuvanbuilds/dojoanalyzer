@@ -3,10 +3,10 @@ import type { ReactNode } from "react";
 export const filterInputClass =
   "h-10 w-full rounded-xl border border-line bg-surface px-3 text-[14px] text-ink outline-none transition placeholder:text-faint hover:border-line-strong focus-visible:ring-2 focus-visible:ring-ink/10";
 
-/** Filter bar shared by the leaderboard pages. */
+/** Filter strip shared by the leaderboard pages; a ruled row of the frame. */
 export function LeaderboardFilters({ children }: { children: ReactNode }) {
   return (
-    <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-line bg-surface p-4 shadow-[var(--card-shadow)]">
+    <div className="flex flex-wrap items-end gap-3 bg-surface-2 px-4 py-3 sm:px-5">
       {children}
     </div>
   );

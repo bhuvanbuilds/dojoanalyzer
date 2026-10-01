@@ -13,7 +13,7 @@ import { Podium } from "@/components/leaderboard/podium";
 import type { RankedStudent } from "@/components/leaderboard/types";
 import { CountUp } from "@/components/reactbits/count-up";
 import { LightRays } from "@/components/reactbits/light-rays";
-import { SpotlightCard } from "@/components/reactbits/spotlight-card";
+import { Cell, Cells, cellsClass, Frame, Page } from "@/components/ui/frame";
 import { DojoLoader } from "@/components/ui/dojo-loader";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StudentAvatar } from "@/components/students/avatar";
@@ -25,7 +25,11 @@ import {
   BeltTag,
   LanguageLogo,
 } from "@/components/belts/belts";
-import { LANGUAGES, LANGUAGE_LABELS, type Language } from "@/lib/dashboard/metrics";
+import {
+  LANGUAGES,
+  LANGUAGE_LABELS,
+  type Language,
+} from "@/lib/dashboard/metrics";
 
 const PAGE = 40;
 
@@ -68,85 +72,87 @@ export function LeaderboardExperience({
   const you = entries.find((entry) => entry.studentId === currentStudentId);
 
   return (
-    <div className="mx-auto max-w-[1440px] space-y-6 px-4 pb-24 pt-2 lg:px-8">
-      {/* Hero stage */}
-      <section className="relative isolate overflow-hidden rounded-3xl bg-[#0b0b0e] text-white [clip-path:inset(0_round_1.5rem)]">
-        <div aria-hidden="true" className="absolute inset-0">
-          <LightRays
-            raysOrigin="top-center"
-            raysColor="#ffd9a8"
-            raysSpeed={0.9}
-            lightSpread={0.9}
-            rayLength={1.6}
-            fadeDistance={1.1}
-            followMouse
-            mouseInfluence={0.08}
-            noiseAmount={0.06}
-            distortion={0.04}
+    <Page className="pb-24">
+      <Frame>
+        {/* Hero stage */}
+        <section className="relative isolate overflow-hidden bg-[#0b0b0e] text-white">
+          <div aria-hidden="true" className="absolute inset-0">
+            <LightRays
+              raysOrigin="top-center"
+              raysColor="#ffd9a8"
+              raysSpeed={0.9}
+              lightSpread={0.9}
+              rayLength={1.6}
+              fadeDistance={1.1}
+              followMouse
+              mouseInfluence={0.08}
+              noiseAmount={0.06}
+              distortion={0.04}
+            />
+          </div>
+          <div
+            aria-hidden="true"
+            className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#0b0b0e] to-transparent"
           />
-        </div>
-        <div
-          aria-hidden="true"
-          className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#0b0b0e] to-transparent"
-        />
-        {!isLoading && top[0] && top[0].score > 0 && (
-          <ConfettiBurst key={top[0].studentId} />
-        )}
+          {!isLoading && top[0] && top[0].score > 0 && (
+            <ConfettiBurst key={top[0].studentId} />
+          )}
 
-        <div className="relative px-6 pt-8 text-center sm:px-10 sm:pt-10">
-          <p className="text-[13px] font-medium text-white/55">{eyebrow}</p>
-          <h1 className="mt-1 font-display text-[32px] font-extrabold leading-tight tracking-[-0.04em] sm:text-[44px]">
-            {title}
-          </h1>
-          <p className="mx-auto mt-2 max-w-xl text-[14px] text-white/60">
-            {subtitle}
-          </p>
-        </div>
+          <div className="relative px-6 pt-8 text-center sm:px-10 sm:pt-10">
+            <p className="text-[13px] font-medium text-white/55">{eyebrow}</p>
+            <h1 className="mt-1 font-display text-[32px] font-extrabold leading-tight tracking-[-0.04em] sm:text-[44px]">
+              {title}
+            </h1>
+            <p className="mx-auto mt-2 max-w-xl text-[14px] text-white/60">
+              {subtitle}
+            </p>
+          </div>
 
-        <div className="relative px-3 pb-0 pt-8 sm:px-10">
-          {isLoading ? (
-            <PodiumLoader />
-          ) : error || entries.length === 0 ? (
-            <div className="flex h-56 items-center justify-center pb-10 text-center text-sm text-white/60">
-              {error || emptyMessage}
-            </div>
-          ) : (
-            <Podium
-              top={top}
+          <div className="relative px-3 pb-0 pt-8 sm:px-10">
+            {isLoading ? (
+              <PodiumLoader />
+            ) : error || entries.length === 0 ? (
+              <div className="flex h-56 items-center justify-center pb-10 text-center text-sm text-white/60">
+                {error || emptyMessage}
+              </div>
+            ) : (
+              <Podium
+                top={top}
+                scoreLabel={scoreLabel}
+                currentStudentId={currentStudentId}
+                onOpen={setOpenEntry}
+              />
+            )}
+          </div>
+        </section>
+
+        {controls}
+
+        {isLoading && <RankingGhost />}
+
+        {!isLoading && !error && entries.length > 0 && (
+          <>
+            <StatStrip entries={entries} scoreLabel={scoreLabel} />
+            <RankingList
+              entries={rest}
+              total={entries.length}
               scoreLabel={scoreLabel}
               currentStudentId={currentStudentId}
               onOpen={setOpenEntry}
+              view={view}
+              onView={(next) => {
+                setView(next);
+                try {
+                  localStorage.setItem(VIEW_KEY, next);
+                } catch {
+                  // Storage can be blocked; the choice still applies now.
+                }
+              }}
+              language={language}
             />
-          )}
-        </div>
-      </section>
-
-      {controls}
-
-      {isLoading && <RankingGhost />}
-
-      {!isLoading && !error && entries.length > 0 && (
-        <>
-          <StatStrip entries={entries} scoreLabel={scoreLabel} />
-          <RankingList
-            entries={rest}
-            total={entries.length}
-            scoreLabel={scoreLabel}
-            currentStudentId={currentStudentId}
-            onOpen={setOpenEntry}
-            view={view}
-            onView={(next) => {
-              setView(next);
-              try {
-                localStorage.setItem(VIEW_KEY, next);
-              } catch {
-                // Storage can be blocked; the choice still applies now.
-              }
-            }}
-            language={language}
-          />
-        </>
-      )}
+          </>
+        )}
+      </Frame>
 
       <HistoryDialog
         student={openEntry ? toStudent(openEntry) : null}
@@ -168,7 +174,7 @@ export function LeaderboardExperience({
       />
 
       {you && you.rank > 3 && <YouPill you={you} scoreLabel={scoreLabel} />}
-    </div>
+    </Page>
   );
 }
 
@@ -213,7 +219,7 @@ function PodiumLoader() {
 /** Placeholder rows under the podium while rankings load. */
 function RankingGhost() {
   return (
-    <div className="overflow-hidden rounded-3xl border border-line bg-surface shadow-[var(--card-shadow)]">
+    <div>
       {Array.from({ length: 6 }, (_, i) => (
         <div
           key={i}
@@ -223,7 +229,10 @@ function RankingGhost() {
           <Skeleton className="h-4 w-6" />
           <Skeleton className="h-9 w-9 rounded-full" />
           <div className="flex-1 space-y-1.5">
-            <Skeleton className="h-3" style={{ width: `${28 + (i % 3) * 9}%` }} />
+            <Skeleton
+              className="h-3"
+              style={{ width: `${28 + (i % 3) * 9}%` }}
+            />
             <Skeleton className="h-2.5 w-1/5" />
           </div>
           <Skeleton className="h-6 w-16 rounded-full" />
@@ -253,9 +262,9 @@ function StatStrip({
     },
   ];
   return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <Cells className="sm:grid-cols-2 xl:grid-cols-4">
       {stats.map((stat) => (
-        <SpotlightCard key={stat.label} className="px-5 py-4">
+        <Cell key={stat.label} className="px-4 py-4 sm:px-5">
           <p className="text-[12.5px] font-medium text-muted">{stat.label}</p>
           <p className="mt-1 font-display text-[28px] font-bold leading-none tracking-[-0.03em] text-ink">
             <CountUp
@@ -264,9 +273,9 @@ function StatStrip({
               decimals={stat.decimals ?? 0}
             />
           </p>
-        </SpotlightCard>
+        </Cell>
       ))}
-    </div>
+    </Cells>
   );
 }
 
@@ -323,15 +332,19 @@ function RankingList({
   if (entries.length === 0) return null;
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-line bg-surface shadow-[var(--card-shadow)]">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-3.5 lg:px-6">
+    <section className="min-w-0">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-2.5 sm:px-5">
         <div className="flex items-baseline gap-3">
-          <h2 className="font-display text-[17px] font-bold tracking-[-0.02em]">
+          <h2 className="font-display text-[15px] font-bold tracking-[-0.015em]">
             Rankings
           </h2>
           <span className="text-[12.5px] text-muted">#4 – #{total}</span>
         </div>
-        <div role="radiogroup" aria-label="Layout" className="flex rounded-xl bg-sunken p-1">
+        <div
+          role="radiogroup"
+          aria-label="Layout"
+          className="flex rounded-xl bg-sunken p-1"
+        >
           {(
             [
               ["list", List, "List"],
@@ -378,7 +391,9 @@ function RankingList({
           </ol>
         </LayoutGroup>
       ) : (
-        <ol className="grid gap-3 p-3 sm:grid-cols-2 sm:p-4 xl:grid-cols-3">
+        <ol
+          className={`${cellsClass} sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4`}
+        >
           {visible.map((entry, index) => (
             <BeltCard
               key={entry.studentId}
@@ -393,7 +408,7 @@ function RankingList({
         </ol>
       )}
       {entries.length > PAGE && (
-        <div className="border-t border-line px-5 py-3.5 text-center lg:px-6">
+        <div className="border-t border-line px-5 py-3 text-center">
           <button
             type="button"
             onClick={() => setExpanded((value) => !value)}
@@ -408,12 +423,22 @@ function RankingList({
 }
 
 /** Per-language belts for a row: logo + ladder, or the single ranked language. */
-function RowBelts({ entry, language }: { entry: RankedStudent; language?: Language }) {
+function RowBelts({
+  entry,
+  language,
+}: {
+  entry: RankedStudent;
+  language?: Language;
+}) {
   if (entry.languages)
     return (
       <span className="hidden items-center gap-1.5 md:flex">
         {LANGUAGES.map((key) => (
-          <BeltBadge key={key} language={key} level={entry.languages?.[key] ?? 0} />
+          <BeltBadge
+            key={key}
+            language={key}
+            level={entry.languages?.[key] ?? 0}
+          />
         ))}
       </span>
     );
@@ -458,7 +483,7 @@ function RankingRow({
       <button
         type="button"
         onClick={() => onOpen(entry)}
-        className={`flex w-full items-center gap-3 border-b border-line px-3 py-3 text-left transition-colors last:border-b-0 sm:px-5 lg:px-6 ${
+        className={`flex w-full items-center gap-3 border-b border-line px-3 py-3 text-left transition-colors last:border-b-0 sm:px-5 ${
           isYou ? "bg-brand-soft" : "hover:bg-surface-2"
         }`}
       >
@@ -526,7 +551,7 @@ function BeltCard({
       <button
         type="button"
         onClick={() => onOpen(entry)}
-        className={`group block h-full w-full rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-[var(--pop-shadow)] ${isYou ? "border-brand-line bg-brand-soft" : "border-line bg-surface hover:border-line-strong"}`}
+        className={`group block h-full w-full p-4 text-left transition-colors sm:px-5 ${isYou ? "bg-brand-soft" : "bg-surface hover:bg-surface-2"}`}
       >
         <div className="flex items-center gap-3">
           <span className="font-display text-[20px] font-bold tabular-nums text-faint">
@@ -538,7 +563,9 @@ function BeltCard({
               {entry.name}
             </span>
             <span className="block truncate text-[12px] text-muted">
-              {[entry.squad && `Squad ${entry.squad}`, entry.university].filter(Boolean).join(" · ") || "—"}
+              {[entry.squad && `Squad ${entry.squad}`, entry.university]
+                .filter(Boolean)
+                .join(" · ") || "—"}
             </span>
           </span>
           <span className="text-right">
@@ -555,7 +582,11 @@ function BeltCard({
               <span className="w-14 text-[12.5px] font-semibold text-ink-2">
                 {LANGUAGE_LABELS[key]}
               </span>
-              <BeltStrip level={levels[key] ?? 0} size="sm" delay={0.1 + row * 0.05} />
+              <BeltStrip
+                level={levels[key] ?? 0}
+                size="sm"
+                delay={0.1 + row * 0.05}
+              />
               <span className="ml-auto">
                 <BeltTag level={levels[key] ?? 0} compact />
               </span>

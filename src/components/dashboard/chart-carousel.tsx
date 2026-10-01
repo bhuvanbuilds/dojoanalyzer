@@ -35,14 +35,14 @@ export function ChartCarousel({ slides }: { slides: Slide[] }) {
       aria-roledescription="carousel"
       aria-label="Dashboard charts"
       onKeyDown={onKeyDown}
-      className="rounded-2xl border border-line bg-surface shadow-[var(--card-shadow)]"
+      className="min-w-0"
     >
       {/* Slide tabs */}
-      <div className="flex items-center gap-2 border-b border-line px-3 py-2.5 sm:px-4">
+      <div className="flex items-stretch gap-2 border-b border-line bg-surface-2 pl-2 pr-2 sm:pl-3">
         <div
           role="tablist"
           aria-label="Charts"
-          className="flex min-w-0 flex-1 gap-1 overflow-x-auto"
+          className="flex min-w-0 flex-1 overflow-x-auto"
         >
           {slides.map((slide, slideIndex) => (
             <button
@@ -51,17 +51,21 @@ export function ChartCarousel({ slides }: { slides: Slide[] }) {
               role="tab"
               aria-selected={slideIndex === index}
               onClick={() => setIndex(slideIndex)}
-              className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 font-display text-[13px] font-semibold tracking-[-0.01em] transition-colors ${
-                slideIndex === index
-                  ? "bg-ink/[0.055] text-ink"
-                  : "text-muted hover:text-ink"
+              className={`relative shrink-0 whitespace-nowrap px-3 py-3 font-display text-[13px] font-semibold tracking-[-0.01em] transition-colors ${
+                slideIndex === index ? "text-ink" : "text-muted hover:text-ink"
               }`}
             >
               {slide.title}
+              <span
+                aria-hidden="true"
+                className={`absolute inset-x-2 -bottom-px h-[2px] ${
+                  slideIndex === index ? "bg-brand" : "bg-transparent"
+                }`}
+              />
             </button>
           ))}
         </div>
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="flex shrink-0 items-center gap-0.5">
           <button
             type="button"
             onClick={() => go(index - 1)}
@@ -147,23 +151,6 @@ export function ChartCarousel({ slides }: { slides: Slide[] }) {
             </div>
           ))}
         </div>
-      </div>
-
-      {/* Dots */}
-      <div className="flex justify-center gap-1.5 pb-4">
-        {slides.map((slide, slideIndex) => (
-          <button
-            key={slide.key}
-            type="button"
-            onClick={() => setIndex(slideIndex)}
-            aria-label={`Show ${slide.title}`}
-            className={`h-1.5 rounded-full transition-all duration-300 ${
-              slideIndex === index
-                ? "w-5 bg-ink"
-                : "w-1.5 bg-line-strong hover:bg-faint"
-            }`}
-          />
-        ))}
       </div>
     </section>
   );

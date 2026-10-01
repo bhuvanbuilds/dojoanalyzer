@@ -59,14 +59,17 @@ export function PanelSkeleton({
   rows = 5,
   label,
   className = "",
+  flat = false,
 }: {
   rows?: number;
   label?: string;
   className?: string;
+  /** Inside a Frame: no border or shadow of its own. */
+  flat?: boolean;
 }) {
   return (
     <div
-      className={`relative grid min-h-64 place-items-center overflow-hidden rounded-2xl border border-line bg-surface p-5 shadow-[var(--card-shadow)] ${className}`}
+      className={`relative grid min-h-64 place-items-center overflow-hidden bg-surface p-5 ${flat ? "" : "rounded-2xl border border-line shadow-[var(--card-shadow)]"} ${className}`}
     >
       <div
         aria-hidden="true"
