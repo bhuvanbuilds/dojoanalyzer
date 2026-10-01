@@ -218,6 +218,48 @@ test("same source IDs duplicated in the CSV are rejected", () => {
   assert.ok(result.rowValidation.errors.some((error) => /Duplicate source ID/.test(error.error_message)));
 });
 
+test("deduplicated rows keep original CSV row numbers for week validation", () => {
+  const rows = [
+    row({
+      id: "older-same-week",
+      email: "repeat@example.test",
+      date: dates[0],
+      start_time: `${dates[0]}T08:00:00.000Z`,
+    }),
+    row({
+      id: "newer-same-week",
+      email: "repeat@example.test",
+      date: dates[0],
+      start_time: `${dates[0]}T09:00:00.000Z`,
+    }),
+    row({ id: "next-week", email: "next@example.test", date: dates[1] }),
+  ];
+  const resolution = resolve(rows);
+  const deduplicated = validation.deduplicateRowsByWeekAndEmail(
+    rows,
+    resolution.weekByRow,
+  );
+  const checked = validation.validateImportRows({
+    rows: deduplicated.rows,
+    students: [],
+    memberships: [],
+    squads,
+    weekByRow: resolution.weekByRow,
+    universityId,
+    allowStudentProvisioning: true,
+  });
+
+  assert.deepEqual(
+    deduplicated.rows.map(({ row, rowNumber }) => [row.id, rowNumber]),
+    [["newer-same-week", 3], ["next-week", 4]],
+  );
+  assert.equal(checked.errors.length, 0);
+  assert.deepEqual(
+    checked.records.map((record) => record.source_record_id),
+    ["newer-same-week", "next-week"],
+  );
+});
+
 test("same student repeated in the same date keeps the newest record and the student is reused across dates", () => {
   const sameDate = checkRows([
     row({ id: "older", email: "a@example.test", date: dates[0], start_time: "2025-11-28T07:30:00.000Z" }),
@@ -336,6 +378,25 @@ test("active assignment to another squad and missing foreign squad are validatio
   assert.ok(conflict.errors.some((error) => /already assigned to squad 138/.test(error.error_message)));
   const missing = checkRows([row({ squad: 205 })]);
   assert.ok(missing.errors.some((error) => /Squad 205 does not exist in your university/.test(error.error_message)));
+});
+
+test("student provisioning plans account assignments for valid squad members", () => {
+  const result = checkRows([
+    row({ id: "student-week-1", email: "new-student@example.test", date: dates[0] }),
+    row({ id: "student-week-2", email: "new-student@example.test", date: dates[1] }),
+  ]);
+
+  assert.equal(result.errors.length, 0);
+  assert.equal(result.plan.accountAssignments.length, 1);
+  assert.deepEqual(result.plan.accountAssignments[0], {
+    email: "new-student@example.test",
+    full_name: "Student Name",
+    university_id: universityId,
+    student_id: result.plan.studentIdByEmail.get("new-student@example.test"),
+  });
+
+  const invalid = checkRows([row({ email: "invalid-student@example.test", squad: 205 })]);
+  assert.equal(invalid.plan.accountAssignments.length, 0);
 });
 
 test("invalid timestamps are errors and never resolve to a week", () => {

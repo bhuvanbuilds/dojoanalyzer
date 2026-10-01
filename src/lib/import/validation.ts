@@ -65,7 +65,7 @@ export type PlannedDateWeek = {
 };
 
 type ValidationContext = {
-  rows: CSVRow[];
+  rows: Array<CSVRow | CSVRowEntry>;
   students: Student[];
   memberships: Membership[];
   squads: Squad[];
@@ -76,6 +76,7 @@ type ValidationContext = {
 
 export type StudentProvisioningPlan = {
   studentsToCreate: Array<{ id: string; name: string; email: string }>;
+  accountAssignments: StudentAccountAssignment[];
   membershipsToCreate: Array<{
     email: string;
     squad_id: string;
@@ -85,6 +86,13 @@ export type StudentProvisioningPlan = {
   studentStatusByEmail: Map<string, "created" | "existing">;
   membershipStatusByEmail: Map<string, "added" | "already_in_squad">;
   errors: ImportValidationError[];
+};
+
+export type StudentAccountAssignment = {
+  email: string;
+  full_name: string;
+  university_id: string;
+  student_id: string;
 };
 
 function nested<T>(value: T | T[] | null) {
@@ -568,6 +576,7 @@ export function planStudentProvisioning({
 }): StudentProvisioningPlan {
   const errors: ImportValidationError[] = [];
   const studentsToCreate: StudentProvisioningPlan["studentsToCreate"] = [];
+  const accountAssignments: StudentAccountAssignment[] = [];
   const membershipsToCreate: StudentProvisioningPlan["membershipsToCreate"] = [];
   const studentIdByEmail = new Map<string, string>();
   const studentStatusByEmail = new Map<string, "created" | "existing">();
@@ -676,10 +685,20 @@ export function planStudentProvisioning({
     } else {
       membershipStatusByEmail.set(email, "already_in_squad");
     }
+
+    if (membershipStatusByEmail.has(email)) {
+      accountAssignments.push({
+        email,
+        full_name: entries[0].row.student_name.trim(),
+        university_id: universityId,
+        student_id: studentId,
+      });
+    }
   }
 
   return {
     studentsToCreate,
+    accountAssignments,
     membershipsToCreate,
     studentIdByEmail,
     studentStatusByEmail,

@@ -12,6 +12,7 @@ import {
   type CSVRow,
   type ImportWeek,
   type ImportValidationError,
+  type StudentAccountAssignment,
   type ValidatedRecord,
 } from "@/lib/import/validation";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -61,6 +62,7 @@ type ImportMembership = {
     rowResults: ImportRowOutcome[];
     errors: ImportValidationError[];
     studentsToCreate: Array<{ id: string; name: string; email: string }>;
+    accountAssignments: StudentAccountAssignment[];
     membershipsToCreate: Array<{
       email: string;
       squad_id: string;
@@ -126,6 +128,107 @@ async function loadMemberships(studentIds: string[]): Promise<ImportMembership[]
   return (data ?? []) as ImportMembership[];
 }
 
+async function ensureStudentAccountAssignments(
+  assignments: StudentAccountAssignment[],
+  actorUserId: string,
+) {
+  const uniqueAssignments = Array.from(
+    new Map(assignments.map((assignment) => [assignment.email, assignment])).values(),
+  );
+  if (uniqueAssignments.length === 0) return [];
+
+  const emails = uniqueAssignments.map((assignment) => assignment.email);
+  const studentIds = uniqueAssignments.map((assignment) => assignment.student_id);
+  const [invitationsResult, profilesResult] = await Promise.all([
+    supabaseAdmin
+      .from("user_invitations")
+      .select("email, role, university_id, student_id")
+      .in("email", emails),
+    supabaseAdmin
+      .from("profiles")
+      .select("role, student_id")
+      .in("student_id", studentIds),
+  ]);
+  if (invitationsResult.error) throw invitationsResult.error;
+  if (profilesResult.error) throw profilesResult.error;
+
+  const invitationsByEmail = new Map(
+    (invitationsResult.data ?? []).map((invitation) => [invitation.email, invitation]),
+  );
+  const profilesByStudentId = new Map(
+    (profilesResult.data ?? []).map((profile) => [profile.student_id, profile]),
+  );
+  const pendingAssignments: Array<
+    StudentAccountAssignment & { role: "student"; created_by: string }
+  > = [];
+  const errors: Array<{ email: string; error_message: string }> = [];
+
+  for (const assignment of uniqueAssignments) {
+    const invitation = invitationsByEmail.get(assignment.email);
+    if (invitation) {
+      if (
+        invitation.role === "student" &&
+        invitation.student_id === assignment.student_id &&
+        invitation.university_id === assignment.university_id
+      ) {
+        continue;
+      }
+      errors.push({
+        email: assignment.email,
+        error_message: "Email already has a different pending account assignment",
+      });
+      continue;
+    }
+
+    const profile = profilesByStudentId.get(assignment.student_id);
+    if (profile) {
+      if (profile.role === "student") continue;
+      errors.push({
+        email: assignment.email,
+        error_message: "Student record is already linked to a non-student account",
+      });
+      continue;
+    }
+
+    pendingAssignments.push({
+      ...assignment,
+      role: "student",
+      created_by: actorUserId,
+    });
+  }
+
+  if (pendingAssignments.length > 0) {
+    const { error } = await supabaseAdmin
+      .from("user_invitations")
+      .upsert(pendingAssignments, {
+        onConflict: "email",
+        ignoreDuplicates: true,
+      });
+    if (error) throw error;
+  }
+
+  return errors;
+}
+
+function accountAssignmentImportErrors(
+  errors: Array<{ email: string; error_message: string }>,
+  rows: CSVRow[],
+) {
+  return errors.flatMap((error) => {
+    const rowIndex = rows.findIndex(
+      (row) => row.email?.trim().toLowerCase() === error.email,
+    );
+    return rowIndex < 0
+      ? []
+      : [{
+          row_number: rowIndex + 2,
+          field_name: "email",
+          error_message: error.error_message,
+          raw_value: error.email,
+        }];
+  });
+}
+
 async function loadUniversityWeeks(universityId: string): Promise<ImportWeek[]> {
   const weeks: ImportWeek[] = [];
   for (let page = 0; ; page += 1) {
@@ -157,7 +260,8 @@ async function prepareMultiWeekImport(
     () => crypto.randomUUID(),
   );
   const deduplicatedRows = deduplicateRowsByWeekAndEmail(rows, resolution.weekByRow);
-  const selectedRows = deduplicatedRows.rows.map(({ row }) => row);
+  const selectedEntries = deduplicatedRows.rows;
+  const selectedRows = selectedEntries.map(({ row }) => row);
   const emails = new Set(
     selectedRows
       .map((row) => row.email?.trim().toLowerCase())
@@ -180,7 +284,7 @@ async function prepareMultiWeekImport(
   if (squadsError) throw squadsError;
 
   const preflight = validateImportRows({
-    rows: selectedRows,
+    rows: selectedEntries,
     students,
     memberships,
     squads: squads ?? [],
@@ -189,7 +293,7 @@ async function prepareMultiWeekImport(
     allowStudentProvisioning: true,
   });
   const studentPlan = planStudentProvisioning({
-    rows: selectedRows,
+    rows: selectedEntries,
     students,
     memberships,
     squads: squads ?? [],
@@ -216,7 +320,7 @@ async function prepareMultiWeekImport(
     },
   );
   const strictValidation = validateImportRows({
-    rows: selectedRows,
+    rows: selectedEntries,
     students: studentsForStrictValidation,
     memberships: [...memberships, ...plannedMemberships],
     squads: squads ?? [],
@@ -242,7 +346,7 @@ async function prepareMultiWeekImport(
         row_number: rowNumber,
         field_name: "row",
         error_message: errorMessage,
-        raw_value: selectedRows[rowNumber - 2]?.id ?? "",
+        raw_value: rows[rowNumber - 2]?.id ?? "",
       })),
   );
 
@@ -250,8 +354,7 @@ async function prepareMultiWeekImport(
   const recordsBySourceId = new Map(
     strictValidation.records.map((record) => [record.source_record_id, record]),
   );
-  selectedRows.forEach((row, index) => {
-    const rowNumber = index + 2;
+  selectedEntries.forEach(({ row, rowNumber }) => {
     const week = resolution.weekByRow.get(rowNumber);
     if (!week) return;
     const batch = batchesByWeek.get(week.id) ?? {
@@ -282,8 +385,7 @@ async function prepareMultiWeekImport(
       new Set(batch.rows.map((row) => row.squad_number?.trim()).filter(Boolean)),
     ).sort((left, right) => left.localeCompare(right, undefined, { numeric: true })),
   }));
-  const rowResults: ImportRowOutcome[] = selectedRows.map((row, index) => {
-    const rowNumber = index + 2;
+  const rowResults: ImportRowOutcome[] = selectedEntries.map(({ row, rowNumber }) => {
     const email = row.email?.trim().toLowerCase() ?? "";
     const student = students.find(
       (candidate) => candidate.email.trim().toLowerCase() === email,
@@ -321,6 +423,7 @@ async function prepareMultiWeekImport(
     rowResults,
     errors,
     studentsToCreate: studentPlan.studentsToCreate,
+    accountAssignments: studentPlan.accountAssignments,
     membershipsToCreate: studentPlan.membershipsToCreate,
     studentIdByEmail: studentPlan.studentIdByEmail,
     expectedWeeks: resolution.expectedWeeks,
@@ -377,6 +480,8 @@ async function provisionDistinctStudentRows({
   });
 
   const outcomes: ImportRowOutcome[] = [];
+  const accountAssignments: StudentAccountAssignment[] = [];
+  const outcomeEmailByRow = new Map<number, string>();
   for (const group of groupedRows.values()) {
     const firstEntry = group.entries[0];
     const firstRow = firstEntry.row;
@@ -494,10 +599,17 @@ async function provisionDistinctStudentRows({
           source: "belt_csv",
         });
       }
+      accountAssignments.push({
+        email: group.email,
+        full_name: student.name ?? studentName,
+        university_id: universityId,
+        student_id: student.id,
+      });
     } else if (otherMembership) {
       membershipStatus = "another_squad";
     }
 
+    outcomeEmailByRow.set(firstEntry.rowNumber, group.email);
     outcomes.push({
       row_number: firstEntry.rowNumber,
       student_name: studentName,
@@ -512,6 +624,18 @@ async function provisionDistinctStudentRows({
       belt_import_status: "not_imported",
       errors,
     });
+  }
+
+  const assignmentErrors = await ensureStudentAccountAssignments(
+    accountAssignments,
+    actorUserId,
+  );
+  for (const outcome of outcomes) {
+    const email = outcomeEmailByRow.get(outcome.row_number);
+    const assignmentError = assignmentErrors.find(
+      (error) => error.email === email,
+    );
+    if (assignmentError) outcome.errors.push(assignmentError.error_message);
   }
 
   return { students, rowResults: outcomes };
@@ -971,10 +1095,16 @@ export async function POST(request: Request) {
 
       const existingImports = await findIdenticalCurrentImports(prepared.batches);
       if (existingImports) {
+        const assignmentErrors = await ensureStudentAccountAssignments(
+          prepared.accountAssignments,
+          currentUser.user.id,
+        );
+        const errors = accountAssignmentImportErrors(assignmentErrors, rows);
         return NextResponse.json({
           status: "imported",
           message: "This CSV is already the current import; no duplicate records were created",
-          summary: { ...summary, errors: 0 },
+          summary: { ...summary, errors: errors.length },
+          errors,
           weeks: prepared.groups.map((group) => ({
             ...group,
             import_id: existingImports.get(group.week_id) ?? null,
@@ -1053,6 +1183,11 @@ export async function POST(request: Request) {
           });
         if (finalizeError) throw finalizeError;
         databaseCommitted = true;
+        const assignmentErrors = await ensureStudentAccountAssignments(
+          prepared.accountAssignments,
+          currentUser.user.id,
+        );
+        const accountErrors = accountAssignmentImportErrors(assignmentErrors, rows);
 
         const finalizedByWeek = new Map(
           ((finalizedImports ?? []) as Array<{
@@ -1112,7 +1247,8 @@ export async function POST(request: Request) {
         return NextResponse.json({
           status: "imported",
           message: "Multi-week import completed",
-          summary: { ...summary, errors: 0 },
+          summary: { ...summary, errors: accountErrors.length },
+          errors: accountErrors,
           weeks: prepared.groups.map((group) => ({
             ...group,
             week_id: finalizedByWeek.get(group.start_date)?.week_id ?? group.week_id,

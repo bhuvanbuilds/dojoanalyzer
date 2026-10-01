@@ -364,7 +364,11 @@ export function CsvUploadDialog({
         setRowResults(result.rowResults ?? []);
         if (shouldCommitMultiWeek && result.status === "imported") {
           setState("success");
-          setMessage("Import successful");
+          setMessage(
+            result.errors?.length
+              ? `Import completed with ${result.errors.length} student account issue(s).`
+              : "Import successful",
+          );
           onComplete?.();
           setFile(null);
           if (fileInputRef.current) fileInputRef.current.value = "";
@@ -395,7 +399,7 @@ export function CsvUploadDialog({
       setState("success");
       setMessage(
         isManageSquads
-          ? `Provisioning completed: ${result.importedRows ?? 0} of ${result.totalRows ?? 0} unique students processed.`
+          ? `Provisioning completed: ${result.importedRows ?? 0} of ${result.totalRows ?? 0} unique students processed. Students can sign in with Google using their imported email.`
           : `Import completed: ${result.importedRows ?? 0} of ${result.totalRows ?? 0} rows imported (${result.status ?? "completed"}).`,
       );
       setFile(null);
