@@ -28,7 +28,6 @@ import {
   FrameMessage,
   Page,
   Panel,
-  Split,
 } from "@/components/ui/frame";
 import { CountUp } from "@/components/reactbits/count-up";
 import { StudentAvatar } from "@/components/students/avatar";
@@ -37,12 +36,11 @@ import { LANGUAGE_COLORS } from "@/components/dashboard/chart-kit";
 import {
   BeltsPanel,
   ProgressPanel,
-  SquadTimeline,
   gained,
   recordKey,
   type HistoryResponse,
   type WeeklyRecord,
-} from "@/components/students/history-dialog";
+} from "@/components/students/history-panels";
 import {
   beltTotal,
   formatDate,
@@ -265,9 +263,18 @@ export default function StudentHistoryPage() {
           studentId={studentId}
           name={data?.student.name ?? rosterStudent?.name ?? null}
           email={data?.student.email ?? rosterStudent?.email ?? null}
-          squad={rosterStudent?.squad_number ?? ranking?.squad_number ?? null}
-          university={rosterStudent?.university_name ?? null}
-          since={rosterStudent?.start_date ?? null}
+          squad={
+            data?.student.squad_number ??
+            rosterStudent?.squad_number ??
+            ranking?.squad_number ??
+            null
+          }
+          university={
+            data?.student.university_name ??
+            rosterStudent?.university_name ??
+            null
+          }
+          since={data?.student.since ?? rosterStudent?.start_date ?? null}
           ranking={ranking}
           rankedCount={roster?.leaderboard.length ?? 0}
           loading={current.status === "loading"}
@@ -276,7 +283,7 @@ export default function StudentHistoryPage() {
           <PanelSkeleton rows={6} label="Loading student profile" flat />
         ) : current.status === "not_found" ? (
           <FrameMessage title="Student not found">
-            This student is not part of your university.
+            This student could not be found.
           </FrameMessage>
         ) : current.status === "error" ? (
           <FrameMessage title="Unable to load history">
@@ -553,11 +560,12 @@ function ProfileBody({
         : "No squad ranking",
     },
     {
-      label: "Squads joined",
-      value: data.memberships.length,
-      hint: data.memberships.some((membership) => !membership.end_date)
-        ? "Currently active"
-        : "No active squad",
+      label: "Overall rank",
+      value: ranking?.rank ?? 0,
+      prefix: ranking ? "#" : "",
+      hint: ranking
+        ? `Of ${leaderboard.length} students, every university`
+        : "Not ranked yet",
     },
   ];
 
@@ -601,27 +609,20 @@ function ProfileBody({
         />
       ) : null}
 
-      <Split className="xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-        <Panel
-          title="Compared with peers"
-          description={
-            squadPeers.length
-              ? `Squad ${ranking?.squad_number} average and everyone ranked`
-              : "Average of everyone ranked"
-          }
-        >
-          <PeerComparison
-            levels={levels}
-            squad={squadPeers}
-            everyone={leaderboard}
-          />
-        </Panel>
-        <Panel title="Squad history">
-          <div className="px-4 py-4 sm:px-5">
-            <SquadTimeline memberships={data.memberships} />
-          </div>
-        </Panel>
-      </Split>
+      <Panel
+        title="Compared with peers"
+        description={
+          squadPeers.length
+            ? `Squad ${ranking?.squad_number} average and everyone ranked`
+            : "Average of everyone ranked"
+        }
+      >
+        <PeerComparison
+          levels={levels}
+          squad={squadPeers}
+          everyone={leaderboard}
+        />
+      </Panel>
 
       <Panel
         title="Weekly log"

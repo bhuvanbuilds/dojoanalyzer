@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Search, UserPlus } from "lucide-react";
+import { Search, Trash2, UserPlus } from "lucide-react";
 import { getCurrentUserProfile } from "@/lib/auth/profile";
 import { PanelSkeleton } from "@/components/ui/skeleton";
 import { Frame, FrameTitle, Page } from "@/components/ui/frame";
+import { HoldButton } from "@/components/reactbits/hold-button";
+import { DeleteUserDialog } from "@/components/users/delete-user-dialog";
+import { Toast, type ToastMessage } from "@/components/ui/toast";
 
 type Role = "super_admin" | "campus_manager" | "mentor" | "student";
 type UserRow = {
@@ -38,6 +41,9 @@ export default function UsersPage() {
   const [role, setRole] = useState<Role>("campus_manager");
   const [universityId, setUniversityId] = useState("");
   const [studentId, setStudentId] = useState("");
+  const [myEmail, setMyEmail] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<UserRow | null>(null);
+  const [toast, setToast] = useState<ToastMessage | null>(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -72,6 +78,7 @@ export default function UsersPage() {
         setMessage("Super Admin access required.");
         setLoading(false);
       } else {
+        setMyEmail(profile.user.email?.toLowerCase() ?? null);
         const response = await fetch("/api/super-admin/users");
         const result = (await response.json()) as {
           users?: UserRow[];
@@ -296,7 +303,7 @@ export default function UsersPage() {
                   <th className="px-4 py-2.5 font-semibold sm:px-5">Role</th>
                   <th className="px-4 py-2.5 font-semibold sm:px-5">University / student</th>
                   <th className="px-4 py-2.5 font-semibold sm:px-5">Status</th>
-                  <th className="px-4 py-2.5 font-semibold sm:px-5">Action</th>
+                  <th className="px-4 py-2.5 text-right font-semibold sm:px-5">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line bg-surface">
@@ -326,15 +333,40 @@ export default function UsersPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 sm:px-5">
-                      {user.status === "active" && (
-                        <button
-                          type="button"
-                          onClick={() => editUser(user)}
-                          className="rounded border border-line-strong px-2.5 py-1.5 text-xs font-semibold"
-                        >
-                          Edit assignment
-                        </button>
-                      )}
+                      <div className="flex items-center justify-end gap-2">
+                        {user.status === "active" && (
+                          <button
+                            type="button"
+                            onClick={() => editUser(user)}
+                            className="h-8 rounded-lg border border-line-strong px-3 text-xs font-semibold text-ink-2 transition hover:text-ink"
+                          >
+                            Edit
+                          </button>
+                        )}
+                        {user.email.toLowerCase() === myEmail ? (
+                          <span className="px-2 text-[11.5px] text-faint">
+                            You
+                          </span>
+                        ) : (
+                          <HoldButton
+                            size="sm"
+                            radius={8}
+                            holdTime={1200}
+                            resetAfter={900}
+                            backgroundColor="color-mix(in srgb, var(--action) 10%, var(--surface))"
+                            textColor="var(--brand-text)"
+                            fillColor="#dc2626"
+                            fillTextColor="#ffffff"
+                            waveAmplitude={5}
+                            icon={<Trash2 size={13} />}
+                            doneLabel="Confirm…"
+                            aria-label={`Hold to delete ${user.full_name ?? user.email}`}
+                            onHold={() => setDeleting(user)}
+                          >
+                            Hold to delete
+                          </HoldButton>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -353,6 +385,23 @@ export default function UsersPage() {
           </div>
         )}
       </Frame>
+
+      <DeleteUserDialog
+        user={deleting}
+        onClose={() => setDeleting(null)}
+        onDeleted={(user) => {
+          setDeleting(null);
+          setUsers((current) =>
+            current.filter((item) => item.email !== user.email),
+          );
+          setToast({
+            id: Date.now(),
+            message: `${user.full_name ?? user.email} deleted`,
+          });
+          void load();
+        }}
+      />
+      <Toast toast={toast} onDone={() => setToast(null)} />
     </Page>
   );
 }

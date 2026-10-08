@@ -36,20 +36,15 @@ export async function GET(_request: Request, context: RouteContext) {
       );
     }
 
+    // Staff open the full profile of any student, on any campus.
     const { studentId } = await context.params;
-    const universityId = currentUser.profile.university_id;
-    let membershipsQuery = supabaseAdmin
+    const membershipsQuery = supabaseAdmin
       .from("student_memberships")
       .select(
-        "student_id, start_date, end_date, students!inner(id, name, email), squads!inner(id, squad_number, university_id)",
+        "student_id, start_date, end_date, students!inner(id, name, email), squads!inner(id, squad_number, university_id, universities(name))",
       )
       .eq("student_id", studentId)
       .order("start_date", { ascending: true });
-    if (universityId)
-      membershipsQuery = membershipsQuery.eq(
-        "squads.university_id",
-        universityId,
-      );
     const { data: memberships, error: membershipsError } =
       await membershipsQuery;
 
@@ -66,7 +61,7 @@ export async function GET(_request: Request, context: RouteContext) {
       ? firstMembership.students[0]
       : firstMembership.students;
 
-    let recordsQuery = supabaseAdmin
+    const recordsQuery = supabaseAdmin
       .from("weekly_belt_records")
       .select(
         "start_time, calculated_end_time, belt_test_updated_at, initial_belt_levels, final_belt_levels, weeks!inner(academic_year, week_number, university_id), imports!inner(is_current)",
@@ -76,8 +71,6 @@ export async function GET(_request: Request, context: RouteContext) {
       .order("academic_year", { ascending: true, referencedTable: "weeks" })
       .order("week_number", { ascending: true, referencedTable: "weeks" })
       .order("start_time", { ascending: true });
-    if (universityId)
-      recordsQuery = recordsQuery.eq("weeks.university_id", universityId);
     const { data: weeklyRecords, error: weeklyRecordsError } =
       await recordsQuery;
 
@@ -85,11 +78,25 @@ export async function GET(_request: Request, context: RouteContext) {
       throw weeklyRecordsError;
     }
 
+    const currentMembership =
+      memberships.find((membership) => !membership.end_date) ??
+      memberships[memberships.length - 1];
+    const currentSquad = Array.isArray(currentMembership.squads)
+      ? currentMembership.squads[0]
+      : currentMembership.squads;
+    const currentUniversity = Array.isArray(currentSquad?.universities)
+      ? currentSquad?.universities[0]
+      : currentSquad?.universities;
+
     return NextResponse.json({
       student: {
         id: student?.id ?? studentId,
         name: student?.name ?? null,
         email: student?.email ?? null,
+        squad_number: currentSquad?.squad_number ?? null,
+        university_id: currentSquad?.university_id ?? null,
+        university_name: currentUniversity?.name ?? null,
+        since: currentMembership.start_date ?? null,
       },
       memberships: memberships.map((membership) => {
         const squad = Array.isArray(membership.squads)

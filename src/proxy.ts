@@ -31,7 +31,14 @@ export async function proxy(request: NextRequest) {
     currentUser.status === "authenticated" &&
     currentUser.profile.role === "student"
   ) {
-    if (pathname !== "/leaderboard" && pathname !== "/profile") {
+    // Students get the leaderboards, their profile and student overviews.
+    const studentAllowed =
+      pathname === "/leaderboard" ||
+      pathname.startsWith("/leaderboard/") ||
+      pathname === "/profile" ||
+      pathname === "/student" ||
+      pathname.startsWith("/student/");
+    if (!studentAllowed) {
       const redirectResponse = NextResponse.redirect(
         new URL("/leaderboard", request.url),
       );

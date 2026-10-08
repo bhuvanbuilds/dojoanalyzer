@@ -344,3 +344,122 @@ export async function POST(request: Request) {
     );
   }
 }
+
+/**
+ * Deletes a user: their pending invitation, app profile and sign-in account.
+ * For a student user the student record goes too, with its squad membership
+ * and every weekly belt record. The body must carry confirm: "DELETE".
+ */
+export async function DELETE(request: Request) {
+  const authorization = await requireSuperAdmin();
+  if (authorization.response) return authorization.response;
+  try {
+    const body = (await request.json().catch(() => ({}))) as {
+      email?: unknown;
+      confirm?: unknown;
+    };
+    const email = normalizeEmail(body.email);
+    if (!/^\S+@\S+\.\S+$/.test(email))
+      return NextResponse.json(
+        { error: "A valid email is required" },
+        { status: 400 },
+      );
+    if (body.confirm !== "DELETE")
+      return NextResponse.json(
+        { error: 'Type "DELETE" to confirm' },
+        { status: 400 },
+      );
+    if (normalizeEmail(authorization.user.email) === email)
+      return NextResponse.json(
+        { error: "You can't delete your own account" },
+        { status: 400 },
+      );
+
+    const authUser = (await listAuthUsers()).find(
+      (user) => normalizeEmail(user.email) === email,
+    );
+    const [profileResult, invitationResult] = await Promise.all([
+      authUser
+        ? supabaseAdmin
+            .from("profiles")
+            .select("id, role, student_id")
+            .eq("id", authUser.id)
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+      supabaseAdmin
+        .from("user_invitations")
+        .select("email, role, student_id")
+        .eq("email", email)
+        .maybeSingle(),
+    ]);
+    if (profileResult.error) throw profileResult.error;
+    if (invitationResult.error) throw invitationResult.error;
+    const profile = profileResult.data;
+    const invitation = invitationResult.data;
+    if (!profile && !invitation)
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+    const role = profile?.role ?? invitation?.role ?? null;
+    const studentId =
+      role === "student"
+        ? (profile?.student_id ?? invitation?.student_id ?? null)
+        : null;
+
+    async function run(
+      step: PromiseLike<{ error: { message: string } | null }>,
+    ) {
+      const { error } = await step;
+      if (error) throw error;
+    }
+
+    // Access first, so a half-finished delete never leaves a live login.
+    await run(supabaseAdmin.from("user_invitations").delete().eq("email", email));
+    if (studentId)
+      await run(
+        supabaseAdmin.from("user_invitations").delete().eq("student_id", studentId),
+      );
+    if (authUser)
+      await run(supabaseAdmin.from("profiles").delete().eq("id", authUser.id));
+    if (studentId) {
+      await run(
+        supabaseAdmin.from("profiles").delete().eq("student_id", studentId),
+      );
+      await run(
+        supabaseAdmin
+          .from("weekly_belt_records")
+          .delete()
+          .eq("student_id", studentId),
+      );
+      await run(
+        supabaseAdmin
+          .from("student_memberships")
+          .delete()
+          .eq("student_id", studentId),
+      );
+      await run(supabaseAdmin.from("students").delete().eq("id", studentId));
+    }
+    if (authUser) {
+      const { error } = await supabaseAdmin.auth.admin.deleteUser(authUser.id);
+      if (error) throw error;
+    }
+
+    await writeAuditLog(
+      authorization.user.id,
+      "user_deleted",
+      studentId ? "student" : "user",
+      studentId ?? authUser?.id ?? email,
+      { email, role, student_record_deleted: Boolean(studentId) },
+    );
+
+    return NextResponse.json({ deleted: true, studentRecordDeleted: Boolean(studentId) });
+  } catch (error) {
+    console.error("Super admin users DELETE error:", error);
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error ? error.message : "Unexpected server error",
+      },
+      { status: 500 },
+    );
+  }
+}

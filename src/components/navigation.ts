@@ -10,6 +10,7 @@ import {
   TrendingUp,
   Trophy,
   User,
+  UserRound,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -47,6 +48,7 @@ const EVERYONE = [
 const STAFF = ["super_admin", "campus_manager", "mentor"] as const;
 const MANAGERS = ["super_admin", "campus_manager"] as const;
 const SUPER_ADMIN = ["super_admin"] as const;
+const STUDENT = ["student"] as const;
 
 export const navGroups: readonly NavGroup[] = [
   {
@@ -81,7 +83,22 @@ export const navGroups: readonly NavGroup[] = [
         href: "/leaderboard/language",
         label: "Language belts",
         icon: Languages,
-        roles: STAFF,
+        roles: EVERYONE,
+      },
+    ],
+  },
+  {
+    key: "me",
+    label: "My profile",
+    icon: UserRound,
+    roles: STUDENT,
+    tabs: [
+      {
+        href: "/student",
+        label: "My profile",
+        icon: UserRound,
+        roles: STUDENT,
+        exact: true,
       },
     ],
   },
