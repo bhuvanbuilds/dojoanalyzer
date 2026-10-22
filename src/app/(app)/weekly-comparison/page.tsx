@@ -113,6 +113,7 @@ function WeeklyComparisonContent() {
     CurrentUserProfile | { status: "loading" }
   >(cachedProfile ?? { status: "loading" });
   const [weeks, setWeeks] = useState<Week[]>([]);
+  const [weeksLoaded, setWeeksLoaded] = useState(false);
   // Filters live in the URL so each comparison has its own address.
   const [urlFilters, setUrlFilters] = useUrlFilters({
     from_week_id: "",
@@ -178,7 +179,10 @@ function WeeklyComparisonContent() {
         const response = await fetch(`/api/dashboard/periods${periodQuery}`, {
           signal: controller.signal,
         });
-        if (!response.ok) return;
+        if (!response.ok) {
+          setError("Unable to load available weeks.");
+          return;
+        }
         const result = (await response.json()) as PeriodsResponse;
         const unique = new Map<string, Week>();
         for (const item of result.weeks ?? []) {
@@ -198,6 +202,7 @@ function WeeklyComparisonContent() {
             (right.week_number ?? 0) - (left.week_number ?? 0),
         );
         setWeeks(ordered);
+        setWeeksLoaded(true);
       } catch (loadError) {
         if (!(loadError instanceof DOMException && loadError.name === "AbortError"))
           setError("Unable to load available weeks.");
@@ -481,7 +486,12 @@ function WeeklyComparisonContent() {
               <p className="mt-1 text-sm text-muted">{error}</p>
             </div>
           ) : !fromWeekId || !toWeekId ? (
-            weeks.length || comparisons !== null ? (
+            weeksLoaded && weeks.length < 2 ? (
+              <Empty
+                title="Not enough weeks yet"
+                detail="Comparisons need at least two imported weeks. Upload another weekly CSV to compare."
+              />
+            ) : weeks.length || comparisons !== null ? (
               <Empty title="Pick two weeks" detail="Choose a from week and a to week to compare records." />
             ) : (
               <div className="grid min-h-[50vh] place-items-center">

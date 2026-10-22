@@ -920,6 +920,14 @@ export async function POST(request: Request) {
       );
     }
 
+    // Weekly CSVs are a few hundred KB; refuse anything far beyond that.
+    if (file.size > 10 * 1024 * 1024) {
+      return NextResponse.json(
+        { error: "CSV file must be 10 MB or smaller" },
+        { status: 413 },
+      );
+    }
+
     const originalFile = await file.arrayBuffer();
     // Decode from the same buffer — do not call file.text() after arrayBuffer()
     // (Node/undici FormData File streams can be consumed once).
@@ -934,6 +942,8 @@ export async function POST(request: Request) {
     const parsed = Papa.parse<CSVRow>(csvText, {
       header: true,
       skipEmptyLines: true,
+      // Spreadsheet exports often carry stray spaces or capitals in headers.
+      transformHeader: (header) => header.trim().toLowerCase(),
     });
 
     if (parsed.errors.length > 0) {

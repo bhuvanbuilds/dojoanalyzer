@@ -217,10 +217,19 @@ export function snapshot(
   const members = studentsIn(model, groupBy, key);
   const languageTotals = LANGUAGES.map(() => 0);
   let tested = 0;
+  let holders = 0;
   for (const student of members) {
-    const levels = model.levels.get(student.id)?.get(week);
+    const byWeek = model.levels.get(student.id);
+    if (!byWeek) continue;
+    if (byWeek.has(week)) tested += 1;
+    // Belts are held, not re-earned each week: a student who skipped this
+    // test still holds the belts from their latest test before it.
+    let latest = -Infinity;
+    for (const recorded of byWeek.keys())
+      if (recorded <= week && recorded > latest) latest = recorded;
+    const levels = latest === -Infinity ? undefined : byWeek.get(latest);
     if (!levels) continue;
-    tested += 1;
+    holders += 1;
     levels.forEach((level, index) => (languageTotals[index] += level));
   }
   const totalBelts = sum(languageTotals);
@@ -229,7 +238,7 @@ export function snapshot(
     tested,
     coverage: members.length ? tested / members.length : null,
     totalBelts,
-    avgBelts: tested ? totalBelts / tested : null,
+    avgBelts: holders ? totalBelts / holders : null,
     languageTotals,
   };
 }
@@ -295,11 +304,14 @@ export function trend(
         const overall = snapshot(model, week);
         const index = LANGUAGES.indexOf(group.key as Language);
         const total = overall.languageTotals[index];
+        const holders = studentsIn(model, "overall", "all").filter((student) =>
+          [...(model.levels.get(student.id)?.keys() ?? [])].some((recorded) => recorded <= week),
+        ).length;
         row[group.key] =
           metric === "totalBelts"
             ? total
-            : overall.tested
-              ? total / overall.tested
+            : holders
+              ? total / holders
               : null;
         continue;
       }

@@ -8,6 +8,7 @@ import {
   totalOf,
   type LanguageBelts,
 } from "@/lib/leaderboard/standings";
+import { isUuid } from "@/lib/is-uuid";
 
 type RouteContext = { params: Promise<{ studentId: string }> };
 
@@ -53,6 +54,8 @@ export async function GET(_request: Request, context: RouteContext) {
       );
 
     const { studentId } = await context.params;
+    if (!isUuid(studentId))
+      return NextResponse.json({ error: "Student not found" }, { status: 404 });
     const [result, recordsResult] = await Promise.all([
       loadStandings(null),
       supabaseAdmin
@@ -62,9 +65,7 @@ export async function GET(_request: Request, context: RouteContext) {
         )
         .eq("student_id", studentId)
         .eq("imports.is_current", true)
-        .eq("imports.status", "imported")
-        .order("academic_year", { ascending: true, referencedTable: "weeks" })
-        .order("week_number", { ascending: true, referencedTable: "weeks" }),
+        .eq("imports.status", "imported"),
     ]);
     if (recordsResult.error) throw recordsResult.error;
     if (result.notFound)
@@ -100,8 +101,17 @@ export async function GET(_request: Request, context: RouteContext) {
     >();
     // Belts are never lost: carry the best level so far through each week.
     const best = belts(null);
-    for (const record of (recordsResult.data ?? []) as RecordRow[]) {
-      const week = Array.isArray(record.weeks) ? record.weeks[0] : record.weeks;
+    // `referencedTable` ordering only sorts the embedded week, not the rows,
+    // so order them here before carrying belts forward.
+    const weekOf = (record: RecordRow) =>
+      Array.isArray(record.weeks) ? record.weeks[0] : record.weeks;
+    const ordered = [...((recordsResult.data ?? []) as RecordRow[])].sort(
+      (a, b) =>
+        (weekOf(a)?.academic_year ?? 0) - (weekOf(b)?.academic_year ?? 0) ||
+        (weekOf(a)?.week_number ?? 0) - (weekOf(b)?.week_number ?? 0),
+    );
+    for (const record of ordered) {
+      const week = weekOf(record);
       if (!week) continue;
       const key = `${week.academic_year}-${week.week_number}`;
       const levels = belts(record.final_belt_levels);
@@ -142,7 +152,7 @@ export async function GET(_request: Request, context: RouteContext) {
     return NextResponse.json(
       {
         error:
-          error instanceof Error ? error.message : "Unexpected server error",
+          "Something went wrong on our side. Please try again.",
       },
       { status: 500 },
     );

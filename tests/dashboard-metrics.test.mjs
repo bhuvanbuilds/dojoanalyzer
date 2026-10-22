@@ -68,8 +68,9 @@ test("snapshot counts tested students, coverage and belts for a week", () => {
   assert.equal(shot.students, 4);
   assert.equal(shot.tested, 3);
   assert.equal(shot.coverage, 0.75);
-  assert.equal(shot.totalBelts, 4 + 2 + 1); // ben keeps his 2 python belts
-  assert.deepEqual(shot.languageTotals, [1, 1, 0, 5]);
+  // ben keeps his 2 python belts; dev skipped week 3 but still holds 1.
+  assert.equal(shot.totalBelts, 4 + 2 + 1 + 1);
+  assert.deepEqual(shot.languageTotals, [1, 1, 1, 5]);
   assert.equal(metrics.snapshot(model, 1, "university", "u2").tested, 1);
 });
 
@@ -120,7 +121,8 @@ test("stalled students need three recorded weeks with no gain", () => {
 test("strongest language ignores all-zero groups", () => {
   const model = metrics.buildModel(fixture());
   assert.equal(metrics.strongestLanguage(metrics.snapshot(model, 3)), "python");
-  assert.equal(metrics.strongestLanguage(metrics.snapshot(model, 2, "squad", "s2")), null);
+  // dev was only tested in week 1, but still holds that Node.js belt.
+  assert.equal(metrics.strongestLanguage(metrics.snapshot(model, 2, "squad", "s2")), "nodejs");
 });
 
 test("ignores weeks from universities without squads and resolves week records", () => {
@@ -159,4 +161,19 @@ test("range progress marks students without tests in the range as untested", () 
   assert.equal(range.students[0].status, "untested"); // dev only has week 1
   assert.equal(range.tested, 0);
   assert.equal(range.avgGain, null);
+});
+
+test("weekly belt totals never drop when students skip a test", () => {
+  const data = fixture();
+  // Only cai sits week 4: everyone else keeps the belts they already hold.
+  data.weeks.push({ id: "a4", university_id: "u1", week_number: 4, start_date: null, end_date: null });
+  data.records.push({ s: "cai", w: "a4", l: [1, 0, 0, 0] });
+  const model = metrics.buildModel(data);
+  const week3 = metrics.snapshot(model, 3);
+  const week4 = metrics.snapshot(model, 4);
+  assert.equal(week4.tested, 1);
+  assert.equal(week4.totalBelts, week3.totalBelts);
+  const totals = metrics.trend(model, "totalBelts", "overall").rows.map((row) => row.all);
+  for (let index = 1; index < totals.length; index += 1)
+    assert.ok(totals[index] >= totals[index - 1], `week ${index + 1} dropped`);
 });

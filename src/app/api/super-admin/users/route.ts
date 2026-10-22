@@ -277,6 +277,25 @@ export async function POST(request: Request) {
         .eq("id", authUser.id)
         .maybeSingle();
       if (previousError) throw previousError;
+      // Never let admin access disappear: no demoting yourself, and always
+      // keep at least one super admin.
+      if (previous?.role === "super_admin" && role !== "super_admin") {
+        if (authUser.id === authorization.user.id)
+          return NextResponse.json(
+            { error: "You can't remove your own Super Admin role" },
+            { status: 400 },
+          );
+        const { count, error: countError } = await supabaseAdmin
+          .from("profiles")
+          .select("id", { count: "exact", head: true })
+          .eq("role", "super_admin");
+        if (countError) throw countError;
+        if ((count ?? 0) <= 1)
+          return NextResponse.json(
+            { error: "At least one Super Admin must remain" },
+            { status: 400 },
+          );
+      }
       const { error } = await supabaseAdmin
         .from("profiles")
         .upsert({ id: authUser.id, ...assignment }, { onConflict: "id" });
@@ -457,7 +476,7 @@ export async function DELETE(request: Request) {
     return NextResponse.json(
       {
         error:
-          error instanceof Error ? error.message : "Unexpected server error",
+          "Something went wrong on our side. Please try again.",
       },
       { status: 500 },
     );

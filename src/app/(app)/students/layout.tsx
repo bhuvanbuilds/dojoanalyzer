@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
-export const metadata: Metadata = { title: "Students" };
+export const metadata: Metadata = {
+  title: { default: "Students", template: "%s · Dojo Belt Analyzer" },
+};
 
 export default function Layout({ children }: { children: ReactNode }) {
   return children;

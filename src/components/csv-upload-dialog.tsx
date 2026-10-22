@@ -211,13 +211,24 @@ export function CsvUploadDialog({
       return;
     }
 
+    if (selectedFile.size > 10 * 1024 * 1024) {
+      setFile(null);
+      setState("error");
+      setMessage("CSV file must be 10 MB or smaller.");
+      return;
+    }
+
     setFile(selectedFile);
     if (!isManageSquads) return;
 
     try {
       const parsed = Papa.parse<Record<string, string>>(
         await selectedFile.text(),
-        { header: true, skipEmptyLines: true },
+        {
+          header: true,
+          skipEmptyLines: true,
+          transformHeader: (header) => header.trim().toLowerCase(),
+        },
       );
       const requiredColumns = [
         "id",

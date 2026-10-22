@@ -279,9 +279,12 @@ function Header({
         className="relative z-10 !h-auto"
         color="#ef3837"
         secondaryColor="#f59e0b"
-        trailWidth={7}
-        glowIntensity={1.6}
-        opacity={0.7}
+        trailWidth={6}
+        intensity={1.1}
+        glow={1}
+        linger={1.2}
+        quality="medium"
+        maxDevicePixelRatio={1.5}
       >
         <div className="flex flex-col gap-8 px-5 py-6 sm:px-6 sm:py-7 xl:flex-row xl:items-end xl:justify-between">
           <div className="min-w-0">

@@ -279,7 +279,7 @@ export async function GET(request: Request) {
     return NextResponse.json(
       {
         error:
-          error instanceof Error ? error.message : "Unable to load dashboard",
+          "Something went wrong on our side. Please try again.",
       },
       { status: 500 },
     );

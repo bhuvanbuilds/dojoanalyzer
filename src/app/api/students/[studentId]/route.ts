@@ -4,6 +4,7 @@ import { createRequestSupabaseClient } from "@/lib/auth/server";
 import { writeAuditLog } from "@/lib/auth/authorization";
 import { trySyncStudentAccess } from "@/lib/auth/student-access";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { isUuid } from "@/lib/is-uuid";
 
 type RouteContext = {
   params: Promise<{ studentId: string }>;
@@ -35,6 +36,8 @@ export async function PATCH(request: Request, context: RouteContext) {
     }
 
     const { studentId } = await context.params;
+    if (!isUuid(studentId))
+      return NextResponse.json({ error: "Student not found" }, { status: 404 });
     const isSuperAdmin = currentUser.profile.role === "super_admin";
     const universityId = currentUser.profile.university_id;
     const body = (await request.json()) as {
@@ -52,6 +55,12 @@ export async function PATCH(request: Request, context: RouteContext) {
         );
       }
       updates.name = body.name.trim();
+      if (updates.name.length > 120) {
+        return NextResponse.json(
+          { error: "Name must be 120 characters or fewer" },
+          { status: 400 },
+        );
+      }
     }
 
     if (body.email !== undefined) {
@@ -62,6 +71,12 @@ export async function PATCH(request: Request, context: RouteContext) {
         );
       }
       updates.email = body.email.trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(updates.email) || updates.email.length > 254) {
+        return NextResponse.json(
+          { error: "Enter a valid email address" },
+          { status: 400 },
+        );
+      }
     }
 
     const squadId =
@@ -267,7 +282,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     return NextResponse.json(
       {
         error:
-          error instanceof Error ? error.message : "Unexpected server error",
+          "Something went wrong on our side. Please try again.",
       },
       { status: 500 },
     );

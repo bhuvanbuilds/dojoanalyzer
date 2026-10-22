@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireSuperAdmin, writeAuditLog } from "@/lib/auth/authorization";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { isUuid } from "@/lib/is-uuid";
 
 type Context = { params: Promise<{ universityId: string }> };
 
@@ -9,6 +10,8 @@ export async function GET(_request: Request, context: Context) {
   if (authorization.response) return authorization.response;
   try {
     const { universityId } = await context.params;
+    if (!isUuid(universityId))
+      return NextResponse.json({ error: "University not found" }, { status: 404 });
     const [university, squads, memberships, profiles] = await Promise.all([
       supabaseAdmin
         .from("universities")
@@ -68,11 +71,14 @@ export async function PATCH(request: Request, context: Context) {
   if (authorization.response) return authorization.response;
   try {
     const { universityId } = await context.params;
-    const body = (await request.json()) as { name?: unknown };
-    const name = typeof body.name === "string" ? body.name.trim() : "";
-    if (!name)
+    if (!isUuid(universityId))
+      return NextResponse.json({ error: "University not found" }, { status: 404 });
+    const body = (await request.json().catch(() => ({}))) as { name?: unknown };
+    const name =
+      typeof body.name === "string" ? body.name.trim().replace(/\s+/g, " ") : "";
+    if (!name || name.length > 120)
       return NextResponse.json(
-        { error: "University name is required" },
+        { error: "A university name of up to 120 characters is required" },
         { status: 400 },
       );
     const { data, error } = await supabaseAdmin
@@ -81,6 +87,11 @@ export async function PATCH(request: Request, context: Context) {
       .eq("id", universityId)
       .select("id, name")
       .maybeSingle();
+    if (error?.code === "23505")
+      return NextResponse.json(
+        { error: "That university already exists" },
+        { status: 409 },
+      );
     if (error) throw error;
     if (!data)
       return NextResponse.json(

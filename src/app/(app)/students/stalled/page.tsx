@@ -123,7 +123,14 @@ function StalledStudents() {
   if (profileState.status !== "authenticated")
     return <PageState message="Redirecting" loading />;
   if (error) return <PageState message="Couldn’t load stalled students" detail={error} />;
-  if (!model || week === null) return <PageState message="Loading stalled students" loading />;
+  if (!model) return <PageState message="Loading stalled students" loading />;
+  if (week === null)
+    return (
+      <PageState
+        message="No belt data yet"
+        detail="Upload a weekly belt CSV and stalled students will show up here."
+      />
+    );
 
   const squads = [...new Set(model.data.students.map((s) => s.squad_id))]
     .filter(Boolean)

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUserProfile } from "@/lib/auth/profile";
 import { createRequestSupabaseClient } from "@/lib/auth/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { isUuid } from "@/lib/is-uuid";
 
 type RouteContext = {
   params: Promise<{ studentId: string }>;
@@ -38,6 +39,8 @@ export async function GET(_request: Request, context: RouteContext) {
 
     // Staff open the full profile of any student, on any campus.
     const { studentId } = await context.params;
+    if (!isUuid(studentId))
+      return NextResponse.json({ error: "Student not found" }, { status: 404 });
     const membershipsQuery = supabaseAdmin
       .from("student_memberships")
       .select(
@@ -68,8 +71,6 @@ export async function GET(_request: Request, context: RouteContext) {
       )
       .eq("student_id", studentId)
       .eq("imports.is_current", true)
-      .order("academic_year", { ascending: true, referencedTable: "weeks" })
-      .order("week_number", { ascending: true, referencedTable: "weeks" })
       .order("start_time", { ascending: true });
     const { data: weeklyRecords, error: weeklyRecordsError } =
       await recordsQuery;
@@ -82,7 +83,17 @@ export async function GET(_request: Request, context: RouteContext) {
     // neither the "before" nor the "after" level can drop below an earlier one.
     const keptRecords = (() => {
       const best: Record<string, number> = {};
-      return (weeklyRecords ?? []).map((record) => {
+      // `referencedTable` ordering only sorts the embedded week, not the rows:
+      // order by academic week here, so belts carry forward week by week.
+      const weekOf = (record: NonNullable<typeof weeklyRecords>[number]) =>
+        Array.isArray(record.weeks) ? record.weeks[0] : record.weeks;
+      const ordered = [...(weeklyRecords ?? [])].sort(
+        (a, b) =>
+          (weekOf(a)?.academic_year ?? 0) - (weekOf(b)?.academic_year ?? 0) ||
+          (weekOf(a)?.week_number ?? 0) - (weekOf(b)?.week_number ?? 0) ||
+          String(a.start_time).localeCompare(String(b.start_time)),
+      );
+      return ordered.map((record) => {
         const raise = (levels: unknown) => {
           if (!levels || typeof levels !== "object" || Array.isArray(levels))
             return levels as Record<string, number> | null;
@@ -157,7 +168,7 @@ export async function GET(_request: Request, context: RouteContext) {
     return NextResponse.json(
       {
         error:
-          error instanceof Error ? error.message : "Unexpected server error",
+          "Something went wrong on our side. Please try again.",
       },
       { status: 500 },
     );

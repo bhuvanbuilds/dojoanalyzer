@@ -60,5 +60,7 @@ export async function writeAuditLog(
     target_id: targetId,
     metadata,
   });
-  if (error) throw error;
+  // The change itself already succeeded: a failed audit entry is logged, but
+  // must not turn that success into an error (users would retry and repeat it).
+  if (error) console.error("Audit log write failed:", { action, targetType, targetId, error });
 }

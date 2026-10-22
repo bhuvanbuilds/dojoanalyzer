@@ -552,6 +552,7 @@ export function validateImportRows({ rows, students, memberships, squads, weekBy
 
     if (!sourceId) addError(errors, rowNumber, "id", "Source record ID is required", row.id);
     if (!email) addError(errors, rowNumber, "email", "Student email is required", row.email);
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) addError(errors, rowNumber, "email", "Student email is not a valid address", row.email);
     if (!row.student_name?.trim()) addError(errors, rowNumber, "student_name", "Student name is required", row.student_name);
     if (!squadNumber) addError(errors, rowNumber, "squad_number", "Squad number is required", row.squad_number);
     if (!startTime) addError(errors, rowNumber, "start_time", "Invalid start_time", row.start_time);

@@ -133,7 +133,7 @@ export async function GET(request: Request) {
     return NextResponse.json(
       {
         error:
-          error instanceof Error ? error.message : "Unexpected server error",
+          "Something went wrong on our side. Please try again.",
       },
       { status: 500 },
     );
@@ -178,6 +178,12 @@ export async function POST(request: Request) {
     if (!name || !email || !squadId || !universityId) {
       return NextResponse.json(
         { error: "name, email, squadId, and universityId are required" },
+        { status: 400 },
+      );
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254 || name.length > 120) {
+      return NextResponse.json(
+        { error: "Enter a valid email and a name of up to 120 characters" },
         { status: 400 },
       );
     }
@@ -281,7 +287,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          error instanceof Error ? error.message : "Unexpected server error",
+          "Something went wrong on our side. Please try again.",
       },
       { status: 500 },
     );

@@ -60,8 +60,14 @@ export async function GET(request: Request) {
       throw error;
     }
 
+    // squad_number is text: sort as numbers so 138 comes before 1000.
+    const ordered = [...(data ?? [])].sort((left, right) =>
+      String(left.squad_number).localeCompare(String(right.squad_number), undefined, {
+        numeric: true,
+      }),
+    );
     return NextResponse.json({
-      squads: (data ?? []).map((squad) => {
+      squads: ordered.map((squad) => {
         const university = Array.isArray(squad.universities)
           ? squad.universities[0]
           : squad.universities;
@@ -79,7 +85,7 @@ export async function GET(request: Request) {
     return NextResponse.json(
       {
         error:
-          error instanceof Error ? error.message : "Unexpected server error",
+          "Something went wrong on our side. Please try again.",
       },
       { status: 500 },
     );
@@ -111,7 +117,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const body = (await request.json()) as {
+    const body = (await request.json().catch(() => ({}))) as {
       squadNumber?: unknown;
       universityId?: unknown;
     };
@@ -127,6 +133,13 @@ export async function POST(request: Request) {
     if (!squadNumber || !universityId) {
       return NextResponse.json(
         { error: "squadNumber and universityId are required" },
+        { status: 400 },
+      );
+    }
+    // CSV imports match squads by this number, so it must look like one.
+    if (!/^\d{1,6}$/.test(squadNumber)) {
+      return NextResponse.json(
+        { error: "Squad number must be digits only, e.g. 183" },
         { status: 400 },
       );
     }
@@ -202,7 +215,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          error instanceof Error ? error.message : "Unexpected server error",
+          "Something went wrong on our side. Please try again.",
       },
       { status: 500 },
     );

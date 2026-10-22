@@ -76,11 +76,12 @@ export async function POST(request: Request) {
   const authorization = await requireSuperAdmin();
   if (authorization.response) return authorization.response;
   try {
-    const body = (await request.json()) as { name?: unknown };
-    const name = typeof body.name === "string" ? body.name.trim() : "";
-    if (!name)
+    const body = (await request.json().catch(() => ({}))) as { name?: unknown };
+    const name =
+      typeof body.name === "string" ? body.name.trim().replace(/\s+/g, " ") : "";
+    if (!name || name.length > 120)
       return NextResponse.json(
-        { error: "University name is required" },
+        { error: "A university name of up to 120 characters is required" },
         { status: 400 },
       );
 

@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getCurrentUserProfile } from "@/lib/auth/profile";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { isUuid } from "@/lib/is-uuid";
 
 type RouteContext = {
   params: Promise<{ importId: string }>;
@@ -51,6 +52,8 @@ export async function GET(request: Request, context: RouteContext) {
     }
 
     const { importId } = await context.params;
+    if (!isUuid(importId))
+      return NextResponse.json({ error: "Import not found" }, { status: 404 });
     let importQuery = supabaseAdmin
       .from("imports")
       .select(
@@ -121,7 +124,7 @@ export async function GET(request: Request, context: RouteContext) {
     return NextResponse.json(
       {
         error:
-          error instanceof Error ? error.message : "Unexpected server error",
+          "Something went wrong on our side. Please try again.",
       },
       { status: 500 },
     );
