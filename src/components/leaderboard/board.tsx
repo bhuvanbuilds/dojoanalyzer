@@ -39,6 +39,7 @@ type Row = {
   rank: number;
   student_id: string;
   student_name: string | null;
+  university_id: string | null;
   university_name: string | null;
   squad_number: string | null;
   change: number;
@@ -209,6 +210,7 @@ export function LeaderboardBoard({ kind }: { kind: Kind }) {
     name: row.student_name ?? "Unnamed student",
     squad: row.squad_number,
     university: row.university_name,
+    universityId: row.university_id,
     score:
       kind === "overall" ? (row.total_belts_earned ?? 0) : (row.belt_level ?? 0),
     change: row.change,
@@ -419,6 +421,11 @@ export function LeaderboardBoard({ kind }: { kind: Kind }) {
       error={error}
       currentStudentId={isStudent ? profile.student_id : null}
       linkStudents={!isStudent}
+      // Staff open full history only for their own campus; super admins for all.
+      canOpenHistory={(entry) =>
+        profile.role === "super_admin" ||
+        (!isStudent && entry.universityId !== null && entry.universityId === profile.university_id)
+      }
       emptyMessage={
         search || universityId || squadId
           ? "No students match these filters."

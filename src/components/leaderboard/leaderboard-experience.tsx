@@ -49,6 +49,7 @@ export function LeaderboardExperience({
   error,
   currentStudentId,
   linkStudents,
+  canOpenHistory,
   emptyMessage,
   language,
 }: {
@@ -62,14 +63,17 @@ export function LeaderboardExperience({
   error: string;
   currentStudentId: string | null;
   linkStudents: boolean;
+  /** Whether this viewer may open the student's full (campus-only) history. */
+  canOpenHistory: (entry: RankedStudent) => boolean;
   emptyMessage: string;
   /** Set on single-language leaderboards; the score is that language's level. */
   language?: Language;
 }) {
   const router = useRouter();
-  // Clicking a student opens their profile page.
+  // Clicking a student opens their full history when this viewer may see it,
+  // and otherwise the public overview every role can open.
   const openEntry = (entry: RankedStudent) =>
-    router.push(studentHref(entry.studentId, { asStudent: !linkStudents }));
+    router.push(studentHref(entry.studentId, { asStudent: !canOpenHistory(entry) }));
   const [view, setView] = useState<RankingView>(readView);
   const top = entries.slice(0, 3);
   const rest = entries.slice(3);

@@ -32,12 +32,24 @@ function pad(value: number) {
  * have an account. Mirrors the 404 page: rays, grain, a fuzzy headline
  * sinking off the bottom, and a live countdown to reopening.
  */
-export function MaintenanceView({ until, email }: { until: string; email: string | null }) {
+export function MaintenanceView({
+  until,
+  message,
+  email,
+}: {
+  until: string | null;
+  message: string | null;
+  email: string | null;
+}) {
   const router = useRouter();
   const reduced = useReducedMotion();
   const nowSeconds = useSyncExternalStore(subscribeClock, clockSnapshot, serverClock);
-  const target = new Date(until);
-  const left = nowSeconds === null ? null : Math.max(0, Math.floor(target.getTime() / 1000) - nowSeconds);
+  // No end time means "back soon": no countdown, just the message.
+  const target = until ? new Date(until) : null;
+  const left =
+    nowSeconds === null || !target
+      ? null
+      : Math.max(0, Math.floor(target.getTime() / 1000) - nowSeconds);
   const live = left === 0;
 
   const parts =
@@ -49,13 +61,15 @@ export function MaintenanceView({ until, email }: { until: string; email: string
           seconds: left % 60,
         };
 
-  const targetLabel = target.toLocaleTimeString("en-IN", {
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "Asia/Kolkata",
-  });
+  const targetLabel = target
+    ? target.toLocaleTimeString("en-IN", {
+        hour: "numeric",
+        minute: "2-digit",
+        timeZone: "Asia/Kolkata",
+      })
+    : null;
   const localLabel =
-    nowSeconds === null
+    nowSeconds === null || !target
       ? null
       : `${target.toLocaleDateString(undefined, {
           weekday: "long",
@@ -134,7 +148,7 @@ export function MaintenanceView({ until, email }: { until: string; email: string
           className="font-mono text-[12px] uppercase tracking-[0.28em]"
           style={{ color: live ? "#7dffb0" : AMBER }}
         >
-          {live ? "We’re back" : "Under severe testing"}
+          {live ? "We’re back" : "Under maintenance"}
         </motion.p>
         <motion.h1
           {...rise(0.16)}
@@ -142,6 +156,8 @@ export function MaintenanceView({ until, email }: { until: string; email: string
         >
           {live ? (
             "The dojo is open again."
+          ) : !targetLabel ? (
+            "We’ll be back soon."
           ) : (
             <>
               We’ll be back live at{" "}
@@ -153,10 +169,12 @@ export function MaintenanceView({ until, email }: { until: string; email: string
         </motion.h1>
         <motion.p {...rise(0.22)} className="mt-4 max-w-lg text-[15px] leading-7 text-white/65">
           {live
-            ? "Testing is done. Sign in again to pick up where you left off — if you still can’t get in, ask your campus team to add you."
-            : "We’re putting every belt, leaderboard and import through its paces before opening the doors. Hang tight — it’s worth the wait."}
+            ? "Maintenance is done. Head back in and pick up where you left off."
+            : (message ??
+              "We’re improving Dojo Belt Analyzer and checking every belt, leaderboard and import. Hang tight — it’s worth the wait.")}
         </motion.p>
 
+        {target ? (
         <motion.div
           {...rise(0.3)}
           role="timer"
@@ -174,6 +192,7 @@ export function MaintenanceView({ until, email }: { until: string; email: string
           <Colon live={live} />
           <Unit label="Seconds" value={parts ? pad(parts.seconds) : "--"} live={live} reduced={Boolean(reduced)} />
         </motion.div>
+        ) : null}
 
         <motion.p
           {...rise(0.36)}
@@ -235,7 +254,7 @@ export function MaintenanceView({ until, email }: { until: string; email: string
       >
         <FuzzyText
           key={live ? "live" : "soon"}
-          text={live ? "LIVE" : "5 PM"}
+          text={live ? "LIVE" : targetLabel ? targetLabel.toUpperCase().replace(":00", "") : "SOON"}
           widthRatio={0.5}
           fontWeight={800}
           className="max-w-none font-display"

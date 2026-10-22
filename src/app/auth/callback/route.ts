@@ -82,13 +82,11 @@ export async function GET(request: Request) {
       if (access?.activated) currentUser = await getCurrentUserProfile(supabase);
     }
   }
-  // Signed in but no account yet: park them on the countdown page.
   const destination =
-    currentUser.status !== "authenticated"
-      ? "/maintenance"
-      : currentUser.profile.role === "student"
-        ? "/leaderboard"
-        : "/";
+    currentUser.status === "authenticated" &&
+    currentUser.profile.role === "student"
+      ? "/leaderboard"
+      : "/";
 
   return NextResponse.redirect(new URL(destination, requestUrl.origin));
 }

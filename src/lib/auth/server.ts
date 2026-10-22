@@ -18,7 +18,7 @@ export async function createRequestSupabaseClient() {
               cookieStore.set(name, value, options);
             });
           } catch {
-            // Server Components (e.g. /maintenance) can't write cookies. The
+            // Server Components can't write cookies. The
             // proxy refreshes the session on every request, so skipping is safe.
           }
         },

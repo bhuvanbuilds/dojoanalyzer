@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { getCurrentUserProfile } from "@/lib/auth/profile";
+import { getMaintenance } from "@/lib/maintenance";
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -27,19 +28,26 @@ export async function proxy(request: NextRequest) {
 
   const currentUser = await getCurrentUserProfile(supabase);
   const pathname = request.nextUrl.pathname;
-  if (
-    (currentUser.status === "unassigned" || currentUser.status === "invalid_role") &&
-    pathname !== "/maintenance"
-  ) {
-    // Signed in without an account: only the countdown page is open to them.
-    const redirectResponse = NextResponse.redirect(
-      new URL("/maintenance", request.url),
-    );
-    response.cookies
-      .getAll()
-      .forEach((cookie) => redirectResponse.cookies.set(cookie));
-    return redirectResponse;
+
+  // Maintenance: only developers and super admins (who hold the switch) stay
+  // in. Everyone else gets the maintenance page, and their API calls a 503.
+  const maintenanceExempt = pathname === "/maintenance" || pathname === "/api/maintenance";
+  if (!maintenanceExempt) {
+    const maintenance = await getMaintenance();
+    const insider =
+      currentUser.status === "authenticated" && currentUser.profile.role === "super_admin";
+    if (maintenance.enabled && !insider) {
+      if (pathname.startsWith("/api/"))
+        return NextResponse.json(
+          { error: "Dojo Belt Analyzer is under maintenance. Please try again soon." },
+          { status: 503, headers: { "Retry-After": "300" } },
+        );
+      const redirectResponse = NextResponse.redirect(new URL("/maintenance", request.url));
+      response.cookies.getAll().forEach((cookie) => redirectResponse.cookies.set(cookie));
+      return redirectResponse;
+    }
   }
+  if (pathname.startsWith("/api/") || pathname === "/maintenance") return response;
   if (
     currentUser.status === "authenticated" &&
     currentUser.profile.role === "student"
@@ -50,7 +58,9 @@ export async function proxy(request: NextRequest) {
       pathname.startsWith("/leaderboard/") ||
       pathname === "/profile" ||
       pathname === "/student" ||
-      pathname.startsWith("/student/");
+      pathname.startsWith("/student/") ||
+      pathname === "/support" ||
+      pathname.startsWith("/support/");
     if (!studentAllowed) {
       const redirectResponse = NextResponse.redirect(
         new URL("/leaderboard", request.url),
@@ -69,7 +79,8 @@ export async function proxy(request: NextRequest) {
       pathname === "/universities" ||
       pathname.startsWith("/universities/") ||
       pathname === "/audit-logs" ||
-      pathname.startsWith("/audit-logs/");
+      pathname.startsWith("/audit-logs/") ||
+      pathname.startsWith("/settings");
     const managerOnly =
       pathname === "/imports" || pathname.startsWith("/imports/");
     if (
@@ -93,7 +104,6 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     "/",
-    "/maintenance",
     "/dashboard",
     "/dashboard/:path*",
     "/students",
@@ -117,5 +127,10 @@ export const config = {
     "/profile",
     "/student",
     "/student/:path*",
+    "/support",
+    "/support/:path*",
+    "/settings/:path*",
+    "/maintenance",
+    "/api/:path*",
   ],
 };

@@ -10,7 +10,7 @@ import { DeleteUserDialog } from "@/components/users/delete-user-dialog";
 import { Toast, type ToastMessage } from "@/components/ui/toast";
 import { Dropdown } from "@/components/ui/dropdown";
 
-type Role = "super_admin" | "campus_manager" | "mentor" | "student";
+type Role = "super_admin" | "developer" | "campus_manager" | "mentor" | "student";
 type UserRow = {
   email: string;
   full_name: string | null;
@@ -25,6 +25,7 @@ type Option = { id: string; name: string | null; email?: string | null };
 
 const labels: Record<Role, string> = {
   super_admin: "Super Admin",
+  developer: "Developer",
   campus_manager: "Campus Manager",
   mentor: "Mentor",
   student: "Student",
@@ -108,7 +109,8 @@ export default function UsersPage() {
         fullName: name,
         email,
         role,
-        universityId: role === "super_admin" ? null : universityId || null,
+        universityId:
+          role === "super_admin" || role === "developer" ? null : universityId || null,
         studentId: role === "student" ? studentId || null : null,
       }),
     });
@@ -188,7 +190,7 @@ export default function UsersPage() {
               ))}
             </Dropdown>
           </label>
-          {role !== "super_admin" && (
+          {role !== "super_admin" && role !== "developer" && (
             <label className="flex flex-col gap-1.5 text-xs font-semibold text-ink-2">
               University
               <Dropdown chevron

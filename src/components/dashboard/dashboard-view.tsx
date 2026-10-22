@@ -278,7 +278,7 @@ function Header({
       <GlowCursor
         className="relative z-10 !h-auto"
         color="#ef3837"
-        secondaryColor="#f59e0b"
+        secondaryColor="#f50b0b"
         trailWidth={6}
         intensity={1.1}
         glow={1}

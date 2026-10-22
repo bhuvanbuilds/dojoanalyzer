@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import type { User } from "@supabase/supabase-js";
 import { requireSuperAdmin, writeAuditLog } from "@/lib/auth/authorization";
-import { USER_ROLES, type UserRole } from "@/lib/auth/profile";
+import { ASSIGNABLE_ROLES, type AssignableRole } from "@/lib/auth/profile";
+
+// Super admins and developers are global: no university, no student record.
+const isGlobalRole = (role: string | null | undefined) =>
+  role === "super_admin" || role === "developer";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 async function listAuthUsers() {
@@ -107,7 +111,7 @@ export async function GET(request: Request) {
     });
     return NextResponse.json({
       users: records,
-      roles: USER_ROLES,
+      roles: ASSIGNABLE_ROLES,
       universities: universitiesResult.data ?? [],
       students: studentsResult.data ?? [],
     });
@@ -137,15 +141,15 @@ export async function POST(request: Request) {
     const email = normalizeEmail(body.email);
     const fullName =
       typeof body.fullName === "string" ? body.fullName.trim() : "";
-    const role = body.role as UserRole;
+    const role = body.role as AssignableRole;
     const requestedUniversityId =
       typeof body.universityId === "string" ? body.universityId.trim() : "";
     const universityId =
-      role === "super_admin" ? null : requestedUniversityId || null;
+      isGlobalRole(role) ? null : requestedUniversityId || null;
     if (
       !/^\S+@\S+\.\S+$/.test(email) ||
       !fullName ||
-      !USER_ROLES.includes(role)
+      !ASSIGNABLE_ROLES.includes(role)
     ) {
       return NextResponse.json(
         { error: "A valid email, name, and supported role are required" },
@@ -153,15 +157,15 @@ export async function POST(request: Request) {
       );
     }
     if (
-      (role === "super_admin" && (body.universityId || body.studentId)) ||
-      (role !== "super_admin" && !universityId) ||
-      (role !== "super_admin" && !isUuid(universityId ?? ""))
+      (isGlobalRole(role) && (body.universityId || body.studentId)) ||
+      (!isGlobalRole(role) && !universityId) ||
+      (!isGlobalRole(role) && !isUuid(universityId ?? ""))
     ) {
       return NextResponse.json(
         {
           error:
-            role === "super_admin"
-              ? "Super Admin assignments must not include a university or student record"
+            isGlobalRole(role)
+              ? "Super Admin and Developer assignments must not include a university or student record"
               : "A valid university UUID is required for this role",
         },
         { status: 400 },
@@ -279,20 +283,20 @@ export async function POST(request: Request) {
       if (previousError) throw previousError;
       // Never let admin access disappear: no demoting yourself, and always
       // keep at least one super admin.
-      if (previous?.role === "super_admin" && role !== "super_admin") {
+      if (isGlobalRole(previous?.role) && !isGlobalRole(role)) {
         if (authUser.id === authorization.user.id)
           return NextResponse.json(
-            { error: "You can't remove your own Super Admin role" },
+            { error: "You can't remove your own admin access" },
             { status: 400 },
           );
         const { count, error: countError } = await supabaseAdmin
           .from("profiles")
           .select("id", { count: "exact", head: true })
-          .eq("role", "super_admin");
+          .in("role", ["super_admin", "developer"]);
         if (countError) throw countError;
         if ((count ?? 0) <= 1)
           return NextResponse.json(
-            { error: "At least one Super Admin must remain" },
+            { error: "At least one Super Admin or Developer must remain" },
             { status: 400 },
           );
       }

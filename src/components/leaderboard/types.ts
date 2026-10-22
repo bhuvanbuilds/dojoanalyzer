@@ -7,6 +7,7 @@ export type RankedStudent = {
   name: string;
   squad: string | null;
   university: string | null;
+  universityId: string | null;
   score: number;
   change: number;
   /** Per-language belts (overall leaderboard only). */

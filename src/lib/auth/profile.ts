@@ -10,15 +10,24 @@ export const USER_ROLES = [
 
 export type UserRole = (typeof USER_ROLES)[number];
 
+/**
+ * Roles that can be stored and assigned. A developer has every super admin
+ * power (the app treats them as `super_admin` with `is_developer` set) and
+ * is the only role that stays in the app while maintenance mode is on.
+ */
+export const ASSIGNABLE_ROLES = [...USER_ROLES, "developer"] as const;
+export type AssignableRole = (typeof ASSIGNABLE_ROLES)[number];
+
 export type UserProfile = {
   id: string;
   full_name: string | null;
   role: UserRole;
   university_id: string | null;
   student_id: string | null;
+  is_developer: boolean;
 };
 
-type ProfileRow = Omit<UserProfile, "role"> & {
+type ProfileRow = Omit<UserProfile, "role" | "is_developer"> & {
   role: string;
 };
 
@@ -146,6 +155,16 @@ async function loadCurrentUserProfile(
 
   const profile = profileData as ProfileRow;
 
+  if (profile.role === "developer") {
+    if (profile.university_id !== null || profile.student_id !== null)
+      return { status: "invalid_role", user, profile: null };
+    return {
+      status: "authenticated",
+      user,
+      profile: { ...profile, role: "super_admin", is_developer: true },
+    };
+  }
+
   if (
     !isUserRole(profile.role) ||
     (profile.role === "super_admin" &&
@@ -167,6 +186,7 @@ async function loadCurrentUserProfile(
     profile: {
       ...profile,
       role: profile.role,
+      is_developer: false,
     },
   };
 }

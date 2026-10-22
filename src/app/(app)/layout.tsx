@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 import { Navbar } from "@/components/navbar";
+import { SupportLauncher } from "@/components/support/support-launcher";
+import { MaintenanceBanner } from "@/components/maintenance-banner";
 
 /**
  * Layout for all authenticated campus/mentor management pages.
@@ -17,8 +19,10 @@ import { Navbar } from "@/components/navbar";
 export default function AppLayout({ children }: { children: ReactNode }) {
   return (
     <div className="dot-matrix relative min-h-screen">
+      <MaintenanceBanner />
       <Navbar />
       <div className="relative z-10">{children}</div>
+      <SupportLauncher />
     </div>
   );
 }
