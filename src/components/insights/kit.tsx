@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { motion, useReducedMotion } from "motion/react";
 import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
@@ -22,6 +23,7 @@ import {
 } from "@/components/dashboard/chart-kit";
 import { LANGUAGES, LANGUAGE_LABELS, type Language } from "@/lib/dashboard/metrics";
 import { LanguageLogo } from "@/components/belts/belts";
+import { Dropdown } from "@/components/ui/dropdown";
 
 /* ─── Controls ───────────────────────────────────────────────────────────── */
 
@@ -92,14 +94,14 @@ export function PillSelect({
       <span className="pointer-events-none pl-3 text-[11px] font-bold uppercase tracking-[0.1em] text-faint">
         {label}
       </span>
-      <select
+      <Dropdown
         value={value}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(value) => onChange(value)}
         disabled={disabled}
         className="min-w-0 max-w-[200px] cursor-pointer appearance-none truncate bg-transparent py-2 pl-2 pr-7 text-[13px] font-semibold text-ink outline-none disabled:cursor-not-allowed"
       >
         {children}
-      </select>
+      </Dropdown>
       <svg
         aria-hidden="true"
         viewBox="0 0 16 16"
@@ -154,6 +156,7 @@ export function StatTile({
   tint,
   footer,
   index = 0,
+  href,
 }: {
   label: string;
   value: number | null;
@@ -162,15 +165,14 @@ export function StatTile({
   tint: string;
   footer?: ReactNode;
   index?: number;
+  /** Page behind the number; makes the whole tile a link. */
+  href?: string;
 }) {
   const reduced = useReducedMotion();
-  return (
-    <motion.div
-      initial={reduced ? false : { opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.05, duration: 0.4 }}
+  const tile = (
+    <Cell
+      className={`h-full px-4 py-4 sm:px-5 ${href ? "transition-colors group-hover:bg-surface-2" : ""}`}
     >
-      <Cell className="h-full px-4 py-4 sm:px-5">
         <div className="flex items-start justify-between gap-2">
           <span
             className="grid h-9 w-9 place-items-center rounded-xl"
@@ -185,9 +187,31 @@ export function StatTile({
         <div className="mt-3 font-display text-[30px] font-bold leading-none tracking-[-0.035em] tabular-nums">
           {value === null ? "—" : <CountUp to={value} decimals={decimals} />}
         </div>
-        <p className="mt-1.5 text-[13px] font-semibold text-ink-2">{label}</p>
+        <p className="mt-1.5 flex items-center gap-1 text-[13px] font-semibold text-ink-2">
+          {label}
+          {href ? (
+            <ArrowUpRight
+              size={13}
+              className="text-faint transition group-hover:-translate-y-px group-hover:translate-x-px group-hover:text-ink"
+            />
+          ) : null}
+        </p>
         {footer ? <div className="mt-1.5">{footer}</div> : null}
       </Cell>
+  );
+  return (
+    <motion.div
+      initial={reduced ? false : { opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.05, duration: 0.4 }}
+    >
+      {href ? (
+        <Link href={href} className="group block h-full">
+          {tile}
+        </Link>
+      ) : (
+        tile
+      )}
     </motion.div>
   );
 }

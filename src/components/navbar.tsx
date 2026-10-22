@@ -223,6 +223,7 @@ function Brand({ compact = false }: { compact?: boolean }) {
           alt="Kalvium"
           width={2560}
           height={543}
+          sizes="96px"
           className="h-[18px] w-auto"
         />
         <span className="font-display text-[14px] font-bold tracking-[-0.02em] text-ink">
@@ -239,6 +240,7 @@ function Brand({ compact = false }: { compact?: boolean }) {
         alt="Kalvium"
         width={2560}
         height={543}
+        sizes="96px"
         preload
         className="h-[18px] w-auto"
       />

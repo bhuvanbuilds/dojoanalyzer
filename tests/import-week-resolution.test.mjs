@@ -541,3 +541,47 @@ test("date-derived week labels show the exact single test date", () => {
     "Week 13 · Sep 18, 2026",
   );
 });
+test("dates already imported under another academic year are rejected", () => {
+  const history = [
+    {
+      id: "week-2025-1",
+      university_id: universityId,
+      academic_year: 2025,
+      week_number: 1,
+      start_date: dates[0],
+      end_date: dates[0],
+    },
+  ];
+  const resolution = resolve([row({ date: dates[0] })], history, 2026);
+
+  assert.equal(resolution.errors.length, 1);
+  assert.match(resolution.errors[0].error_message, /already imported under academic year 2025/);
+});
+
+test("belt levels above the top of the ladder are rejected", () => {
+  const tooHigh = JSON.stringify({ cpp: 10, java: 0, nodejs: 0, python: 0 });
+  const result = checkRows([row({ final: tooHigh })]);
+  assert.ok(result.errors.some((error) => /at most 9/.test(error.error_message)));
+});
+
+test("academic year is inferred from the CSV dates", () => {
+  const week = (year, date) => ({
+    id: `${year}-${date}`,
+    university_id: universityId,
+    academic_year: year,
+    week_number: 1,
+    start_date: date,
+    end_date: date,
+  });
+  const infer = (csvDates, history) =>
+    validation.inferAcademicYear(csvDates.map((date) => row({ date })), history, universityId);
+
+  // No history: the calendar year of the last test.
+  assert.equal(infer(["2025-11-28", "2026-02-13"], []), 2026);
+  // Dates already imported keep their year; with duplicates the latest year wins.
+  assert.equal(infer(["2025-11-28"], [week(2025, "2025-11-28"), week(2026, "2025-11-28")]), 2026);
+  // The next weekly test continues the latest year.
+  assert.equal(infer(["2026-10-16"], [week(2026, "2026-10-09")]), 2026);
+  // A long break starts the next academic year.
+  assert.equal(infer(["2027-01-15"], [week(2026, "2026-10-09")]), 2027);
+});

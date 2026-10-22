@@ -113,6 +113,45 @@ function parseTimestamp(value: string) {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
+const NEW_YEAR_GAP_DAYS = 60;
+
+/**
+ * Picks the academic year a CSV belongs to, so uploaders never choose it:
+ * - dates already imported keep the year they were imported under (latest wins);
+ * - otherwise the CSV continues the latest year, unless it starts more than
+ *   NEW_YEAR_GAP_DAYS after that year's last test, which opens the next year;
+ * - with no history, the year is the calendar year of the CSV's last test.
+ */
+export function inferAcademicYear(
+  rows: CSVRow[],
+  weeks: ImportWeek[],
+  universityId: string,
+) {
+  const dates = rows
+    .map((row) => parseTimestamp(row.start_time ?? "")?.toISOString().slice(0, 10))
+    .filter((date): date is string => Boolean(date))
+    .sort();
+  const campusWeeks = weeks.filter((week) => week.university_id === universityId);
+  const fallback = Number((dates.at(-1) ?? new Date().toISOString()).slice(0, 4));
+  if (!dates.length || !campusWeeks.length) return fallback;
+
+  const csvDates = new Set(dates);
+  const matched = campusWeeks
+    .filter((week) => csvDates.has(week.start_date))
+    .map((week) => week.academic_year);
+  if (matched.length) return Math.max(...matched);
+
+  const latestYear = Math.max(...campusWeeks.map((week) => week.academic_year));
+  const lastTest = campusWeeks
+    .filter((week) => week.academic_year === latestYear)
+    .map((week) => week.end_date || week.start_date)
+    .sort()
+    .at(-1)!;
+  const gapDays =
+    (Date.parse(`${dates[0]}T00:00:00Z`) - Date.parse(`${lastTest}T00:00:00Z`)) / 86_400_000;
+  return gapDays > NEW_YEAR_GAP_DAYS ? Math.max(latestYear + 1, fallback) : latestYear;
+}
+
 export function resolveWeeksForRows(
   rows: CSVRow[],
   weeks: ImportWeek[],
@@ -158,6 +197,30 @@ export function resolveWeeksForRows(
         date,
       );
     }
+  }
+
+  // A test date belongs to exactly one academic year. Importing the same
+  // dates under another year would duplicate every student's history.
+  const otherYearByDate = new Map<string, number>();
+  const sameYearDates = new Set(scopedWeeks.map((week) => week.start_date));
+  for (const week of weeks) {
+    if (
+      week.university_id === universityId &&
+      week.academic_year !== academicYear &&
+      !sameYearDates.has(week.start_date)
+    )
+      otherYearByDate.set(week.start_date, week.academic_year);
+  }
+  for (const [rowNumber, date] of datesByRow) {
+    const otherYear = otherYearByDate.get(date);
+    if (otherYear !== undefined)
+      addError(
+        errors,
+        rowNumber,
+        "start_time",
+        `${date} is already imported under academic year ${otherYear}; choose that academic year instead of ${academicYear}.`,
+        date,
+      );
   }
 
   const existingWeeksByDate = new Map<string, ImportWeek[]>();
@@ -290,6 +353,9 @@ export function resolveWeeksForRows(
   };
 }
 
+// Highest belt on the ladder (Sr. Red); mirrors BELT_SLOTS in src/lib/belts.ts.
+const MAX_BELT_LEVEL = 9;
+
 function parseBeltLevels(
   value: string,
   fieldName: string,
@@ -325,6 +391,9 @@ function parseBeltLevels(
     const level = (parsed as Record<string, unknown>)[language];
     if (typeof level !== "number" || !Number.isFinite(level) || !Number.isInteger(level) || level < 0) {
       return { error: `${fieldName} ${language} must be a non-negative integer` };
+    }
+    if (level > MAX_BELT_LEVEL) {
+      return { error: `${fieldName} ${language} must be at most ${MAX_BELT_LEVEL} (Sr. Red)` };
     }
     levels[language] = level;
   }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUserProfile } from "@/lib/auth/profile";
 import { createRequestSupabaseClient } from "@/lib/auth/server";
+import { keepEarnedBelts } from "@/lib/earned-belts";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 const LANGUAGES = ["cpp", "java", "nodejs", "python"] as const;
@@ -138,7 +139,13 @@ async function loadHistory(
       if (!data || data.length < 1000) break;
     }
   }
-  for (const list of byStudent.values()) list.sort((a, b) => a.key - b.key);
+  // Belts are never lost: a lower later level keeps the earlier belt.
+  for (const [studentId, list] of byStudent) {
+    byStudent.set(
+      studentId,
+      keepEarnedBelts(list, (record) => record.key).sort((a, b) => a.key - b.key),
+    );
+  }
   return byStudent;
 }
 
@@ -397,12 +404,12 @@ export async function GET(request: Request) {
         const student = nested(membership.students);
         const squad = nested(membership.squads);
         const records = history.get(studentId) ?? [];
-        const fromRecord =
-          recordsByStudentWeek.get(`${studentId}:${fromWeekId}`) ??
-          [...records].reverse().find((record) => record.key <= fromKey);
+        const fromRecord = [...records]
+          .reverse()
+          .find((record) => record.key <= fromKey);
         const toRecord =
-          recordsByStudentWeek.get(`${studentId}:${toWeekId}`) ??
-          records.find((record) => record.key === toKey);
+          records.find((record) => record.key === toKey) ??
+          recordsByStudentWeek.get(`${studentId}:${toWeekId}`);
         const fromLanguages = recordLanguages(fromRecord);
         const toLanguages = recordLanguages(toRecord);
         const fromInvalid = Boolean(fromRecord && !fromLanguages);

@@ -243,20 +243,27 @@ function StudentCard({
       <Cell className="group h-full">
         <div className="flex h-full flex-col p-4">
           <div className="flex items-start gap-3">
-            <StudentAvatar
-              id={student.id}
-              name={student.name}
-              email={student.email}
-            />
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-display text-[15px] font-semibold tracking-[-0.01em] text-ink">
-                {student.name ?? "Unnamed student"}
-              </p>
-              <p className="mt-0.5 flex items-center gap-1.5 truncate text-[12.5px] text-muted">
-                <Mail size={12} className="shrink-0" />
-                <span className="truncate">{student.email ?? "No email"}</span>
-              </p>
-            </div>
+            <button
+              type="button"
+              onClick={() => onHistory(student)}
+              title="Open profile"
+              className="group/open flex min-w-0 flex-1 items-start gap-3 text-left"
+            >
+              <StudentAvatar
+                id={student.id}
+                name={student.name}
+                email={student.email}
+              />
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-display text-[15px] font-semibold tracking-[-0.01em] text-ink group-hover/open:underline">
+                  {student.name ?? "Unnamed student"}
+                </p>
+                <p className="mt-0.5 flex items-center gap-1.5 truncate text-[12.5px] text-muted">
+                  <Mail size={12} className="shrink-0" />
+                  <span className="truncate">{student.email ?? "No email"}</span>
+                </p>
+              </div>
+            </button>
             <MembershipState student={student} />
           </div>
 
@@ -328,7 +335,12 @@ function StudentRow({
       transition={{ delay: reduced ? 0 : Math.min(index % 36, 12) * 0.018 }}
       className={`group grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-2 px-5 py-3 transition-colors hover:bg-surface-2 ${listColumns({ showUniversity, monitor })}`}
     >
-      <div className="flex min-w-0 items-center gap-3">
+      <button
+        type="button"
+        onClick={() => onHistory(student)}
+        title="Open profile"
+        className="group/open flex min-w-0 items-center gap-3 text-left"
+      >
         <StudentAvatar
           id={student.id}
           name={student.name}
@@ -336,14 +348,14 @@ function StudentRow({
           size={36}
         />
         <div className="min-w-0">
-          <p className="truncate text-[14px] font-semibold text-ink">
+          <p className="truncate text-[14px] font-semibold text-ink group-hover/open:underline">
             {student.name ?? "Unnamed student"}
           </p>
           <p className="truncate text-[12.5px] text-muted">
             {student.email ?? "No email"}
           </p>
         </div>
-      </div>
+      </button>
       <div className="order-last col-span-2 flex flex-wrap items-center gap-2 md:order-none md:col-span-1">
         <SquadChip student={student} onSquad={onSquad} />
         <span className="md:hidden">

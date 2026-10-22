@@ -68,8 +68,8 @@ test("snapshot counts tested students, coverage and belts for a week", () => {
   assert.equal(shot.students, 4);
   assert.equal(shot.tested, 3);
   assert.equal(shot.coverage, 0.75);
-  assert.equal(shot.totalBelts, 4 + 1 + 1);
-  assert.deepEqual(shot.languageTotals, [1, 1, 0, 4]);
+  assert.equal(shot.totalBelts, 4 + 2 + 1); // ben keeps his 2 python belts
+  assert.deepEqual(shot.languageTotals, [1, 1, 0, 5]);
   assert.equal(metrics.snapshot(model, 1, "university", "u2").tested, 1);
 });
 
@@ -77,10 +77,18 @@ test("movement compares each student with their previous recorded week", () => {
   const model = metrics.buildModel(fixture());
   const week3 = metrics.movement(model, 3);
   assert.equal(week3.up, 1); // ann 3 -> 4
-  assert.equal(week3.down, 1); // ben 2 -> 1
+  assert.equal(week3.same, 1); // ben's sheet says 1, but he keeps his 2
   assert.equal(week3.first, 1); // cai's first record
   assert.equal(week3.untested, 1); // dev has no week 3
-  assert.equal(week3.beltsGained, 0);
+  assert.equal(week3.beltsGained, 1);
+});
+
+test("belts are never lost even when a later sheet records a lower level", () => {
+  const model = metrics.buildModel(fixture());
+  assert.deepEqual(model.levels.get("ben").get(3), [0, 0, 0, 2]);
+  for (const week of [1, 2, 3])
+    for (const change of metrics.movement(model, week).changes)
+      assert.ok(change.change >= 0);
 });
 
 test("trend returns one row per week and one value per group", () => {
@@ -95,10 +103,11 @@ test("trend returns one row per week and one value per group", () => {
 
 test("level distribution fills every level up to the maximum", () => {
   const model = metrics.buildModel(fixture());
+  // ben's week-3 sheet says python 1, but he keeps the 2 he already earned.
   assert.deepEqual(metrics.levelDistribution(model, 3, "python"), [
     { level: 0, students: 1 },
-    { level: 1, students: 1 },
-    { level: 2, students: 0 },
+    { level: 1, students: 0 },
+    { level: 2, students: 1 },
     { level: 3, students: 1 },
   ]);
 });
@@ -135,13 +144,13 @@ test("range progress measures each student from their baseline to the end week",
   assert.deepEqual(ann.languageGain, [0, 1, 0, 2]);
   assert.equal(ann.tests, 3);
   const ben = range.students.find((student) => student.studentId === "ben");
-  assert.equal(ben.status, "dropped");
+  assert.equal(ben.status, "same"); // belts are never lost
+  assert.equal(ben.gain, 0);
   const cai = range.students.find((student) => student.studentId === "cai");
   assert.equal(cai.joinedInRange, true); // first test is week 3
   assert.equal(cai.gain, 0);
   assert.equal(range.improved, 1);
-  assert.equal(range.dropped, 1);
-  assert.equal(range.beltsGained, 3 - 1 + 0 + 0);
+  assert.equal(range.beltsGained, 3 + 0 + 0);
 });
 
 test("range progress marks students without tests in the range as untested", () => {

@@ -13,7 +13,6 @@ import {
   Clock3,
   LoaderCircle,
   Minus,
-  TrendingDown,
   TrendingUp,
   Trophy,
   UserX,
@@ -22,6 +21,8 @@ import {
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ChartCarousel } from "@/components/dashboard/chart-carousel";
 import { RangeExplorer } from "@/components/dashboard/range-explorer";
+import { loadOverview, overviewQuery } from "@/lib/dashboard/load-overview";
+import { useStudentOpener } from "@/components/dashboard/student-opener";
 import { AnimatedList } from "@/components/reactbits/animated-list";
 import { ClickSpark } from "@/components/reactbits/click-spark";
 import { CountUp } from "@/components/reactbits/count-up";
@@ -53,6 +54,7 @@ import {
   Split,
 } from "@/components/ui/frame";
 import { LanguageLogo } from "@/components/belts/belts";
+import { Dropdown } from "@/components/ui/dropdown";
 
 type LoadState =
   | { status: "loading" }
@@ -71,26 +73,17 @@ export function DashboardView() {
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    const controller = new AbortController();
+    let active = true;
     async function load() {
       setState({ status: "loading" });
       try {
-        const params = new URLSearchParams();
-        if (requestedYear) params.set("academic_year", requestedYear);
-        if (requestedUniversity)
-          params.set("university_id", requestedUniversity);
-        const response = await fetch(`/api/dashboard/overview?${params}`, {
-          signal: controller.signal,
-        });
-        const body = (await response.json()) as DashboardData & {
-          error?: string;
-        };
-        if (!response.ok)
-          throw new Error(body.error ?? "Unable to load the dashboard.");
-        setState({ status: "ready", data: body });
+        const data = await loadOverview(
+          overviewQuery(requestedYear, requestedUniversity),
+          { fresh: reloadKey > 0 },
+        );
+        if (active) setState({ status: "ready", data });
       } catch (error) {
-        if (error instanceof DOMException && error.name === "AbortError")
-          return;
+        if (!active) return;
         setState({
           status: "error",
           message:
@@ -101,7 +94,9 @@ export function DashboardView() {
       }
     }
     load();
-    return () => controller.abort();
+    return () => {
+      active = false;
+    };
   }, [requestedYear, requestedUniversity, reloadKey]);
 
   function setParams(next: Record<string, string | null>) {
@@ -111,7 +106,8 @@ export function DashboardView() {
       else params.delete(key);
     }
     const query = params.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname, {
+    // Each filter change is its own history entry, so Back steps through them.
+    router.push(query ? `${pathname}?${query}` : pathname, {
       scroll: false,
     });
   }
@@ -407,13 +403,13 @@ function FilterSelect({
     <label className="flex flex-col gap-1">
       <span className="text-[11.5px] font-medium text-white/55">{label}</span>
       <span className="relative">
-        <select
+        <Dropdown
           value={value}
-          onChange={(event) => onChange(event.target.value)}
+          onChange={(value) => onChange(value)}
           className="h-10 min-w-[150px] cursor-pointer appearance-none rounded-xl border border-white/15 bg-white/10 pl-3.5 pr-9 font-display text-[14px] font-semibold text-white outline-none backdrop-blur-md transition hover:border-white/30 hover:bg-white/15 focus-visible:ring-2 focus-visible:ring-white/30 [&>option]:bg-surface [&>option]:text-ink"
         >
           {children}
-        </select>
+        </Dropdown>
         <ChevronDown
           size={15}
           className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/60"
@@ -448,7 +444,23 @@ function KpiRow({ model, week }: { model: Model; week: number }) {
   const before = prev === null ? null : snapshot(model, prev);
   const moves = movement(model, week);
   const untested = now.students - now.tested;
-  const canManage = model.data.role !== "mentor";
+  // Where each tile leads: the filtered page behind the number.
+  const academicYear = String(model.data.academicYear ?? "");
+  const leaderboardHref = `/leaderboard?${new URLSearchParams({
+    week: `${academicYear}-${week}`,
+    ...(model.data.universityId ? { university: model.data.universityId } : {}),
+  })}`;
+  const fromWeekId = weekInfo(model, prev)?.id;
+  const toWeekId = weekInfo(model, week)?.id;
+  const improvedHref = `/weekly-comparison?${new URLSearchParams({
+    ...(fromWeekId && toWeekId ? { from_week_id: fromWeekId, to_week_id: toWeekId } : {}),
+    status: "improved",
+  })}`;
+  const monitorHref = `/students?${new URLSearchParams({
+    view: "monitor",
+    academicYear,
+    week: String(week),
+  })}`;
 
   const coveragePct = now.coverage === null ? null : now.coverage * 100;
   const coverageDelta =
@@ -469,6 +481,7 @@ function KpiRow({ model, week }: { model: Model; week: number }) {
     <Cells className="sm:grid-cols-2 lg:grid-cols-3">
       <KpiTile
         label="Students tested"
+        href={monitorHref}
         icon={<Users />}
         color="var(--lang-cpp)"
         value={now.tested}
@@ -485,6 +498,7 @@ function KpiRow({ model, week }: { model: Model; week: number }) {
       />
       <KpiTile
         label="Avg belts per student"
+        href={leaderboardHref}
         icon={<Award />}
         color="var(--lang-nodejs)"
         value={now.avgBelts ?? 0}
@@ -496,6 +510,7 @@ function KpiRow({ model, week }: { model: Model; week: number }) {
       />
       <KpiTile
         label="Moved up this week"
+        href={prev === null ? undefined : improvedHref}
         icon={<TrendingUp />}
         color="var(--brand)"
         value={moves.up}
@@ -509,13 +524,13 @@ function KpiRow({ model, week }: { model: Model; week: number }) {
               ) : (
                 <>
                   <strong className="font-semibold text-ink">
-                    {moves.down}
-                  </strong>{" "}
-                  moved down ·{" "}
-                  <strong className="font-semibold text-ink">
                     {moves.same}
                   </strong>{" "}
-                  unchanged
+                  unchanged ·{" "}
+                  <strong className="font-semibold text-ink">
+                    {moves.first}
+                  </strong>{" "}
+                  first test
                 </>
               )}
             </p>
@@ -525,6 +540,7 @@ function KpiRow({ model, week }: { model: Model; week: number }) {
       />
       <KpiTile
         label="Total belts held"
+        href={leaderboardHref}
         icon={<Trophy />}
         color="var(--lang-python)"
         value={now.totalBelts}
@@ -540,9 +556,9 @@ function KpiRow({ model, week }: { model: Model; week: number }) {
         value={untested}
         prev={prev}
         href={
-          canManage && untested > 0
+          untested > 0
             ? `/students?${new URLSearchParams({
-                academicYear: String(model.data.academicYear ?? ""),
+                academicYear,
                 week: String(week),
                 status: "missing",
               })}`
@@ -734,33 +750,14 @@ function LanguageSplit({ totals }: { totals: number[] }) {
 function NeedsAttention({ model, week }: { model: Model; week: number }) {
   const { data } = model;
   const now = snapshot(model, week);
-  const moves = movement(model, week);
   const lowSquads = lowCoverageSquads(model, week);
   const stalled = stalledStudents(model, week);
-  const prev = previousWeek(model, week);
-  const canManage = data.role !== "mentor";
   const periodParams = {
     academicYear: String(data.academicYear ?? ""),
     week: String(week),
   };
 
-  // Week ids only line up for a single university.
-  const fromWeekId = weekInfo(model, prev)?.id;
-  const toWeekId = weekInfo(model, week)?.id;
-  const decreasedHref =
-    fromWeekId && toWeekId
-      ? `/weekly-comparison?${new URLSearchParams({
-          ...periodParams,
-          from_week_id: fromWeekId,
-          to_week_id: toWeekId,
-          change: "decreased",
-        })}`
-      : "/weekly-comparison";
-
   const untested = now.students - now.tested;
-  const decreasedNames = moves.changes
-    .filter((change) => change.change < 0)
-    .map((change) => model.studentName.get(change.studentId) ?? "Unknown");
   const stalledNames = stalled.map(
     (id) => model.studentName.get(id) ?? "Unknown",
   );
@@ -773,9 +770,7 @@ function NeedsAttention({ model, week }: { model: Model; week: number }) {
       tone: "warning" as const,
       title: `${formatNumber(untested)} students not tested in Week ${week}`,
       detail: `${formatNumber(now.coverage === null ? null : (1 - now.coverage) * 100, 0)}% of students have no belt record this week.`,
-      href: canManage
-        ? `/students?${new URLSearchParams({ ...periodParams, status: "missing" })}`
-        : undefined,
+      href: `/students?${new URLSearchParams({ ...periodParams, status: "missing" })}`,
     },
     {
       key: "coverage",
@@ -790,18 +785,7 @@ function NeedsAttention({ model, week }: { model: Model; week: number }) {
             `${squad.label} (${formatNumber((squad.coverage ?? 0) * 100, 0)}%)`,
         )
         .join(", "),
-      href: canManage
-        ? `/students?${new URLSearchParams({ ...periodParams, status: "incomplete" })}`
-        : undefined,
-    },
-    {
-      key: "down",
-      show: decreasedNames.length > 0,
-      icon: <TrendingDown size={16} />,
-      tone: "critical" as const,
-      title: `${decreasedNames.length} ${decreasedNames.length === 1 ? "student" : "students"} moved down since Week ${prev}`,
-      detail: namesPreview(decreasedNames),
-      href: decreasedHref,
+      href: `/students?${new URLSearchParams({ ...periodParams, status: "incomplete" })}`,
     },
     {
       key: "stalled",
@@ -810,9 +794,20 @@ function NeedsAttention({ model, week }: { model: Model; week: number }) {
       tone: "warning" as const,
       title: `${stalledNames.length} ${stalledNames.length === 1 ? "student has" : "students have"} stalled`,
       detail: `No belt gained across their last 3 tests: ${namesPreview(stalledNames)}`,
-      href: undefined,
+      href: `/students/stalled?${new URLSearchParams({
+        ...periodParams,
+        ...(data.universityId ? { university: data.universityId } : {}),
+      })}`,
     },
-  ].filter((item) => item.show);
+  ].filter((item) => item.show) as Array<{
+    key: string;
+    icon: ReactNode;
+    tone: "warning" | "critical";
+    title: string;
+    detail: string;
+    href?: string;
+    onClick?: () => void;
+  }>;
 
   return (
     <section className="min-w-0">
@@ -851,7 +846,7 @@ function NeedsAttention({ model, week }: { model: Model; week: number }) {
                     {item.detail}
                   </span>
                 </span>
-                {item.href && (
+                {(item.href || item.onClick) && (
                   <ArrowRight
                     size={16}
                     className="mt-1 shrink-0 text-faint transition group-hover:translate-x-0.5 group-hover:text-ink"
@@ -868,6 +863,14 @@ function NeedsAttention({ model, week }: { model: Model; week: number }) {
                   >
                     {content}
                   </Link>
+                ) : item.onClick ? (
+                  <button
+                    type="button"
+                    onClick={item.onClick}
+                    className="group flex w-full gap-3 px-4 py-3.5 text-left transition hover:bg-surface-2 sm:px-5"
+                  >
+                    {content}
+                  </button>
                 ) : (
                   <div className="flex gap-3 px-4 py-3.5 sm:px-5">
                     {content}
@@ -893,7 +896,7 @@ function TopMovers({ model, week }: { model: Model; week: number }) {
   const movers = movement(model, week)
     .changes.filter((change) => change.change > 0)
     .sort((a, b) => b.change - a.change || b.total - a.total);
-  const canOpenHistory = model.data.role !== "mentor";
+  const { openStudent } = useStudentOpener();
 
   return (
     <section className="min-w-0">
@@ -949,17 +952,14 @@ function TopMovers({ model, week }: { model: Model; week: number }) {
                 </span>
               </>
             );
-            return canOpenHistory ? (
-              <Link
-                href={`/students/${mover.studentId}/history`}
-                className="flex items-center gap-3 border-b border-line px-4 py-3 transition hover:bg-surface-2 sm:px-5"
+            return (
+              <button
+                type="button"
+                onClick={() => openStudent(mover.studentId)}
+                className="flex w-full items-center gap-3 border-b border-line px-4 py-3 text-left transition hover:bg-surface-2 sm:px-5"
               >
                 {row}
-              </Link>
-            ) : (
-              <div className="flex items-center gap-3 border-b border-line px-4 py-3 sm:px-5">
-                {row}
-              </div>
+              </button>
             );
           }}
         />
@@ -994,7 +994,6 @@ function GroupTable({ model, week }: { model: Model; week: number }) {
   const squadNumber = new Map(
     model.data.squads.map((squad) => [squad.id, squad.squad_number]),
   );
-  const canManage = model.data.role !== "mentor";
 
   return (
     <section className="min-w-0">
@@ -1047,7 +1046,7 @@ function GroupTable({ model, week }: { model: Model; week: number }) {
               const coverage =
                 row.now.coverage === null ? 0 : row.now.coverage * 100;
               const href =
-                canManage && effectiveGroupBy === "squad"
+                effectiveGroupBy === "squad"
                   ? `/students?squad=${encodeURIComponent(squadNumber.get(row.key) ?? "")}`
                   : null;
               return (

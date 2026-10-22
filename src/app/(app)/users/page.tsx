@@ -8,6 +8,7 @@ import { Frame, FrameTitle, Page } from "@/components/ui/frame";
 import { HoldButton } from "@/components/reactbits/hold-button";
 import { DeleteUserDialog } from "@/components/users/delete-user-dialog";
 import { Toast, type ToastMessage } from "@/components/ui/toast";
+import { Dropdown } from "@/components/ui/dropdown";
 
 type Role = "super_admin" | "campus_manager" | "mentor" | "student";
 type UserRow = {
@@ -175,9 +176,9 @@ export default function UsersPage() {
           </label>
           <label className="flex flex-col gap-1.5 text-xs font-semibold text-ink-2">
             Role
-            <select
+            <Dropdown chevron
               value={role}
-              onChange={(event) => setRole(event.target.value as Role)}
+              onChange={(value) => setRole(value as Role)}
               className="rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm"
             >
               {Object.entries(labels).map(([value, label]) => (
@@ -185,14 +186,14 @@ export default function UsersPage() {
                   {label}
                 </option>
               ))}
-            </select>
+            </Dropdown>
           </label>
           {role !== "super_admin" && (
             <label className="flex flex-col gap-1.5 text-xs font-semibold text-ink-2">
               University
-              <select
+              <Dropdown chevron
                 value={universityId}
-                onChange={(event) => setUniversityId(event.target.value)}
+                onChange={(value) => setUniversityId(value)}
                 required
                 className="rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm"
               >
@@ -204,15 +205,15 @@ export default function UsersPage() {
                     {item.name}
                   </option>
                 ))}
-              </select>
+              </Dropdown>
             </label>
           )}
           {role === "student" && (
             <label className="flex flex-col gap-1.5 text-xs font-semibold text-ink-2">
               Student record
-              <select
+              <Dropdown chevron
                 value={studentId}
-                onChange={(event) => setStudentId(event.target.value)}
+                onChange={(value) => setStudentId(value)}
                 required
                 className="rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm"
               >
@@ -223,7 +224,7 @@ export default function UsersPage() {
                     {item.email ? ` · ${item.email}` : ""}
                   </option>
                 ))}
-              </select>
+              </Dropdown>
             </label>
           )}
           <div className="flex items-center justify-end gap-2 self-end">
@@ -268,12 +269,12 @@ export default function UsersPage() {
               className="w-full bg-transparent py-2 text-sm outline-none"
             />
           </label>
-          <select
+          <Dropdown chevron
             aria-label="Filter by role"
             value={roleFilter}
-            onChange={(event) => {
-              setRoleFilter(event.target.value);
-              void load({ roleFilter: event.target.value });
+            onChange={(value) => {
+              setRoleFilter(value);
+              void load({ roleFilter: value });
             }}
             className="rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm"
           >
@@ -283,7 +284,7 @@ export default function UsersPage() {
                 {label}
               </option>
             ))}
-          </select>
+          </Dropdown>
           <button
             type="button"
             onClick={() => void load()}

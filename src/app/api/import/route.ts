@@ -8,6 +8,7 @@ import { writeAuditLog } from "@/lib/auth/authorization";
 import {
   deduplicateRowsByWeekAndEmail,
   planStudentProvisioning,
+  inferAcademicYear,
   resolveWeeksForRows,
   validateImportRows,
   type CSVRow,
@@ -250,9 +251,10 @@ async function loadUniversityWeeks(universityId: string): Promise<ImportWeek[]> 
 async function prepareMultiWeekImport(
   rows: CSVRow[],
   universityId: string,
-  academicYear: number,
 ): Promise<PreparedMultiWeekImport> {
   const weeks = await loadUniversityWeeks(universityId);
+  // The academic year comes from the CSV's own dates, never from the uploader.
+  const academicYear = inferAcademicYear(rows, weeks, universityId);
   const resolution = resolveWeeksForRows(
     rows,
     weeks,
@@ -1047,24 +1049,12 @@ export async function POST(request: Request) {
 
     const multiWeekAction = formData.get("multiWeekAction");
     if (multiWeekAction === "preview" || multiWeekAction === "commit") {
-      const academicYearValue = formData.get("academicYear");
-      const academicYear = Number(academicYearValue);
-      if (!Number.isInteger(academicYear) || academicYear < 2000) {
-        return NextResponse.json(
-          { error: "Valid academic year is required" },
-          { status: 400 },
-        );
-      }
       console.info("[api/import] phase=week_resolution", {
-        academicYear,
         rowCount: rows.length,
         universityId,
       });
-      const prepared = await prepareMultiWeekImport(
-        rows,
-        universityId,
-        academicYear,
-      );
+      const prepared = await prepareMultiWeekImport(rows, universityId);
+      const academicYear = prepared.academicYear;
       const errorRows = new Set(
         prepared.errors.map((error) => error.row_number),
       ).size;

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUserProfile } from "@/lib/auth/profile";
 import { createRequestSupabaseClient } from "@/lib/auth/server";
+import { keepEarnedBelts } from "@/lib/earned-belts";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 const LANGUAGES = ["cpp", "java", "nodejs", "python"] as const;
@@ -122,12 +123,25 @@ function metricForMonth(
   year: number,
   month: number,
 ) {
+  // Belts held at month end: every student's latest record up to the last
+  // test this month, so untested students keep their belts and the total
+  // never drops just because fewer students were tested.
+  let cutoff = "";
+  for (const record of monthRecords.values())
+    if (record.date > cutoff) cutoff = record.date;
   let belts = 0;
+  let holders = 0;
+  for (const history of histories.values()) {
+    let last: ValidRecord | null = null;
+    for (const record of history) if (record.date <= cutoff) last = record;
+    if (!last) continue;
+    belts += total(last.levels);
+    holders += 1;
+  }
   let earned = 0;
   let improved = 0;
 
-  for (const [studentId, current] of monthRecords) {
-    belts += total(current.levels);
+  for (const studentId of monthRecords.keys()) {
     const history = histories.get(studentId) ?? [];
     let studentEarned = 0;
     for (const record of history) {
@@ -155,9 +169,7 @@ function metricForMonth(
     total_belts: belts,
     belts_earned: earned,
     improved_students: improved,
-    average_belts_per_student: monthRecords.size
-      ? belts / monthRecords.size
-      : null,
+    average_belts_per_student: holders ? belts / holders : null,
   };
 }
 
@@ -240,12 +252,27 @@ export async function GET(request: Request) {
       .select("student_id, squads!inner(id, squad_number, university_id)")
       .is("end_date", null)
       .order("start_date", { ascending: false });
-    let recordsQuery = supabaseAdmin
-      .from("weekly_belt_records")
-      .select(
-        "student_id, week_id, final_belt_levels, weeks!inner(id, university_id, academic_year, week_number, start_date), imports!inner(is_current)",
-      )
-      .eq("imports.is_current", true);
+    // PostgREST returns at most 1000 rows per request, so page through.
+    const loadRecords = async () => {
+      const rows: RecordRow[] = [];
+      for (let from = 0; ; from += 1000) {
+        let query = supabaseAdmin
+          .from("weekly_belt_records")
+          .select(
+            "student_id, week_id, final_belt_levels, weeks!inner(id, university_id, academic_year, week_number, start_date), imports!inner(is_current)",
+          )
+          .eq("imports.is_current", true)
+          .order("student_id")
+          .order("week_id")
+          .range(from, from + 999);
+        if (scope.universityId)
+          query = query.eq("weeks.university_id", scope.universityId);
+        const { data, error } = await query;
+        if (error) throw error;
+        rows.push(...((data ?? []) as RecordRow[]));
+        if (!data || data.length < 1000) return rows;
+      }
+    };
     let universitiesQuery = supabaseAdmin
       .from("universities")
       .select("id, name")
@@ -255,14 +282,12 @@ export async function GET(request: Request) {
         "squads.university_id",
         scope.universityId,
       );
-      recordsQuery = recordsQuery.eq("weeks.university_id", scope.universityId);
       universitiesQuery = universitiesQuery.eq("id", scope.universityId);
     }
-    const [membershipsResult, recordsResult, universitiesResult] =
-      await Promise.all([membershipsQuery, recordsQuery, universitiesQuery]);
+    const [membershipsResult, recordRows, universitiesResult] =
+      await Promise.all([membershipsQuery, loadRecords(), universitiesQuery]);
 
     if (membershipsResult.error) throw membershipsResult.error;
-    if (recordsResult.error) throw recordsResult.error;
     if (universitiesResult.error) throw universitiesResult.error;
 
     const membershipByStudent = new Map<string, Membership>();
@@ -278,7 +303,12 @@ export async function GET(request: Request) {
     }
 
     const recordsByStudentWeek = new Map<string, ValidRecord>();
-    for (const row of (recordsResult.data ?? []) as RecordRow[]) {
+    // Belts are never lost: a lower later level keeps the earlier belt.
+    const earnedRows = keepEarnedBelts(recordRows, (row) => {
+      const week = nested(row.weeks);
+      return week ? week.academic_year * 100 + week.week_number : 0;
+    });
+    for (const row of earnedRows) {
       if (!membershipByStudent.has(row.student_id)) continue;
       const week = nested(row.weeks);
       const levels = parseLevels(row.final_belt_levels);
@@ -322,9 +352,17 @@ export async function GET(request: Request) {
     const yearRecords = [...recordsByStudentWeek.values()].filter(
       (record) => record.academicYear === year,
     );
-    const availableMonths = [
-      ...new Set(yearRecords.map((record) => Number(record.date.slice(5, 7)))),
-    ].sort((left, right) => left - right);
+    // An academic year can start mid-calendar-year (e.g. Nov → Sep), so
+    // order months by when they actually happened, not by month number.
+    const firstDateOfMonth = new Map<number, string>();
+    for (const record of yearRecords) {
+      const monthNumber = Number(record.date.slice(5, 7));
+      const seen = firstDateOfMonth.get(monthNumber);
+      if (!seen || record.date < seen) firstDateOfMonth.set(monthNumber, record.date);
+    }
+    const availableMonths = [...firstDateOfMonth.keys()].sort((left, right) =>
+      firstDateOfMonth.get(left)!.localeCompare(firstDateOfMonth.get(right)!),
+    );
     const squadOptionsById = new Map<
       string,
       { id: string; squad_number: string }

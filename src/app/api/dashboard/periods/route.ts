@@ -79,9 +79,6 @@ export async function GET(request: Request) {
       if ((data ?? []).length < PAGE_SIZE) break;
     }
 
-    const academicYears = Array.from(
-      new Set(weeks.map((week) => week.academic_year)),
-    ).sort((a, b) => b - a);
     const availableWeeks = weeks
       .filter((week) =>
         week.imports?.some(
@@ -99,6 +96,11 @@ export async function GET(request: Request) {
         (a, b) =>
           a.academic_year - b.academic_year || a.week_number - b.week_number,
       );
+
+    // Only years that still have current data; a hidden duplicate year drops out.
+    const academicYears = Array.from(
+      new Set(availableWeeks.map((week) => week.academic_year)),
+    ).sort((a, b) => b - a);
 
     return NextResponse.json({
       academicYears,

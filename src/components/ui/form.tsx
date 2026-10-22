@@ -2,11 +2,11 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { Check, ChevronDown, CircleAlert } from "lucide-react";
+import { Dropdown, type DropdownProps } from "@/components/ui/dropdown";
 import {
   useId,
   type InputHTMLAttributes,
   type ReactNode,
-  type SelectHTMLAttributes,
 } from "react";
 
 /* ─── Validation ─────────────────────────────────────────────────────────── */
@@ -222,7 +222,7 @@ export function TextField({
   );
 }
 
-type SelectFieldProps = Omit<SelectHTMLAttributes<HTMLSelectElement>, "id"> & {
+type SelectFieldProps = Omit<DropdownProps, "id" | "className"> & {
   label: string;
   hint?: string;
   error?: string | null;
@@ -256,15 +256,15 @@ export function SelectField({
               {icon}
             </span>
           ) : null}
-          <select
+          <Dropdown
             id={id}
             aria-invalid={Boolean(error)}
             aria-describedby={describedBy}
-            className={`${controlClass(Boolean(error), Boolean(icon))} appearance-none pr-9`}
+            className={`${controlClass(Boolean(error), Boolean(icon))} pr-9`}
             {...rest}
           >
             {children}
-          </select>
+          </Dropdown>
           <ChevronDown
             size={15}
             className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted"

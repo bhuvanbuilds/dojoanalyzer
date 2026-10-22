@@ -311,6 +311,15 @@ export const GlowCursor = ({
     let lastFrameTime = performance.now();
     let raf = 0;
     let destroyed = false;
+    // Only animate while the pointer is over the area or the glow is still
+    // fading out; an idle loop would cost a frame on every scroll tick.
+    let running = false;
+    const start = () => {
+      if (running || destroyed) return;
+      running = true;
+      lastFrameTime = performance.now();
+      raf = requestAnimationFrame(render);
+    };
 
     const resize = () => {
       width = Math.max(container.clientWidth, 1);
@@ -341,6 +350,7 @@ export const GlowCursor = ({
       target.y = y;
       pointerInside = true;
       lastInputTime = performance.now();
+      start();
     };
 
     const onPointerLeave = () => {
@@ -404,7 +414,9 @@ export const GlowCursor = ({
       program.uniforms.uFade.value = fade;
 
       renderer.render({ scene: mesh });
-      if (!destroyed) raf = requestAnimationFrame(render);
+      if (destroyed) return;
+      if (pointerInside || fade > 0.002) raf = requestAnimationFrame(render);
+      else running = false;
     };
 
     const resizeObserver = new ResizeObserver(resize);
@@ -413,7 +425,6 @@ export const GlowCursor = ({
     container.addEventListener("pointerenter", updatePointer);
     container.addEventListener("pointerleave", onPointerLeave);
     resize();
-    raf = requestAnimationFrame(render);
 
     return () => {
       destroyed = true;

@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   AlertTriangle,
@@ -25,14 +25,15 @@ import { Frame, Page } from "@/components/ui/frame";
 import { ShinyButton } from "@/components/ui/shiny-button";
 import { PillSelect, RingStat, ShareBar } from "@/components/insights/kit";
 import { StudentAvatar } from "@/components/students/avatar";
-import { HistoryDialog } from "@/components/students/history-dialog";
-import type { Student } from "@/components/students/types";
+import { studentHref } from "@/lib/student-links";
+import { useUrlFilters } from "@/lib/use-url-filters";
 import { LANGUAGES, LANGUAGE_LABELS } from "@/lib/dashboard/metrics";
 import { LanguageLogo } from "@/components/belts/belts";
 import { useCachedProfile } from "@/lib/auth/use-cached-profile";
+import { Dropdown } from "@/components/ui/dropdown";
 
 type ComparisonStatus = "improved" | "no_change" | "missing_data";
-type VisibleStatus = "none" | ComparisonStatus | "decreased";
+type VisibleStatus = "none" | ComparisonStatus;
 type LanguagePair = { from: number | null; to: number | null };
 
 type Comparison = {
@@ -92,7 +93,6 @@ const STATUS_META: Record<Exclude<VisibleStatus, "none">, { label: string; color
   improved: { label: "Improved", color: "var(--status-up)", badge: "bg-success-soft text-success-text" },
   no_change: { label: "No change", color: "var(--status-same)", badge: "bg-sunken text-muted" },
   missing_data: { label: "Missing data", color: "var(--series-4)", badge: "bg-warning-soft text-warning-text" },
-  decreased: { label: "Decreased", color: "var(--status-down)", badge: "bg-brand-soft text-brand-text" },
 };
 
 const PAGE = 50;
@@ -108,21 +108,41 @@ export default function WeeklyComparisonPage() {
 function WeeklyComparisonContent() {
   const router = useRouter();
   const reduced = useReducedMotion();
-  const searchParams = useSearchParams();
   const cachedProfile = useCachedProfile();
   const [profileState, setProfileState] = useState<
     CurrentUserProfile | { status: "loading" }
   >(cachedProfile ?? { status: "loading" });
   const [weeks, setWeeks] = useState<Week[]>([]);
-  const [fromWeekId, setFromWeekId] = useState(searchParams.get("from_week_id") ?? "");
-  const [toWeekId, setToWeekId] = useState(searchParams.get("to_week_id") ?? "");
-  const [universityId, setUniversityId] = useState("");
-  const [squadId, setSquadId] = useState("");
-  const [status, setStatus] = useState<VisibleStatus>(
-    searchParams.get("change") === "decreased" ? "decreased" : "none",
-  );
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
+  // Filters live in the URL so each comparison has its own address.
+  const [urlFilters, setUrlFilters] = useUrlFilters({
+    from_week_id: "",
+    to_week_id: "",
+    university: "",
+    squad: "",
+    status: "none",
+    q: "",
+  });
+  const universityId = urlFilters.university;
+  const squadId = urlFilters.squad;
+  const status: VisibleStatus = (["none", "improved", "no_change", "missing_data"] as const).includes(
+    urlFilters.status as VisibleStatus,
+  )
+    ? (urlFilters.status as VisibleStatus)
+    : "none";
+  const search = urlFilters.q.trim();
+  const [searchInput, setSearchInput] = useState(urlFilters.q);
+  // With no weeks in the URL, compare the two most recent weeks.
+  const fromWeekId = weeks.some((week) => week.id === urlFilters.from_week_id)
+    ? urlFilters.from_week_id
+    : weeks[1]?.id || weeks[0]?.id || "";
+  const toWeekId = weeks.some((week) => week.id === urlFilters.to_week_id)
+    ? urlFilters.to_week_id
+    : weeks[0]?.id || "";
+  const setFromWeekId = (id: string) => setUrlFilters({ from_week_id: id });
+  const setToWeekId = (id: string) => setUrlFilters({ to_week_id: id });
+  const setSquadId = (id: string) => setUrlFilters({ squad: id });
+  const setStatus = (next: VisibleStatus | ((current: VisibleStatus) => VisibleStatus)) =>
+    setUrlFilters({ status: typeof next === "function" ? next(status) : next });
   const [universities, setUniversities] = useState<University[]>([]);
   const [squads, setSquads] = useState<Squad[]>([]);
   const [comparisons, setComparisons] = useState<Comparison[] | null>(null);
@@ -130,7 +150,6 @@ function WeeklyComparisonContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [limit, setLimit] = useState(PAGE);
-  const [historyFor, setHistoryFor] = useState<Student | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -179,14 +198,6 @@ function WeeklyComparisonContent() {
             (right.week_number ?? 0) - (left.week_number ?? 0),
         );
         setWeeks(ordered);
-        setFromWeekId((current) =>
-          ordered.some((week) => week.id === current)
-            ? current
-            : ordered[1]?.id || ordered[0]?.id || "",
-        );
-        setToWeekId((current) =>
-          ordered.some((week) => week.id === current) ? current : ordered[0]?.id || "",
-        );
       } catch (loadError) {
         if (!(loadError instanceof DOMException && loadError.name === "AbortError"))
           setError("Unable to load available weeks.");
@@ -210,9 +221,13 @@ function WeeklyComparisonContent() {
   }, [profileState]);
 
   useEffect(() => {
-    const timeout = window.setTimeout(() => setSearch(searchInput.trim()), 300);
+    if (searchInput.trim() === search) return;
+    const timeout = window.setTimeout(
+      () => setUrlFilters({ q: searchInput.trim() }, { replace: true }),
+      300,
+    );
     return () => window.clearTimeout(timeout);
-  }, [searchInput]);
+  }, [searchInput, search, setUrlFilters]);
 
   useEffect(() => {
     if (profileState.status !== "authenticated" || !fromWeekId || !toWeekId) return;
@@ -220,7 +235,7 @@ function WeeklyComparisonContent() {
     const query = new URLSearchParams({
       from_week_id: fromWeekId,
       to_week_id: toWeekId,
-      status: status === "none" || status === "decreased" ? "all" : status,
+      status: status === "none" ? "all" : status,
     });
     if (universityId) query.set("university_id", universityId);
     if (squadId) query.set("squad_id", squadId);
@@ -242,12 +257,9 @@ function WeeklyComparisonContent() {
             row.status === "no_change" ||
             row.status === "missing_data",
         );
-        const visibleRows =
-          status === "decreased"
-            ? rows.filter((row) => row.net_change !== null && row.net_change < 0)
-            : rows;
+        const visibleRows = rows;
         setComparisons(sortDisplayedRows(visibleRows, status));
-        setSummary(status === "decreased" ? null : (result.summary ?? null));
+        setSummary(result.summary ?? null);
         setUniversities((current) => mergeUniversities(current, visibleRows));
         setSquads((current) => mergeSquads(current, visibleRows));
         setLimit(PAGE);
@@ -295,7 +307,7 @@ function WeeklyComparisonContent() {
       row.from_total,
       row.to_total,
       row.net_change === null ? "" : row.net_change,
-      status === "decreased" ? "decreased" : row.status,
+      row.status,
       formatPair(row.languages.java),
       formatPair(row.languages.nodejs),
       formatPair(row.languages.python),
@@ -333,21 +345,11 @@ function WeeklyComparisonContent() {
 
   const fromWeek = weeks.find((week) => week.id === fromWeekId);
   const toWeek = weeks.find((week) => week.id === toWeekId);
-  const canSeeDecreased = currentProfile.role === "campus_manager" || status === "decreased";
-  const statusChoices: VisibleStatus[] = ["none", "improved", "no_change", "missing_data", ...(canSeeDecreased ? (["decreased"] as const) : [])];
+  const statusChoices: VisibleStatus[] = ["none", "improved", "no_change", "missing_data"];
   const firstLoad = comparisons === null && !error;
 
   function openHistory(row: Comparison) {
-    setHistoryFor({
-      id: row.student_id,
-      name: row.student_name,
-      email: row.email,
-      squad_id: row.squad_id,
-      squad_number: row.squad_number,
-      university_name: row.university_name,
-      start_date: null,
-      end_date: null,
-    });
+    router.push(studentHref(row.student_id));
   }
 
   return (
@@ -393,10 +395,7 @@ function WeeklyComparisonContent() {
             <WeekPicker label="From" value={fromWeekId} weeks={weeks} onChange={setFromWeekId} />
             <button
               type="button"
-              onClick={() => {
-                setFromWeekId(toWeekId);
-                setToWeekId(fromWeekId);
-              }}
+              onClick={() => setUrlFilters({ from_week_id: toWeekId, to_week_id: fromWeekId })}
               title="Swap weeks"
               className="group grid w-11 place-items-center rounded-2xl border border-line bg-surface text-muted transition hover:border-ink/30 hover:text-ink"
             >
@@ -430,11 +429,9 @@ function WeeklyComparisonContent() {
               <PillSelect
                 label="University"
                 value={universityId}
-                onChange={(id) => {
-                  setUniversityId(id);
-                  setFromWeekId("");
-                  setToWeekId("");
-                }}
+                onChange={(id) =>
+                  setUrlFilters({ university: id, from_week_id: "", to_week_id: "", squad: "" })
+                }
               >
                 <option value="">All</option>
                 {universities.map((university) => (
@@ -616,7 +613,7 @@ function WeeklyComparisonContent() {
                             key={row.student_id}
                             row={row}
                             index={index}
-                            status={status === "decreased" ? "decreased" : row.status}
+                            status={row.status}
                             onOpen={() => openHistory(row)}
                           />
                         ))}
@@ -642,7 +639,6 @@ function WeeklyComparisonContent() {
 
       </Frame>
 
-      <HistoryDialog student={historyFor} onClose={() => setHistoryFor(null)} />
     </Page>
   );
 }
@@ -666,10 +662,10 @@ function WeekPicker({
         {week ? formatWeekLabel(week) : "Select week"}
         <ChevronDown size={15} className="text-muted" />
       </span>
-      <select
+      <Dropdown
         aria-label={`${label} week`}
         value={value}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(value) => onChange(value)}
         className="absolute inset-0 cursor-pointer opacity-0"
       >
         <option value="">Select week</option>
@@ -678,7 +674,7 @@ function WeekPicker({
             {formatWeekLabel(item)}
           </option>
         ))}
-      </select>
+      </Dropdown>
     </label>
   );
 }

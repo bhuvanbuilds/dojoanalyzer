@@ -17,6 +17,7 @@ import { formatWeekLabel } from "@/lib/weeks";
 import { PageState, PanelSkeleton } from "@/components/ui/skeleton";
 import { Frame, FrameTitle, Page } from "@/components/ui/frame";
 import { useCachedProfile } from "@/lib/auth/use-cached-profile";
+import { Dropdown } from "@/components/ui/dropdown";
 
 type ImportRecord = {
   id: string;
@@ -257,10 +258,10 @@ export default function ImportsPage() {
             currentProfile.role === "super_admin" && (
               <label className="flex w-full min-w-[240px] flex-col gap-1.5 text-xs font-semibold text-ink-2 sm:w-auto">
                 University
-                <select
+                <Dropdown chevron
                   value={selectedUniversityId}
-                  onChange={(event) => {
-                    setSelectedUniversityId(event.target.value);
+                  onChange={(value) => {
+                    setSelectedUniversityId(value);
                     setPagination((current) => ({ ...current, page: 1 }));
                   }}
                   className="rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm"
@@ -270,7 +271,7 @@ export default function ImportsPage() {
                       {university.name}
                     </option>
                   ))}
-                </select>
+                </Dropdown>
               </label>
             )
           }
@@ -289,24 +290,24 @@ export default function ImportsPage() {
           </label>
           <label className="space-y-1 text-xs font-semibold text-muted">
             <span>Status</span>
-            <select
+            <Dropdown chevron
               className="w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm font-normal text-ink-2 outline-none focus:border-action"
               value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value)}
+              onChange={(value) => setStatusFilter(value)}
             >
               <option value="all">All statuses</option>
               <option value="imported">Imported</option>
               <option value="failed">Failed</option>
               <option value="processing">Processing</option>
               <option value="validated">Validated</option>
-            </select>
+            </Dropdown>
           </label>
           <label className="space-y-1 text-xs font-semibold text-muted">
             <span>Week</span>
-            <select
+            <Dropdown chevron
               className="w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm font-normal text-ink-2 outline-none focus:border-action"
               value={weekFilter}
-              onChange={(event) => setWeekFilter(event.target.value)}
+              onChange={(value) => setWeekFilter(value)}
             >
               <option value="all">All weeks</option>
               {weeks.map((week) => (
@@ -314,7 +315,7 @@ export default function ImportsPage() {
                   {formatWeekLabel(week)}
                 </option>
               ))}
-            </select>
+            </Dropdown>
           </label>
         </div>
 
@@ -365,7 +366,12 @@ export default function ImportsPage() {
                       className={importRecord.is_current ? "bg-brand-soft" : ""}
                     >
                       <td className="max-w-[280px] truncate px-4 py-3.5 sm:px-5 font-semibold">
-                        {importRecord.file_name}
+                        <Link
+                          href={`/imports/${importRecord.id}`}
+                          className="hover:text-brand-text hover:underline"
+                        >
+                          {importRecord.file_name}
+                        </Link>
                       </td>
                       <td
                         className="px-4 py-3.5 font-mono text-xs text-muted"

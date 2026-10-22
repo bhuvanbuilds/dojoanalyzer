@@ -1,8 +1,6 @@
 "use client";
 
 import { startTransition, useEffect, useState } from "react";
-import { getCurrentUserProfile } from "@/lib/auth/profile";
-import { supabase } from "@/lib/supabase/client";
 import { DojoStage, type BotMood } from "@/components/dojo-stage";
 
 export default function LoginPage() {
@@ -20,8 +18,15 @@ export default function LoginPage() {
     let isMounted = true;
 
     async function redirectAuthenticatedUser() {
+      // Loaded after first paint so the auth client never blocks the page.
+      const { getCurrentUserProfile } = await import("@/lib/auth/profile");
       const currentUser = await getCurrentUserProfile();
-      if (!isMounted || currentUser.status !== "authenticated") return;
+      if (!isMounted) return;
+      if (currentUser.status === "unassigned" || currentUser.status === "invalid_role") {
+        window.location.replace("/maintenance");
+        return;
+      }
+      if (currentUser.status !== "authenticated") return;
       window.location.replace(
         currentUser.profile.role === "student" ? "/leaderboard" : "/",
       );
@@ -38,6 +43,7 @@ export default function LoginPage() {
     setError("");
     setIsLoading(true);
 
+    const { supabase } = await import("@/lib/supabase/client");
     const { error: signInError } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {

@@ -196,6 +196,13 @@ export async function PATCH(request: Request, context: RouteContext) {
           .single();
 
       if (newMembershipError) {
+        // Reopen the old squad so the student is never left without one.
+        await supabaseAdmin
+          .from("student_memberships")
+          .update({ end_date: null })
+          .eq("student_id", studentId)
+          .eq("squad_id", currentMembership.squad_id)
+          .eq("end_date", currentDate);
         throw newMembershipError;
       }
 

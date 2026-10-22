@@ -234,8 +234,8 @@ function EditForm({
           label="Squad"
           icon={<Users size={15} />}
           value={values.squadId}
-          onChange={(event) => {
-            update("squadId", event.target.value);
+          onChange={(value) => {
+            update("squadId", value);
             setTouched((t) => ({ ...t, squadId: true }));
           }}
           error={errorFor("squadId")}

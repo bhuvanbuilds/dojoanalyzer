@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { LANGUAGES, type Language } from "@/lib/dashboard/metrics";
 import { LanguageLogo } from "@/components/belts/belts";
+import { Dropdown } from "@/components/ui/dropdown";
 
 // ─── Palette ──────────────────────────────────────────────────────────────────
 // Colours are CSS variables (see globals.css) so charts follow the theme. Each
@@ -70,9 +71,9 @@ export function ViewSelect<T extends string>({
   return (
     <label className="flex items-center gap-2 text-[12.5px] text-muted">
       <span className="whitespace-nowrap">{label}</span>
-      <select
+      <Dropdown chevron
         value={value}
-        onChange={(event) => onChange(event.target.value as T)}
+        onChange={(value) => onChange(value as T)}
         className="h-8 cursor-pointer rounded-lg border border-line bg-surface pl-2.5 pr-7 font-display text-[13px] font-semibold text-ink outline-none transition hover:border-line-strong focus-visible:ring-2 focus-visible:ring-black/10"
       >
         {options.map((option) => (
@@ -84,7 +85,7 @@ export function ViewSelect<T extends string>({
             {option.label}
           </option>
         ))}
-      </select>
+      </Dropdown>
     </label>
   );
 }

@@ -243,6 +243,8 @@ export async function POST(request: Request) {
       .single();
 
     if (membershipError) {
+      // Don't leave a student without a squad behind.
+      await supabaseAdmin.from("students").delete().eq("id", student.id);
       throw membershipError;
     }
 

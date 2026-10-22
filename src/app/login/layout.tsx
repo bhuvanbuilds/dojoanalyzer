@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Sign in · Dojo Belt Analyzer",
+  title: "Sign in",
   description: "Sign in to the Kalvium Dojo Belt Analyzer.",
 };
 

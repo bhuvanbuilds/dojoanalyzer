@@ -1,6 +1,8 @@
 "use client";
 
-import { ArrowDown, ArrowUp, LayoutGrid, List, Minus } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { ArrowDown, ArrowUp, LayoutGrid, List, Minus, ArrowUpRight } from "lucide-react";
 import {
   AnimatePresence,
   LayoutGroup,
@@ -17,8 +19,7 @@ import { Cell, Cells, cellsClass, Frame, Page } from "@/components/ui/frame";
 import { DojoLoader } from "@/components/ui/dojo-loader";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StudentAvatar } from "@/components/students/avatar";
-import { HistoryDialog } from "@/components/students/history-dialog";
-import type { Student } from "@/components/students/types";
+import { studentHref } from "@/lib/student-links";
 import {
   BeltBadge,
   BeltStrip,
@@ -65,7 +66,10 @@ export function LeaderboardExperience({
   /** Set on single-language leaderboards; the score is that language's level. */
   language?: Language;
 }) {
-  const [openEntry, setOpenEntry] = useState<RankedStudent | null>(null);
+  const router = useRouter();
+  // Clicking a student opens their profile page.
+  const openEntry = (entry: RankedStudent) =>
+    router.push(studentHref(entry.studentId, { asStudent: !linkStudents }));
   const [view, setView] = useState<RankingView>(readView);
   const top = entries.slice(0, 3);
   const rest = entries.slice(3);
@@ -120,7 +124,7 @@ export function LeaderboardExperience({
                 top={top}
                 scoreLabel={scoreLabel}
                 currentStudentId={currentStudentId}
-                onOpen={setOpenEntry}
+                onOpen={openEntry}
               />
             )}
           </div>
@@ -132,13 +136,13 @@ export function LeaderboardExperience({
 
         {!isLoading && !error && entries.length > 0 && (
           <>
-            <StatStrip entries={entries} scoreLabel={scoreLabel} />
+            <StatStrip entries={entries} scoreLabel={scoreLabel} linkPages={linkStudents} />
             <RankingList
               entries={rest}
               total={entries.length}
               scoreLabel={scoreLabel}
               currentStudentId={currentStudentId}
-              onOpen={setOpenEntry}
+              onOpen={openEntry}
               view={view}
               onView={(next) => {
                 setView(next);
@@ -153,25 +157,6 @@ export function LeaderboardExperience({
           </>
         )}
       </Frame>
-
-      <HistoryDialog
-        student={openEntry ? toStudent(openEntry) : null}
-        onClose={() => setOpenEntry(null)}
-        canViewHistory={linkStudents}
-        snapshot={
-          openEntry
-            ? {
-                rank: openEntry.rank,
-                score: openEntry.score,
-                scoreLabel,
-                change: openEntry.change,
-                levels:
-                  openEntry.languages ??
-                  (language ? { [language]: openEntry.score } : undefined),
-              }
-            : undefined
-        }
-      />
 
       {you && you.rank > 3 && <YouPill you={you} scoreLabel={scoreLabel} />}
     </Page>
@@ -246,35 +231,59 @@ function RankingGhost() {
 function StatStrip({
   entries,
   scoreLabel,
+  linkPages,
 }: {
   entries: RankedStudent[];
   scoreLabel: string;
+  /** Staff can open the pages behind these numbers; students cannot. */
+  linkPages: boolean;
 }) {
   const scores = entries.map((entry) => entry.score);
   const average = scores.reduce((sum, score) => sum + score, 0) / scores.length;
   const stats = [
-    { label: "Ranked students", value: entries.length },
+    { label: "Ranked students", value: entries.length, href: "/students" },
     { label: `Top ${scoreLabel}`, value: Math.max(...scores) },
     { label: `Average ${scoreLabel}`, value: average, decimals: 2 },
     {
       label: "Climbed this week",
       value: entries.filter((entry) => entry.change > 0).length,
+      href: "/weekly-comparison?status=improved",
     },
-  ];
+  ] as Array<{ label: string; value: number; decimals?: number; href?: string }>;
   return (
     <Cells className="sm:grid-cols-2 xl:grid-cols-4">
-      {stats.map((stat) => (
-        <Cell key={stat.label} className="px-4 py-4 sm:px-5">
-          <p className="text-[12.5px] font-medium text-muted">{stat.label}</p>
-          <p className="mt-1 font-display text-[28px] font-bold leading-none tracking-[-0.03em] text-ink">
-            <CountUp
-              key={`${stat.label}-${stat.value}`}
-              to={stat.value}
-              decimals={stat.decimals ?? 0}
-            />
-          </p>
-        </Cell>
-      ))}
+      {stats.map((stat) => {
+        const href = linkPages ? stat.href : undefined;
+        const body = (
+          <>
+            <p className="flex items-center gap-1 text-[12.5px] font-medium text-muted">
+              {stat.label}
+              {href ? <ArrowUpRight size={12} className="text-faint" /> : null}
+            </p>
+            <p className="mt-1 font-display text-[28px] font-bold leading-none tracking-[-0.03em] text-ink">
+              <CountUp
+                key={`${stat.label}-${stat.value}`}
+                to={stat.value}
+                decimals={stat.decimals ?? 0}
+              />
+            </p>
+          </>
+        );
+        return href ? (
+          <Cell key={stat.label} className="p-0">
+            <Link
+              href={href}
+              className="block h-full px-4 py-4 transition-colors hover:bg-surface-2 sm:px-5"
+            >
+              {body}
+            </Link>
+          </Cell>
+        ) : (
+          <Cell key={stat.label} className="px-4 py-4 sm:px-5">
+            {body}
+          </Cell>
+        );
+      })}
     </Cells>
   );
 }
@@ -289,19 +298,6 @@ function readView(): RankingView {
   } catch {
     return "list";
   }
-}
-
-function toStudent(entry: RankedStudent): Student {
-  return {
-    id: entry.studentId,
-    name: entry.name,
-    email: null,
-    squad_id: null,
-    squad_number: entry.squad,
-    university_name: entry.university,
-    start_date: null,
-    end_date: null,
-  };
 }
 
 type RowProps = {

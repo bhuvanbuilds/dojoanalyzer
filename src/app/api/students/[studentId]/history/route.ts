@@ -78,6 +78,32 @@ export async function GET(_request: Request, context: RouteContext) {
       throw weeklyRecordsError;
     }
 
+    // Belts are never lost: each week keeps every belt earned before it, so
+    // neither the "before" nor the "after" level can drop below an earlier one.
+    const keptRecords = (() => {
+      const best: Record<string, number> = {};
+      return (weeklyRecords ?? []).map((record) => {
+        const raise = (levels: unknown) => {
+          if (!levels || typeof levels !== "object" || Array.isArray(levels))
+            return levels as Record<string, number> | null;
+          const raised: Record<string, number> = {};
+          for (const [language, value] of Object.entries(levels)) {
+            const level = Number(value);
+            raised[language] = Number.isFinite(level)
+              ? Math.max(level, best[language] ?? level)
+              : level;
+          }
+          return raised;
+        };
+        const initial = raise(record.initial_belt_levels);
+        const final = raise(record.final_belt_levels);
+        for (const [language, level] of Object.entries(final ?? {}))
+          if (Number.isFinite(level))
+            best[language] = Math.max(best[language] ?? level, level);
+        return { record, initial, final };
+      });
+    })();
+
     const currentMembership =
       memberships.find((membership) => !membership.end_date) ??
       memberships[memberships.length - 1];
@@ -109,7 +135,7 @@ export async function GET(_request: Request, context: RouteContext) {
           end_date: membership.end_date,
         };
       }),
-      weeklyRecords: (weeklyRecords ?? []).map((record) => {
+      weeklyRecords: keptRecords.map(({ record, initial, final }) => {
         const week = Array.isArray(record.weeks)
           ? record.weeks[0]
           : record.weeks;
@@ -120,8 +146,8 @@ export async function GET(_request: Request, context: RouteContext) {
           start_time: record.start_time,
           calculated_end_time: record.calculated_end_time,
           belt_test_updated_at: record.belt_test_updated_at,
-          initial_belt_levels: record.initial_belt_levels,
-          final_belt_levels: record.final_belt_levels,
+          initial_belt_levels: initial,
+          final_belt_levels: final,
         };
       }),
     });

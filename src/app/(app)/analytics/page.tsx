@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { Suspense, useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import {
@@ -37,6 +37,7 @@ import {
 import { LANGUAGE_COLORS } from "@/components/dashboard/chart-kit";
 import { LANGUAGES, LANGUAGE_LABELS } from "@/lib/dashboard/metrics";
 import { useCachedProfile } from "@/lib/auth/use-cached-profile";
+import { useUrlFilters } from "@/lib/use-url-filters";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type AnalyticsTab = "monthly" | "yearly";
@@ -73,24 +74,47 @@ type YearlyResponse = {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function AnalyticsPage() {
+  return (
+    <Suspense fallback={<CenterState message="Loading insights" loading />}>
+      <Analytics />
+    </Suspense>
+  );
+}
+
+function Analytics() {
   const router = useRouter();
   const cachedProfile = useCachedProfile();
   const [profileState, setProfileState] = useState<
     CurrentUserProfile | { status: "loading" }
   >(cachedProfile ?? { status: "loading" });
-  const [tab, setTab] = useState<AnalyticsTab>("monthly");
-  const [selectedUniversityId, setSelectedUniversityId] = useState("");
+  // Filters live in the URL so each view (tab, year, month…) has its own address.
+  const [urlFilters, setUrlFilters] = useUrlFilters({
+    view: "monthly",
+    university: "",
+    year: "",
+    month: "",
+    squad: "",
+    language: "all",
+  });
+  const tab: AnalyticsTab = urlFilters.view === "yearly" ? "yearly" : "monthly";
+  const selectedUniversityId = urlFilters.university;
+  const mYear = urlFilters.year ? Number(urlFilters.year) : null;
+  const yYear = mYear;
+  const mMonth = urlFilters.month ? Number(urlFilters.month) : null;
+  const mSquad = urlFilters.squad;
+  const ySquad = mSquad;
+  const mLang = (
+    ["all", ...LANGUAGES].includes(urlFilters.language) ? urlFilters.language : "all"
+  ) as Language;
+  const setTab = (next: AnalyticsTab) => setUrlFilters({ view: next });
+  const setMMonth = (month: number) => setUrlFilters({ month: String(month) });
+  const setMSquad = (squad: string) => setUrlFilters({ squad });
+  const setYSquad = setMSquad;
 
-  const [mYear, setMYear] = useState<number | null>(null);
-  const [mMonth, setMMonth] = useState<number | null>(null);
-  const [mSquad, setMSquad] = useState("");
-  const [mLang, setMLang] = useState<Language>("all");
   const [mData, setMData] = useState<MonthlyResponse | null>(null);
   const [mLoading, setMLoading] = useState(false);
   const [mError, setMError] = useState("");
 
-  const [yYear, setYYear] = useState<number | null>(null);
-  const [ySquad, setYSquad] = useState("");
   const [yData, setYData] = useState<YearlyResponse | null>(null);
   const [yLoading, setYLoading] = useState(false);
   const [yError, setYError] = useState("");
@@ -130,10 +154,6 @@ export default function AnalyticsPage() {
         if (!response.ok)
           throw new Error(result.error ?? "Unable to load monthly analytics.");
         setMData(result);
-        if (result.filters) {
-          setMYear((current) => current ?? result.filters!.year);
-          setMMonth((current) => current ?? result.filters!.month);
-        }
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") return;
         setMError(
@@ -167,7 +187,6 @@ export default function AnalyticsPage() {
         if (!response.ok)
           throw new Error(result.error ?? "Unable to load yearly analytics.");
         setYData(result);
-        if (result.filters) setYYear((current) => current ?? result.filters!.year);
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") return;
         setYError(
@@ -211,12 +230,7 @@ export default function AnalyticsPage() {
     : (filters?.universities[0]?.id ?? currentProfile.university_id ?? "");
 
   function changeUniversity(id: string) {
-    setSelectedUniversityId(id);
-    setMSquad("");
-    setYSquad("");
-    setMYear(null);
-    setMMonth(null);
-    setYYear(null);
+    setUrlFilters({ university: id, squad: "", year: "", month: "" });
   }
 
   return (
@@ -262,13 +276,8 @@ export default function AnalyticsPage() {
           <div className="relative mt-5 flex flex-wrap items-center gap-2 border-t border-line bg-surface-2 px-4 py-2.5 sm:px-5">
             <PillSelect
               label="Year"
-              value={(tab === "monthly" ? mYear : yYear)?.toString() ?? ""}
-              onChange={(value) => {
-                if (tab === "monthly") {
-                  setMYear(Number(value));
-                  setMMonth(null);
-                } else setYYear(Number(value));
-              }}
+              value={String(mYear ?? filters?.year ?? "")}
+              onChange={(value) => setUrlFilters({ year: value, month: "" })}
             >
               {!filters?.years.length ? <option value="">—</option> : null}
               {filters?.years.map((year) => (
@@ -280,7 +289,7 @@ export default function AnalyticsPage() {
             {tab === "monthly" ? (
               <PillSelect
                 label="Month"
-                value={mMonth?.toString() ?? ""}
+                value={String(mMonth ?? mData?.filters?.month ?? "")}
                 onChange={(value) => setMMonth(Number(value))}
               >
                 {!mData?.filters?.months.length ? <option value="">—</option> : null}
@@ -320,7 +329,7 @@ export default function AnalyticsPage() {
               <PillSelect
                 label="Language"
                 value={mLang}
-                onChange={(value) => setMLang(value as Language)}
+                onChange={(value) => setUrlFilters({ language: value })}
               >
                 <option value="all">All</option>
                 {LANGUAGES.map((language) => (
@@ -357,11 +366,11 @@ export default function AnalyticsPage() {
               {mData?.summary ? (
                 <MonthlyView
                   data={mData}
-                  month={mMonth}
+                  month={mMonth ?? mData.filters?.month ?? null}
                   language={mLang}
                   onMonth={setMMonth}
                   onLanguage={(language) =>
-                    setMLang((current) => (current === language ? "all" : language))
+                    setUrlFilters({ language: mLang === language ? "all" : language })
                   }
                 />
               ) : null}
@@ -376,12 +385,14 @@ export default function AnalyticsPage() {
               {yData?.summary ? (
                 <YearlyView
                   data={yData}
-                  year={yYear}
-                  onMonth={(month) => {
-                    setMYear(yYear);
-                    setMMonth(month);
-                    setTab("monthly");
-                  }}
+                  year={yYear ?? yData.filters?.year ?? null}
+                  onMonth={(month) =>
+                    setUrlFilters({
+                      view: "monthly",
+                      month: String(month),
+                      year: String(yYear ?? yData.filters?.year ?? ""),
+                    })
+                  }
                 />
               ) : null}
             </Body>
@@ -543,6 +554,7 @@ function MonthlyView({
         <StatTile
           index={0}
           label="Belts earned"
+          href="/weekly-comparison?status=improved"
           value={summary.belts_earned}
           icon={<Award size={17} />}
           tint="var(--series-2)"
@@ -551,6 +563,7 @@ function MonthlyView({
         <StatTile
           index={1}
           label="Students with data"
+          href="/students"
           value={summary.total_students}
           icon={<Users size={17} />}
           tint="var(--series-1)"
@@ -559,6 +572,7 @@ function MonthlyView({
         <StatTile
           index={2}
           label="Total belts (month end)"
+          href="/leaderboard"
           value={summary.total_belts}
           icon={<Layers size={17} />}
           tint="var(--series-3)"
@@ -567,6 +581,7 @@ function MonthlyView({
         <StatTile
           index={3}
           label="Avg belts / student"
+          href="/leaderboard"
           value={summary.average_belts_per_student}
           decimals={2}
           icon={<Gauge size={17} />}
@@ -667,12 +682,13 @@ function YearlyView({
       </div>
 
       <div className={`${cellsClass} grid-cols-2 xl:grid-cols-4`}>
-        <StatTile index={0} label="Belts earned" value={summary.belts_earned} icon={<Award size={17} />} tint="var(--series-2)" />
-        <StatTile index={1} label="Students" value={summary.total_students} icon={<Users size={17} />} tint="var(--series-1)" />
-        <StatTile index={2} label="Total belts" value={summary.total_belts} icon={<Layers size={17} />} tint="var(--series-3)" />
+        <StatTile index={0} href="/weekly-comparison?status=improved" label="Belts earned" value={summary.belts_earned} icon={<Award size={17} />} tint="var(--series-2)" />
+        <StatTile index={1} href="/students" label="Students" value={summary.total_students} icon={<Users size={17} />} tint="var(--series-1)" />
+        <StatTile index={2} href="/leaderboard" label="Total belts" value={summary.total_belts} icon={<Layers size={17} />} tint="var(--series-3)" />
         <StatTile
           index={3}
           label="Avg belts / student"
+          href="/leaderboard"
           value={summary.average_belts_per_student}
           decimals={2}
           icon={<TrendingUp size={17} />}

@@ -218,15 +218,29 @@ export function ProgressPanel({
   if (!records.length)
     return <Empty message="No weekly belt records yet for this student." />;
 
-  const chartData = records.map((record) => ({
-    label: weekLabel(record),
-    ...Object.fromEntries(
-      LANGUAGES.map((language) => [
-        language,
-        record.final_belt_levels?.[language] ?? null,
-      ]),
-    ),
-  }));
+  // Start from the levels held before the first test, then step up only in
+  // the week a belt is earned: the line stays flat until the first gain.
+  const first = records[0];
+  const chartData = [
+    {
+      label: "Start",
+      ...Object.fromEntries(
+        LANGUAGES.map((language) => [
+          language,
+          first.initial_belt_levels?.[language] ?? 0,
+        ]),
+      ),
+    },
+    ...records.map((record) => ({
+      label: weekLabel(record),
+      ...Object.fromEntries(
+        LANGUAGES.map((language) => [
+          language,
+          record.final_belt_levels?.[language] ?? null,
+        ]),
+      ),
+    })),
+  ];
   const maxLevel = Math.max(
     1,
     ...LANGUAGES.map((language) => latest?.final_belt_levels?.[language] ?? 0),
@@ -287,13 +301,13 @@ export function ProgressPanel({
               {SERIES.map((series) => (
                 <Line
                   key={series.key}
-                  type="monotone"
+                  type="stepAfter"
                   dataKey={series.key}
                   name={series.label}
                   stroke={series.color}
                   strokeWidth={2}
                   dot={
-                    records.length < 16
+                    chartData.length < 16
                       ? { r: 3, strokeWidth: 0, fill: series.color }
                       : false
                   }

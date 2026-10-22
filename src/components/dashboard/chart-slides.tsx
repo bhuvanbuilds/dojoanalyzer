@@ -455,12 +455,6 @@ export function useChartSlides(model: Model, week: number): Slide[] {
       color: STATUS_COLORS.same,
     },
     {
-      key: "down",
-      label: "Moved down",
-      value: moves.down,
-      color: STATUS_COLORS.down,
-    },
-    {
       key: "first",
       label: "First record",
       value: moves.first,

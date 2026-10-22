@@ -1,4 +1,5 @@
 import "server-only";
+import { keepEarnedBelts } from "@/lib/earned-belts";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 /**
@@ -192,10 +193,15 @@ export async function loadStandings(requestedPeriod: string | null) {
       })
     : [];
 
-  // Latest and previous record per student, by period order.
+  // Latest and previous record per student, by period order. Belts are
+  // never lost, so a lower later level keeps the earlier belt.
+  const earned = keepEarnedBelts(
+    records.filter((record) => weekOrder.has(record.week_id)),
+    (record) => weekOrder.get(record.week_id)!,
+  );
   const latest = new Map<string, { at: number; belts: LanguageBelts }>();
   const previous = new Map<string, { at: number; belts: LanguageBelts }>();
-  for (const record of records) {
+  for (const record of earned) {
     const at = weekOrder.get(record.week_id);
     if (at === undefined) continue;
     const belts = toBelts(record.final_belt_levels);

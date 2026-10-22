@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUserProfile } from "@/lib/auth/profile";
 import { createRequestSupabaseClient } from "@/lib/auth/server";
+import { keepEarnedBelts } from "@/lib/earned-belts";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { LANGUAGES, type DashboardData } from "@/lib/dashboard/metrics";
 
@@ -64,7 +65,7 @@ type MembershipRow = {
 type RecordRow = {
   student_id: string;
   week_id: string;
-  final_belt_levels: unknown;
+  final_belt_levels: Record<string, unknown> | null;
 };
 
 export async function GET(request: Request) {
@@ -208,8 +209,16 @@ export async function GET(request: Request) {
           .order("week_id")
           .order("student_id"),
       );
+      // Belts are never lost: a lower later level keeps the earlier belt.
+      const weekOrder = new Map(
+        weeks.map((week) => [week.id, week.academic_year * 100 + week.week_number]),
+      );
+      const earnedRows = keepEarnedBelts(
+        rows.filter((row) => weekOrder.has(row.week_id)),
+        (row) => weekOrder.get(row.week_id)!,
+      );
       const seen = new Set<string>();
-      for (const row of rows) {
+      for (const row of earnedRows) {
         const key = `${row.student_id}:${row.week_id}`;
         const levels = levelsOf(row.final_belt_levels);
         if (seen.has(key) || !levels || !students.has(row.student_id)) continue;
@@ -223,6 +232,7 @@ export async function GET(request: Request) {
       .from("imports")
       .select("file_name, uploaded_at, weeks!inner(week_number, university_id)")
       .eq("status", "imported")
+      .eq("is_current", true)
       .order("uploaded_at", { ascending: false })
       .limit(1);
     if (universityId)

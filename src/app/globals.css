@@ -18,7 +18,7 @@
   --ink: #141414;
   --ink-2: #3d3b38;
   --muted: #6b6966;
-  --faint: #8a8782;
+  --faint: #716e69;
 
   --brand: #ef3837;
   --action: #d32f2e;
@@ -80,7 +80,7 @@
   --ink: #f4f4f5;
   --ink-2: #d4d4d8;
   --muted: #9a9aa3;
-  --faint: #74747d;
+  --faint: #85858e;
 
   --brand: #ef3837;
   --action: #d32f2e;
@@ -632,11 +632,30 @@ body {
 [data-theme="dark"] {
   --dot: rgba(255, 255, 255, 0.05);
 }
+/* The grid lives on its own fixed, GPU-composited layer: a fixed
+   background-attachment repaints the whole page on every scroll frame. */
 .dot-matrix {
   background-color: var(--page);
+  isolation: isolate;
+}
+.dot-matrix::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
   background-image: radial-gradient(var(--dot) 1px, transparent 1.4px);
   background-size: 16px 16px;
-  background-attachment: fixed;
+  transform: translateZ(0);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
 }
 
 /* ─── Hold button (React Bits "HoldButton", adapted) ──────────────────────
@@ -850,4 +869,20 @@ body {
   }
   .hold-button__pulse { animation: none !important; }
   .hold-button__label > span { transition: opacity 200ms ease; filter: none !important; }
+}
+
+/* ─── Dropdown menu (components/ui/dropdown) ──────────────────────────── */
+.dropdown-menu {
+  animation: dropdown-in 130ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes dropdown-in {
+  from {
+    opacity: 0;
+    scale: 0.97;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dropdown-menu {
+    animation: none;
+  }
 }

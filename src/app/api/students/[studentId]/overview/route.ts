@@ -98,15 +98,20 @@ export async function GET(_request: Request, context: RouteContext) {
       string,
       { label: string; academic_year: number; week_number: number; levels: LanguageBelts }
     >();
+    // Belts are never lost: carry the best level so far through each week.
+    const best = belts(null);
     for (const record of (recordsResult.data ?? []) as RecordRow[]) {
       const week = Array.isArray(record.weeks) ? record.weeks[0] : record.weeks;
       if (!week) continue;
       const key = `${week.academic_year}-${week.week_number}`;
+      const levels = belts(record.final_belt_levels);
+      for (const language of LANGUAGES)
+        best[language] = Math.max(best[language], levels[language]);
       series.set(key, {
         label: `W${week.week_number} '${String(week.academic_year).slice(-2)}`,
         academic_year: week.academic_year,
         week_number: week.week_number,
-        levels: belts(record.final_belt_levels),
+        levels: { ...best },
       });
     }
 

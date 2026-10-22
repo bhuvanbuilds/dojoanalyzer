@@ -47,7 +47,7 @@ function UniversityField({
       label="University"
       icon={<School size={15} />}
       value={value}
-      onChange={(event) => onChange(event.target.value)}
+      onChange={(value) => onChange(value)}
       error={error}
     >
       <option value="">Select a university</option>
@@ -365,8 +365,8 @@ function StudentForm({
           label="Squad"
           icon={<Users size={15} />}
           value={values.squadId}
-          onChange={(event) => {
-            update("squadId", event.target.value);
+          onChange={(value) => {
+            update("squadId", value);
             blur("squadId")();
           }}
           onBlur={blur("squadId")}

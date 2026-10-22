@@ -95,6 +95,18 @@ export function buildModel(data: DashboardData): Model {
     byWeek.set(weekNumber, record.l);
     levels.set(record.s, byWeek);
   }
+  // Belts are never lost: each week keeps the best level reached so far.
+  for (const byWeek of levels.values()) {
+    let best: number[] | null = null;
+    for (const weekNumber of [...byWeek.keys()].sort((a, b) => a - b)) {
+      const current = byWeek.get(weekNumber)!;
+      const kept: number[] = best
+        ? current.map((level, index) => Math.max(level, best![index] ?? 0))
+        : current;
+      byWeek.set(weekNumber, kept);
+      best = kept;
+    }
+  }
 
   return {
     data,
@@ -226,7 +238,6 @@ export function snapshot(
 export type Movement = {
   up: number;
   same: number;
-  down: number;
   first: number;
   untested: number;
   beltsGained: number;
@@ -242,7 +253,6 @@ export function movement(
   const result: Movement = {
     up: 0,
     same: 0,
-    down: 0,
     first: 0,
     untested: 0,
     beltsGained: 0,
@@ -263,7 +273,6 @@ export function movement(
     result.changes.push({ studentId: student.id, change, total: sum(current) });
     result.beltsGained += change;
     if (change > 0) result.up += 1;
-    else if (change < 0) result.down += 1;
     else result.same += 1;
   }
   return result;
@@ -419,7 +428,7 @@ export function strongestLanguage(shot: Snapshot): Language | null {
 
 // ─── Progress across a week range ─────────────────────────────────────────────
 export type RangeStatus =
-  "improved" | "same" | "dropped" | "untested" | "no_data";
+  "improved" | "same" | "untested" | "no_data";
 
 export type StudentRange = {
   studentId: string;
@@ -443,7 +452,6 @@ export type RangeSummary = {
   students: StudentRange[];
   improved: number;
   same: number;
-  dropped: number;
   untested: number;
   beltsGained: number;
   languageGain: number[];
@@ -469,7 +477,6 @@ export function rangeProgress(
     students: [],
     improved: 0,
     same: 0,
-    dropped: 0,
     untested: 0,
     beltsGained: 0,
     languageGain: LANGUAGES.map(() => 0),
@@ -497,7 +504,6 @@ export function rangeProgress(
     if (!end) status = "no_data";
     else if (inRange.length === 0) status = "untested";
     else if (gain > 0) status = "improved";
-    else if (gain < 0) status = "dropped";
     else status = "same";
 
     summary.students.push({
@@ -516,7 +522,6 @@ export function rangeProgress(
     });
 
     if (status === "improved") summary.improved += 1;
-    else if (status === "dropped") summary.dropped += 1;
     else if (status === "same") summary.same += 1;
     else summary.untested += 1;
 

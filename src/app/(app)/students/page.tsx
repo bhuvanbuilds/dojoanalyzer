@@ -41,7 +41,8 @@ import {
   type CollectionView,
 } from "@/components/students/student-collection";
 import { EditStudentDialog } from "@/components/students/edit-student-dialog";
-import { HistoryDialog } from "@/components/students/history-dialog";
+import { studentHref } from "@/lib/student-links";
+import { useUrlFilters } from "@/lib/use-url-filters";
 import {
   CreateSquadDialog,
   CreateStudentDialog,
@@ -55,6 +56,7 @@ import type {
   WeekStudent,
 } from "@/components/students/types";
 import { useCachedProfile } from "@/lib/auth/use-cached-profile";
+import { Dropdown } from "@/components/ui/dropdown";
 
 type IssueFilter = "missing" | "incomplete";
 type SortKey = "name" | "squad" | "recent";
@@ -122,11 +124,34 @@ function StudentsPageContent() {
   const [loadError, setLoadError] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const [universityFilter, setUniversityFilter] = useState("");
-  const [squadFilter, setSquadFilter] = useState("");
-  const [search, setSearch] = useState("");
-  const [sort, setSort] = useState<SortKey>("name");
-  const [view, setView] = useState<CollectionView>(readView);
+  // Filters live in the URL so each view has its own address.
+  const [urlFilters, setUrlFilters] = useUrlFilters({
+    university: "",
+    squadId: "",
+    q: "",
+    sort: "name",
+    layout: "",
+  });
+  const [storedView] = useState<CollectionView>(readView);
+  const universityFilter = urlFilters.university;
+  const squadFilter = urlFilters.squadId;
+  const search = urlFilters.q;
+  const sort: SortKey = (["name", "squad", "recent"] as const).includes(
+    urlFilters.sort as SortKey,
+  )
+    ? (urlFilters.sort as SortKey)
+    : "name";
+  const view: CollectionView =
+    urlFilters.layout === "list" || urlFilters.layout === "cards"
+      ? urlFilters.layout
+      : storedView;
+  const setSquadFilter = (next: string | ((current: string) => string)) =>
+    setUrlFilters({
+      squadId: typeof next === "function" ? next(squadFilter) : next,
+    });
+  const setSearch = (value: string) =>
+    setUrlFilters({ q: value }, { replace: true });
+  const setSort = (value: SortKey) => setUrlFilters({ sort: value });
   const searchRef = useRef<HTMLInputElement>(null);
 
   const [csvOpen, setCsvOpen] = useState(false);
@@ -134,7 +159,6 @@ function StudentsPageContent() {
   const [createDialog, setCreateDialog] = useState<CreateDialog>(null);
   const [createSession, setCreateSession] = useState(0);
   const [editing, setEditing] = useState<Student | null>(null);
-  const [historyFor, setHistoryFor] = useState<Student | null>(null);
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const [belts, setBelts] = useState<Map<string, StudentBelts>>(new Map());
   const clearToast = useCallback(() => setToast(null), []);
@@ -146,7 +170,7 @@ function StudentsPageContent() {
   }
 
   function chooseView(next: CollectionView) {
-    setView(next);
+    setUrlFilters({ layout: next });
     try {
       localStorage.setItem(VIEW_KEY, next);
     } catch {
@@ -233,7 +257,7 @@ function StudentsPageContent() {
             fetch(`/api/students${query}`, { signal: controller.signal }),
             needsWeekData
               ? fetch(
-                  `/api/dashboard?academicYear=${requestedAcademicYear}&weekNumber=${requestedWeek}`,
+                  `/api/dashboard?academicYear=${requestedAcademicYear}&weekNumber=${requestedWeek}${universityFilter ? `&university_id=${encodeURIComponent(universityFilter)}` : ""}`,
                   { signal: controller.signal },
                 )
               : Promise.resolve(null),
@@ -800,7 +824,7 @@ function StudentsPageContent() {
         </section>
 
         {/* ── Toolbar ─────────────────────────────────────────── */}
-        <div className="sticky top-[var(--app-bar-h,57px)] z-20 bg-surface/90 px-3 py-2 backdrop-blur-xl sm:px-4">
+        <div className="sticky top-[var(--app-bar-h,57px)] z-20 bg-surface/[0.97] px-3 py-2 sm:px-4">
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative min-w-[220px] flex-1">
               <Search
@@ -840,10 +864,9 @@ function StudentsPageContent() {
               <ToolbarSelect
                 label="University"
                 value={universityFilter}
-                onChange={(value) => {
-                  setUniversityFilter(value);
-                  setSquadFilter("");
-                }}
+                onChange={(value) =>
+                  setUrlFilters({ university: value, squadId: "" })
+                }
               >
                 <option value="">All universities</option>
                 {universities.map((university) => (
@@ -959,10 +982,7 @@ function StudentsPageContent() {
               visibleStudents.length > 0 && (search || squadFilter) ? (
                 <button
                   type="button"
-                  onClick={() => {
-                    setSearch("");
-                    setSquadFilter("");
-                  }}
+                  onClick={() => setUrlFilters({ q: "", squadId: "" })}
                   className="rounded-full border border-line-strong px-3.5 py-1.5 text-[13px] font-semibold text-ink-2 hover:text-ink"
                 >
                   Clear search & squad
@@ -980,7 +1000,7 @@ function StudentsPageContent() {
             showUniversity={isSuperAdmin && !universityFilter}
             canEdit={isManager}
             onEdit={setEditing}
-            onHistory={setHistoryFor}
+            onHistory={(student) => router.push(studentHref(student.id))}
             belts={belts}
             onSquad={setSquadFilter}
           />
@@ -988,20 +1008,6 @@ function StudentsPageContent() {
       </Frame>
 
       {/* ── Dialogs ─────────────────────────────────────────── */}
-      <HistoryDialog
-        student={historyFor}
-        onClose={() => setHistoryFor(null)}
-        snapshot={
-          historyFor && belts.get(historyFor.id)
-            ? {
-                rank: belts.get(historyFor.id)!.rank,
-                score: belts.get(historyFor.id)!.total,
-                scoreLabel: "belts",
-                levels: belts.get(historyFor.id)!.levels,
-              }
-            : undefined
-        }
-      />
       {isManager ? (
         <>
           <EditStudentDialog
@@ -1158,13 +1164,13 @@ function ToolbarSelect({
           {icon}
         </span>
       ) : null}
-      <select
+      <Dropdown
         value={value}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(value) => onChange(value)}
         className={`max-w-[220px] cursor-pointer appearance-none rounded-xl border border-transparent bg-sunken py-2 pr-7 text-[13px] font-semibold text-ink-2 outline-none transition hover:text-ink focus:border-line-strong ${icon ? "pl-8" : "pl-3"}`}
       >
         {children}
-      </select>
+      </Dropdown>
       <svg
         aria-hidden="true"
         viewBox="0 0 16 16"

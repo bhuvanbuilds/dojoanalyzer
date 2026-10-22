@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { X } from "lucide-react";
 import Papa from "papaparse";
 import { formatWeekLabel } from "@/lib/weeks";
+import { Dropdown } from "@/components/ui/dropdown";
 
 type UploadState =
   | "idle"
@@ -92,15 +93,7 @@ type CsvUploadDialogProps = {
   requireUniversity: boolean;
   mode?: "weekly-import" | "manage-squads";
   onComplete?: () => void;
-  defaultAcademicYear?: number;
 };
-
-function academicYearOptions(selected: number) {
-  const current = new Date().getFullYear();
-  return Array.from(new Set([current - 1, current, current + 1, selected])).sort(
-    (left, right) => left - right,
-  );
-}
 
 function formatImportError(result: ImportResponse) {
   const parts = [result.error ?? "Upload failed. Please check the CSV and try again."];
@@ -119,11 +112,9 @@ export function CsvUploadDialog({
   requireUniversity,
   mode = "weekly-import",
   onComplete,
-  defaultAcademicYear = new Date().getFullYear(),
 }: CsvUploadDialogProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
-  const [academicYear, setAcademicYear] = useState(defaultAcademicYear);
   const [universityId, setUniversityId] = useState("");
   const [universities, setUniversities] = useState<University[]>([]);
   const [state, setState] = useState<UploadState>("idle");
@@ -296,11 +287,6 @@ export function CsvUploadDialog({
       setMessage("Select a university before uploading.");
       return;
     }
-    if (!isManageSquads && (!Number.isInteger(academicYear) || academicYear < 2000)) {
-      setState("error");
-      setMessage("Select a valid academic year before importing.");
-      return;
-    }
     const shouldCommitMultiWeek =
       !isManageSquads &&
       importPreview?.status === "preview" &&
@@ -316,7 +302,6 @@ export function CsvUploadDialog({
     if (isManageSquads) {
       formData.append("provisionStudentsOnly", "true");
     } else {
-      formData.append("academicYear", String(academicYear));
       formData.append(
         "multiWeekAction",
         shouldCommitMultiWeek ? "commit" : "preview",
@@ -520,10 +505,10 @@ export function CsvUploadDialog({
           {requireUniversity && (
             <label className="space-y-2 text-sm font-semibold block">
               <span>University</span>
-              <select
+              <Dropdown chevron
                 className="w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 font-normal outline-none focus:border-action"
                 value={universityId}
-                onChange={(event) => setUniversityId(event.target.value)}
+                onChange={(value) => setUniversityId(value)}
                 disabled={isUploading || loadingUniversities}
                 required
               >
@@ -535,30 +520,7 @@ export function CsvUploadDialog({
                     {item.name}
                   </option>
                 ))}
-              </select>
-            </label>
-          )}
-
-          {!isManageSquads && (
-            <label className="block space-y-2 text-sm font-semibold">
-              <span>Academic year</span>
-              <select
-                className="w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 font-normal outline-none focus:border-action"
-                value={academicYear}
-                onChange={(event) => {
-                  setAcademicYear(Number(event.target.value));
-                  setImportPreview(null);
-                  setRowResults([]);
-                  setState("idle");
-                }}
-                disabled={isPending}
-              >
-                {academicYearOptions(academicYear).map((year) => (
-                  <option key={year} value={year}>
-                    {year}–{String(year + 1).slice(-2)}
-                  </option>
-                ))}
-              </select>
+              </Dropdown>
             </label>
           )}
 
@@ -573,6 +535,12 @@ export function CsvUploadDialog({
                       : "CSV detected"}
                 </h3>
                 <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 rounded-lg bg-surface-2 p-3 text-xs sm:grid-cols-4">
+                  {importPreview.weeks?.[0] ? (
+                    <SummaryItem
+                      label="Academic year"
+                      value={importPreview.weeks[0].academic_year}
+                    />
+                  ) : null}
                   <SummaryItem label="Records" value={importPreview.summary.rows} />
                   <SummaryItem label="Weeks" value={importPreview.summary.weeks} />
                   <SummaryItem label="Squads" value={importPreview.summary.squads} />

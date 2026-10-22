@@ -1,8 +1,6 @@
 "use client";
 
-import Link from "next/link";
 import {
-  ArrowDownRight,
   ArrowUpRight,
   Download,
   Minus,
@@ -11,6 +9,7 @@ import {
 import { useMemo, useState } from "react";
 import { CountUp } from "@/components/reactbits/count-up";
 import { Cell, Cells } from "@/components/ui/frame";
+import { useStudentOpener } from "@/components/dashboard/student-opener";
 import { ShinyButton } from "@/components/ui/shiny-button";
 import {
   LANGUAGE_COLORS,
@@ -31,12 +30,11 @@ import {
 import { LanguageLogo } from "@/components/belts/belts";
 
 type SortKey = "gain" | "end" | "name";
-type StatusFilter = "all" | "improved" | "same" | "dropped" | "untested";
+type StatusFilter = "all" | "improved" | "same" | "untested";
 
 const STATUS_LABEL: Record<RangeStatus, string> = {
   improved: "Improved",
   same: "No change",
-  dropped: "Dropped",
   untested: "Not tested",
   no_data: "No data",
 };
@@ -99,7 +97,6 @@ export function RangeExplorer({ model, week }: { model: Model; week: number }) {
 
   const visible = expanded ? rows : rows.slice(0, PAGE);
   const maxLanguageGain = Math.max(1, ...range.languageGain.map(Math.abs));
-  const canOpenHistory = model.data.role !== "mentor";
 
   function preset(span: number | "all") {
     const endIndex = weeks.indexOf(week);
@@ -168,9 +165,9 @@ export function RangeExplorer({ model, week }: { model: Model; week: number }) {
       detail: "Across students tested in range",
     },
     {
-      label: "Dropped",
-      value: range.dropped,
-      detail: `${range.same} unchanged · ${range.untested} not tested`,
+      label: "No change",
+      value: range.same,
+      detail: `${range.untested} not tested in range`,
     },
   ];
 
@@ -302,7 +299,6 @@ export function RangeExplorer({ model, week }: { model: Model; week: number }) {
                 ["all", "All"],
                 ["improved", "Improved"],
                 ["same", "No change"],
-                ["dropped", "Dropped"],
                 ["untested", "Not tested"],
               ] as const
             ).map(([value, label]) => (
@@ -371,7 +367,6 @@ export function RangeExplorer({ model, week }: { model: Model; week: number }) {
                   key={student.studentId}
                   student={student}
                   squad={model.squadLabel.get(student.squadId) ?? "—"}
-                  canOpenHistory={canOpenHistory}
                 />
               ))
             )}
@@ -399,12 +394,11 @@ export function RangeExplorer({ model, week }: { model: Model; week: number }) {
 function StudentRow({
   student,
   squad,
-  canOpenHistory,
 }: {
   student: StudentRange;
   squad: string;
-  canOpenHistory: boolean;
 }) {
+  const { openStudent } = useStudentOpener();
   const start = student.start ? sum(student.start) : null;
   const end = student.end ? sum(student.end) : null;
   const changed = LANGUAGES.map((language, index) => ({
@@ -415,18 +409,13 @@ function StudentRow({
   return (
     <tr className="hover:bg-surface-2">
       <td className="px-5 py-3 lg:px-6">
-        {canOpenHistory ? (
-          <Link
-            href={`/students/${student.studentId}/history`}
-            className="font-display font-semibold text-ink hover:underline"
-          >
-            {student.name}
-          </Link>
-        ) : (
-          <span className="font-display font-semibold text-ink">
-            {student.name}
-          </span>
-        )}
+        <button
+          type="button"
+          onClick={() => openStudent(student.studentId)}
+          className="text-left font-display font-semibold text-ink hover:underline"
+        >
+          {student.name}
+        </button>
         <span className="block text-[12px] text-muted">
           {squad}
           {student.joinedInRange && " · first test in range"}
@@ -466,19 +455,11 @@ function StudentRow({
             className={`inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[12.5px] font-semibold tabular-nums ${
               student.gain > 0
                 ? "bg-success-soft text-success-text"
-                : student.gain < 0
-                  ? "bg-brand-soft text-brand-text"
-                  : "bg-ink/[0.05] text-muted"
+                : "bg-ink/[0.05] text-muted"
             }`}
           >
-            {student.gain > 0 ? (
-              <ArrowUpRight size={13} />
-            ) : student.gain < 0 ? (
-              <ArrowDownRight size={13} />
-            ) : (
-              <Minus size={13} />
-            )}
-            {Math.abs(student.gain)}
+            {student.gain > 0 ? <ArrowUpRight size={13} /> : <Minus size={13} />}
+            {student.gain}
           </span>
         )}
       </td>

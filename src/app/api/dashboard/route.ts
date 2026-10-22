@@ -37,26 +37,36 @@ export async function GET(request: Request) {
       );
     }
 
-    if (
-      currentUser.profile.role !== "campus_manager" &&
-      currentUser.profile.role !== "mentor"
-    ) {
+    const role = currentUser.profile.role;
+    if (role !== "campus_manager" && role !== "mentor" && role !== "super_admin") {
       return NextResponse.json(
         { error: "Dashboard access is not authorized" },
         { status: 403 },
       );
     }
 
-    const universityId = currentUser.profile.university_id;
-
-    if (!universityId) {
-      return NextResponse.json(
-        { error: "Account is not assigned to a university" },
-        { status: 403 },
-      );
-    }
-
     const { searchParams } = new URL(request.url);
+    const requestedUniversity = searchParams.get("university_id");
+    let universityIds: string[];
+    if (role === "super_admin") {
+      // Super admins see one campus when filtered, otherwise every campus.
+      if (requestedUniversity) {
+        universityIds = [requestedUniversity];
+      } else {
+        const { data, error } = await supabaseAdmin.from("universities").select("id");
+        if (error) throw error;
+        universityIds = (data ?? []).map((row) => row.id as string);
+      }
+    } else {
+      const universityId = currentUser.profile.university_id;
+      if (!universityId) {
+        return NextResponse.json(
+          { error: "Account is not assigned to a university" },
+          { status: 403 },
+        );
+      }
+      universityIds = [universityId];
+    }
 
     const academicYear = Number(
       searchParams.get("academicYear") ?? "2026"
@@ -80,33 +90,32 @@ export async function GET(request: Request) {
       );
     }
 
-    const [summaryResult, studentsResult] = await Promise.all([
-      supabaseAdmin.rpc("get_dashboard_summary", {
-        p_academic_year: academicYear,
-        p_week_number: weekNumber,
-        p_university_id: universityId,
+    const results = await Promise.all(
+      universityIds.map(async (universityId) => {
+        const [summaryResult, studentsResult] = await Promise.all([
+          supabaseAdmin.rpc("get_dashboard_summary", {
+            p_academic_year: academicYear,
+            p_week_number: weekNumber,
+            p_university_id: universityId,
+          }),
+          supabaseAdmin.rpc("get_dashboard_week", {
+            p_academic_year: academicYear,
+            p_week_number: weekNumber,
+            p_university_id: universityId,
+          }),
+        ]);
+        if (summaryResult.error) throw summaryResult.error;
+        if (studentsResult.error) throw studentsResult.error;
+        return { summary: summaryResult.data?.[0] ?? null, students: studentsResult.data ?? [] };
       }),
-
-      supabaseAdmin.rpc("get_dashboard_week", {
-        p_academic_year: academicYear,
-        p_week_number: weekNumber,
-        p_university_id: universityId,
-      }),
-    ]);
-
-    if (summaryResult.error) {
-      throw summaryResult.error;
-    }
-
-    if (studentsResult.error) {
-      throw studentsResult.error;
-    }
+    );
 
     return NextResponse.json({
       academicYear,
       weekNumber,
-      summary: summaryResult.data?.[0] ?? null,
-      students: studentsResult.data ?? [],
+      // A single campus keeps its summary; combined campuses have none.
+      summary: results.length === 1 ? results[0].summary : null,
+      students: results.flatMap((result) => result.students),
     });
   } catch (error) {
     console.error("Dashboard error:", error);

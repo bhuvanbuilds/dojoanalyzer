@@ -189,6 +189,7 @@ export function DojoStage({ mood }: { mood: BotMood }) {
           alt="Kalvium"
           width={2560}
           height={543}
+          sizes="160px"
           preload
           className="h-7 w-auto lg:h-8"
         />

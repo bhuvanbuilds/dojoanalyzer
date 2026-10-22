@@ -19,6 +19,7 @@ import {
   LANGUAGE_LABELS,
   type Language,
 } from "@/lib/dashboard/metrics";
+import { Dropdown } from "@/components/ui/dropdown";
 
 type Period = {
   key: string;
@@ -85,14 +86,21 @@ export function LeaderboardBoard({ kind }: { kind: Kind }) {
     : "cpp";
   const [searchInput, setSearchInput] = useState(search);
 
-  function setParams(next: Record<string, string | null>) {
+  // Each filter change is its own history entry, so Back steps through
+  // them; typing in search replaces the entry instead of piling up.
+  function setParams(
+    next: Record<string, string | null>,
+    { replace = false } = {},
+  ) {
     const params = new URLSearchParams(searchParams.toString());
     for (const [key, value] of Object.entries(next)) {
       if (value) params.set(key, value);
       else params.delete(key);
     }
     const query = params.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    const href = query ? `${pathname}?${query}` : pathname;
+    if (replace) router.replace(href, { scroll: false });
+    else router.push(href, { scroll: false });
   }
 
   useEffect(() => {
@@ -113,7 +121,7 @@ export function LeaderboardBoard({ kind }: { kind: Kind }) {
   useEffect(() => {
     const trimmed = searchInput.trim();
     if (trimmed === search) return;
-    const timeout = window.setTimeout(() => setParams({ q: trimmed || null }), 300);
+    const timeout = window.setTimeout(() => setParams({ q: trimmed || null }, { replace: true }), 300);
     return () => window.clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- setParams reads the live URL
   }, [searchInput, search]);
@@ -397,7 +405,7 @@ export function LeaderboardBoard({ kind }: { kind: Kind }) {
           ? squad
             ? `Squad ${squad.squad_number} Champions`
             : "Kalvium Dojo Champions"
-          : `${languageLabel} Black Belts`
+          : `${languageLabel} Belts`
       }
       subtitle={
         kind === "overall"
@@ -437,13 +445,13 @@ function SelectBox({
       <span className="pointer-events-none pl-3 text-[10.5px] font-bold uppercase tracking-[0.12em] text-faint">
         {label}
       </span>
-      <select
+      <Dropdown
         value={value}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(value) => onChange(value)}
         className="h-10 min-w-0 flex-1 cursor-pointer appearance-none truncate bg-transparent pl-2 pr-8 text-[13.5px] font-semibold text-ink outline-none"
       >
         {children}
-      </select>
+      </Dropdown>
       <svg
         aria-hidden="true"
         viewBox="0 0 16 16"

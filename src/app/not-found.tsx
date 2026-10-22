@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { NotFoundView } from "@/components/not-found-view";
+import { LazyNotFoundView } from "@/components/not-found-lazy";
 
 export const metadata: Metadata = {
-  title: "Page not found · Dojo Belt Analyzer",
+  title: "Page not found",
 };
 
 export default function NotFound() {
-  return <NotFoundView />;
+  return <LazyNotFoundView />;
 }
