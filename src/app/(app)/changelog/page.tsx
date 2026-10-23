@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AnimatePresence } from "motion/react";
-import { Bug, Plus, Sparkles, Trash2, Wand2 } from "lucide-react";
+import { Bug, LifeBuoy, Plus, Sparkles, Trash2, Wand2 } from "lucide-react";
 import {
   CHANGELOG_KINDS,
   CHANGELOG_LABELS,
@@ -14,6 +14,8 @@ import {
 import { PageState } from "@/components/ui/skeleton";
 import { Frame, FrameTitle, Page } from "@/components/ui/frame";
 import { FormBanner } from "@/components/ui/form";
+import { NewTicketDialog } from "@/components/support/kit";
+import type { TicketType } from "@/lib/support";
 
 const KIND_STYLE: Record<ChangelogKind, { icon: typeof Bug; tint: string; soft: string }> = {
   fix: { icon: Bug, tint: "#dc2626", soft: "color-mix(in srgb, #ef4444 13%, transparent)" },
@@ -39,6 +41,7 @@ export default function ChangelogPage() {
   const [isStaff, setIsStaff] = useState(false);
   const [error, setError] = useState("");
   const [composing, setComposing] = useState(false);
+  const [feedback, setFeedback] = useState<{ type: TicketType; title: string } | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -224,21 +227,43 @@ export default function ChangelogPage() {
                       />
                     </figure>
                   ) : null}
-                  {isStaff ? (
+                  <div className="mt-5 flex flex-wrap items-center gap-3">
+                    {/* Every release gets a direct line to support. */}
                     <button
                       type="button"
-                      onClick={() => void act(entry, "unpublish")}
-                      className="mt-4 text-[12.5px] font-semibold text-muted underline-offset-4 hover:text-ink hover:underline"
+                      onClick={() =>
+                        setFeedback({
+                          type: entry.kind === "fix" ? "bug" : "feature",
+                          title: `${entry.kind === "fix" ? "Issue with" : "Feedback on"}: ${entry.title}`.slice(0, 140),
+                        })
+                      }
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-line-strong px-3 py-1.5 text-[12.5px] font-semibold text-ink-2 transition hover:border-ink/40 hover:text-ink"
                     >
-                      Unpublish
+                      <LifeBuoy size={13} className="text-action" />
+                      {entry.kind === "fix" ? "Still seeing this? Report it" : "Give feedback"}
                     </button>
-                  ) : null}
+                    {isStaff ? (
+                      <button
+                        type="button"
+                        onClick={() => void act(entry, "unpublish")}
+                        className="text-[12.5px] font-semibold text-muted underline-offset-4 hover:text-ink hover:underline"
+                      >
+                        Unpublish
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
               </article>
             ))}
           </div>
         )}
       </Frame>
+      <NewTicketDialog
+        open={feedback !== null}
+        initialType={feedback?.type ?? "feature"}
+        initialTitle={feedback?.title ?? ""}
+        onClose={() => setFeedback(null)}
+      />
     </Page>
   );
 }

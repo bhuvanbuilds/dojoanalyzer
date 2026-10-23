@@ -57,6 +57,8 @@ export async function GET(request: Request, context: Context) {
           mine: authorId === authorization.user.id,
         })),
         isStaff,
+        // Only developers write release notes.
+        isDeveloper: authorization.profile.is_developer && !authorization.profile.viewing_as,
         isOwner: ownerId === authorization.user.id,
         staff: isStaff && !after ? await listStaff() : undefined,
       },

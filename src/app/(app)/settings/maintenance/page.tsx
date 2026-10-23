@@ -46,14 +46,14 @@ export default function MaintenanceSettingsPage() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
 
-  // Only super admins and developers may hold the switch.
+  // Only developers may hold the switch.
   useEffect(() => {
     let active = true;
     getCurrentUserProfile().then((result) => {
       if (!active) return;
       setAccount(result);
       if (result.status === "unauthenticated") router.replace("/login");
-      else if (result.status !== "authenticated" || result.profile.role !== "super_admin")
+      else if (result.status !== "authenticated" || !result.profile.is_developer)
         router.replace("/");
     });
     return () => {
@@ -97,7 +97,7 @@ export default function MaintenanceSettingsPage() {
     }
   }
 
-  if (account?.status !== "authenticated" || account.profile.role !== "super_admin")
+  if (account?.status !== "authenticated" || !account.profile.is_developer)
     return <PageState message="Checking your account" loading />;
   if (loadError) return <PageState message="Maintenance mode" detail={loadError} />;
   if (!state) return <PageState message="Loading maintenance mode" loading />;
@@ -108,7 +108,7 @@ export default function MaintenanceSettingsPage() {
         <FrameTitle
           eyebrow="Admin"
           title="Maintenance mode"
-          description="Lock the app while you test or migrate. Only developers and super admins stay in; everyone else sees the maintenance page."
+          description="Lock the app while you test or migrate. Only developers stay in; everyone else, super admins included, sees the maintenance page."
           actions={
             <a
               href="/maintenance"
@@ -176,8 +176,8 @@ export default function MaintenanceSettingsPage() {
               <ShieldAlert size={15} className="text-action" /> While it’s on
             </div>
             <ul className="mt-3 space-y-2 text-[13px] leading-5 text-muted">
-              <li>✓ Developers and super admins keep full access.</li>
-              <li>✕ Campus managers, mentors and students see the maintenance page.</li>
+              <li>✓ Developers keep full access.</li>
+              <li>✕ Super admins, campus managers, mentors and students see the maintenance page.</li>
               <li>✕ Their API calls are refused, so nothing changes behind your back.</li>
               <li>↺ A timed window ends by itself — no need to remember.</li>
             </ul>

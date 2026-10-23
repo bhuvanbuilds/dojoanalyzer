@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireRoles, writeAuditLog } from "@/lib/auth/authorization";
+import { requireDeveloper, writeAuditLog } from "@/lib/auth/authorization";
 import { CHANGELOG_COLUMNS, toEntry, type ChangelogRow } from "@/lib/changelog-server";
 import { isUuid } from "@/lib/is-uuid";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -11,7 +11,7 @@ const FAILED = () =>
 
 /** PATCH { published?, title?, body?, kind? }: edit or (un)publish a note. */
 export async function PATCH(request: Request, context: Context) {
-  const authorization = await requireRoles(["super_admin"]);
+  const authorization = await requireDeveloper();
   if (authorization.response) return authorization.response;
   try {
     const { entryId } = await context.params;
@@ -67,7 +67,7 @@ export async function PATCH(request: Request, context: Context) {
 
 /** DELETE: remove a release note. */
 export async function DELETE(_request: Request, context: Context) {
-  const authorization = await requireRoles(["super_admin"]);
+  const authorization = await requireDeveloper();
   if (authorization.response) return authorization.response;
   try {
     const { entryId } = await context.params;

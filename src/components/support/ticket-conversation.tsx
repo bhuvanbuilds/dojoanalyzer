@@ -42,6 +42,7 @@ type Detail = {
   ticket: TicketDetail;
   messages: TicketMessage[];
   isStaff: boolean;
+  isDeveloper?: boolean;
   isOwner: boolean;
   staff?: StaffMember[];
 };
@@ -185,7 +186,7 @@ export function TicketConversation({
     return <Empty title="Couldn’t load this ticket" detail={failure.message ?? "Check your connection and try again."} />;
   if (!current) return <Empty title="Opening ticket…" detail="" loading />;
 
-  const { ticket, messages, isStaff, isOwner, staff = [] } = current;
+  const { ticket, messages, isStaff, isDeveloper = false, isOwner, staff = [] } = current;
   const finished = ticket.status === "resolved" || ticket.status === "closed";
   const assignee = staff.find((member) => member.id === ticket.assigned_to);
 
@@ -346,7 +347,7 @@ export function TicketConversation({
                 ))}
               </Dropdown>
             </Control>
-            {ticket.type !== "other" ? (
+            {isDeveloper && ticket.type !== "other" ? (
               <button
                 type="button"
                 onClick={() => setChangelogOpen(true)}
@@ -569,7 +570,7 @@ export function TicketConversation({
         </aside>
       </div>
 
-      {isStaff ? (
+      {isDeveloper ? (
         <ChangelogDialog
           open={changelogOpen}
           onClose={() => setChangelogOpen(false)}

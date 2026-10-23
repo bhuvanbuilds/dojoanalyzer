@@ -168,6 +168,7 @@ export const navGroups: readonly NavGroup[] = [
         label: "Maintenance",
         icon: Wrench,
         roles: SUPER_ADMIN,
+        developerOnly: true,
       },
       {
         href: "/developer",

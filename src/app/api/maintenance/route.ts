@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireSuperAdmin, writeAuditLog } from "@/lib/auth/authorization";
+import { requireDeveloper, writeAuditLog } from "@/lib/auth/authorization";
 import { getMaintenance, setMaintenance } from "@/lib/maintenance";
 
 const MAX_HOURS = 72;
@@ -15,11 +15,11 @@ export async function GET() {
 
 /**
  * PUT { enabled, hours?, message? }: switch maintenance on or off.
- * Super admins and developers only. hours = null means "back soon" with no
+ * Developers only. hours = null means "back soon" with no
  * end time; otherwise it ends by itself after that many hours.
  */
 export async function PUT(request: Request) {
-  const authorization = await requireSuperAdmin();
+  const authorization = await requireDeveloper();
   if (authorization.response) return authorization.response;
   try {
     const body = (await request.json().catch(() => ({}))) as {

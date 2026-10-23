@@ -178,7 +178,7 @@ export default function DeveloperPage() {
         ["Support tables", status.checks.supportTables.ok, "support_tickets, support_messages", status.checks.supportTables.ok ? "ok" : "missing"],
         ["Settings table", status.checks.settingsTable.ok, "app_settings (maintenance)", status.checks.settingsTable.ok ? "ok" : "missing"],
         ["Email", status.checks.email.ok, status.checks.email.to ?? "RESEND_API_KEY not set", status.checks.email.ok ? "resend" : "off"],
-        ["Maintenance", !status.maintenance.enabled, status.maintenance.enabled ? "Only developers and super admins can sign in" : "Open to everyone", status.maintenance.enabled ? "on" : "off"],
+        ["Maintenance", !status.maintenance.enabled, status.maintenance.enabled ? "Only developers can sign in" : "Open to everyone", status.maintenance.enabled ? "on" : "off"],
       ]
     : [];
 

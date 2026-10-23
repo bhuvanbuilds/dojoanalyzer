@@ -50,14 +50,13 @@ export async function proxy(request: NextRequest) {
     );
   }
 
-  // Maintenance: only developers and super admins (who hold the switch) stay
-  // in. Everyone else gets the maintenance page, and their API calls a 503.
+  // Maintenance: only developers (who hold the switch) stay in. Everyone
+  // else gets the maintenance page, and their API calls a 503.
   const maintenanceExempt = pathname === "/maintenance" || pathname === "/api/maintenance";
   if (!maintenanceExempt) {
     const maintenance = await getMaintenance();
-    const insider =
-      currentUser.status === "authenticated" &&
-      (currentUser.profile.role === "super_admin" || currentUser.profile.is_developer);
+    // Only developers stay in during maintenance.
+    const insider = currentUser.status === "authenticated" && currentUser.profile.is_developer;
     if (maintenance.enabled && !insider) {
       if (pathname.startsWith("/api/"))
         return NextResponse.json(
@@ -109,7 +108,13 @@ export async function proxy(request: NextRequest) {
       pathname.startsWith("/support/inbox");
     const managerOnly =
       pathname === "/imports" || pathname.startsWith("/imports/");
+    // Developer tools: maintenance settings and the developer console.
+    const developerOnly =
+      pathname.startsWith("/settings") ||
+      pathname === "/developer" ||
+      pathname.startsWith("/developer/");
     if (
+      (developerOnly && (!currentUser.profile.is_developer || currentUser.profile.viewing_as)) ||
       (superAdminOnly && role !== "super_admin") ||
       (managerOnly && role !== "super_admin" && role !== "campus_manager")
     ) {

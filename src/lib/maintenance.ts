@@ -3,7 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 
 /**
  * App-wide maintenance switch, stored in app_settings under "maintenance".
- * While it is on, only developers and super admins can use the app; everyone
+ * While it is on, only developers can use the app; everyone
  * else sees /maintenance. `until` (ISO time) ends it automatically; null
  * means "back soon" with no countdown.
  */

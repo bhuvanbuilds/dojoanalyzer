@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireRoles, writeAuditLog } from "@/lib/auth/authorization";
+import { requireDeveloper, requireRoles, writeAuditLog } from "@/lib/auth/authorization";
 import { USER_ROLES } from "@/lib/auth/profile";
 import { isUuid } from "@/lib/is-uuid";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -11,7 +11,8 @@ export async function GET(request: Request) {
   const authorization = await requireRoles(USER_ROLES);
   if (authorization.response) return authorization.response;
   try {
-    const isStaff = authorization.profile.role === "super_admin";
+    // Only developers write release notes, so only they see drafts.
+    const isStaff = authorization.profile.is_developer && !authorization.profile.viewing_as;
     const drafts = isStaff && new URL(request.url).searchParams.get("drafts") === "1";
     let query = supabaseAdmin
       .from("changelog_entries")
@@ -31,7 +32,7 @@ export async function GET(request: Request) {
 
 /** POST { kind, title, body?, ticketId?, publish? }: add a release note (staff). */
 export async function POST(request: Request) {
-  const authorization = await requireRoles(["super_admin"]);
+  const authorization = await requireDeveloper();
   if (authorization.response) return authorization.response;
   try {
     const payload = (await request.json().catch(() => ({}))) as Record<string, unknown>;

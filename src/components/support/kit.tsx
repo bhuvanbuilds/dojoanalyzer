@@ -110,11 +110,14 @@ type Created = { id: string; number: number };
 export function NewTicketDialog({
   open,
   initialType,
+  initialTitle = "",
   onClose,
   onCreated,
 }: {
   open: boolean;
   initialType: TicketType;
+  /** Prefills the title, e.g. "Feedback: Maintenance mode" from the changelog. */
+  initialTitle?: string;
   onClose: () => void;
   onCreated?: (ticket: Created) => void;
 }) {
@@ -128,22 +131,31 @@ export function NewTicketDialog({
       description="Your ticket goes straight to the Dojo Belt Analyzer team. You'll see every reply under My tickets."
     >
       {/* Remount per opening so every ticket starts from a clean form. */}
-      {open ? <TicketForm initialType={initialType} onClose={onClose} onCreated={onCreated} /> : null}
+      {open ? (
+        <TicketForm
+          initialType={initialType}
+          initialTitle={initialTitle}
+          onClose={onClose}
+          onCreated={onCreated}
+        />
+      ) : null}
     </Dialog>
   );
 }
 
 function TicketForm({
   initialType,
+  initialTitle,
   onClose,
   onCreated,
 }: {
   initialType: TicketType;
+  initialTitle: string;
   onClose: () => void;
   onCreated?: (ticket: Created) => void;
 }) {
   const [type, setType] = useState<TicketType>(initialType);
-  const [title, setTitle] = useState("");
+  const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState("");
   const [severity, setSeverity] = useState<Severity>("medium");
   const [touched, setTouched] = useState(false);

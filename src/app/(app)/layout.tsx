@@ -3,6 +3,7 @@ import { Navbar } from "@/components/navbar";
 import { SupportLauncher } from "@/components/support/support-launcher";
 import { MaintenanceBanner } from "@/components/maintenance-banner";
 import { ViewAsBanner } from "@/components/view-as-banner";
+import { WhatsNewPopup } from "@/components/whats-new-popup";
 
 /**
  * Layout for all authenticated campus/mentor management pages.
@@ -25,6 +26,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       <Navbar />
       <div className="relative z-10">{children}</div>
       <SupportLauncher />
+      <WhatsNewPopup />
     </div>
   );
 }

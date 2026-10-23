@@ -64,3 +64,14 @@ export async function writeAuditLog(
   // must not turn that success into an error (users would retry and repeat it).
   if (error) console.error("Audit log write failed:", { action, targetType, targetId, error });
 }
+
+/** Developers only (they also count as super admins everywhere else). */
+export async function requireDeveloper(): Promise<AuthorizedRequest> {
+  const authorization = await requireRoles(["super_admin"]);
+  if (authorization.response) return authorization;
+  if (!authorization.profile.is_developer || authorization.profile.viewing_as)
+    return {
+      response: NextResponse.json({ error: "Only developers can do this" }, { status: 403 }),
+    };
+  return authorization;
+}
