@@ -1,28 +1,12 @@
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getCurrentUserProfile } from "@/lib/auth/profile";
+import { createRequestSupabaseClient } from "@/lib/auth/server";
+import { squadLimit } from "@/lib/auth/scope";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-            });
-          },
-        },
-      },
-    );
+    const supabase = await createRequestSupabaseClient();
 
     const currentUser = await getCurrentUserProfile(supabase);
 
@@ -110,12 +94,26 @@ export async function GET(request: Request) {
       }),
     );
 
+    // Mentors only see their own squads (and no campus-wide summary).
+    const limit = squadLimit(currentUser.profile);
+    let students = results.flatMap((result) => result.students);
+    if (limit !== null) {
+      const { data: own, error: ownError } = limit.length
+        ? await supabaseAdmin.from("squads").select("squad_number").in("id", limit)
+        : { data: [], error: null };
+      if (ownError) throw ownError;
+      const numbers = new Set((own ?? []).map((squad) => String(squad.squad_number)));
+      students = students.filter((student: { squad_number?: string | null }) =>
+        numbers.has(String(student.squad_number ?? "")),
+      );
+    }
+
     return NextResponse.json({
       academicYear,
       weekNumber,
       // A single campus keeps its summary; combined campuses have none.
-      summary: results.length === 1 ? results[0].summary : null,
-      students: results.flatMap((result) => result.students),
+      summary: limit === null && results.length === 1 ? results[0].summary : null,
+      students,
     });
   } catch (error) {
     console.error("Dashboard error:", error);

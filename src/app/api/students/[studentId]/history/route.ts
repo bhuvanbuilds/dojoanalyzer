@@ -3,6 +3,7 @@ import { getCurrentUserProfile } from "@/lib/auth/profile";
 import { createRequestSupabaseClient } from "@/lib/auth/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/is-uuid";
+import { inSquadLimit, squadLimit } from "@/lib/auth/scope";
 
 type RouteContext = {
   params: Promise<{ studentId: string }>;
@@ -37,7 +38,8 @@ export async function GET(_request: Request, context: RouteContext) {
       );
     }
 
-    // Staff open the full profile of any student, on any campus.
+    // Full history is campus-only: super admins see every campus, campus
+    // managers and mentors only students who belong to their own campus.
     const { studentId } = await context.params;
     if (!isUuid(studentId))
       return NextResponse.json({ error: "Student not found" }, { status: 404 });
@@ -57,6 +59,19 @@ export async function GET(_request: Request, context: RouteContext) {
 
     if (!memberships || memberships.length === 0) {
       return NextResponse.json({ error: "Student not found" }, { status: 404 });
+    }
+    if (currentUser.profile.role !== "super_admin") {
+      // Campus staff: their campus. Mentors: only students in their squads.
+      const limit = squadLimit(currentUser.profile);
+      const onCampus = memberships.some((membership) => {
+        const squad = Array.isArray(membership.squads) ? membership.squads[0] : membership.squads;
+        return (
+          squad?.university_id === currentUser.profile.university_id &&
+          (limit === null || (!membership.end_date && inSquadLimit(limit, squad?.id)))
+        );
+      });
+      if (!onCampus)
+        return NextResponse.json({ error: "Student not found" }, { status: 404 });
     }
 
     const firstMembership = memberships[0];

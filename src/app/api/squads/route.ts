@@ -3,6 +3,7 @@ import { getCurrentUserProfile } from "@/lib/auth/profile";
 import { createRequestSupabaseClient } from "@/lib/auth/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { writeAuditLog } from "@/lib/auth/authorization";
+import { inSquadLimit, squadLimit } from "@/lib/auth/scope";
 
 function isManagerOrMentor(role: string) {
   return role === "campus_manager" || role === "mentor";
@@ -61,7 +62,9 @@ export async function GET(request: Request) {
     }
 
     // squad_number is text: sort as numbers so 138 comes before 1000.
-    const ordered = [...(data ?? [])].sort((left, right) =>
+    // Mentors only see their own squads.
+    const limit = squadLimit(currentUser.profile);
+    const ordered = [...(data ?? [])].filter((squad) => inSquadLimit(limit, squad.id)).sort((left, right) =>
       String(left.squad_number).localeCompare(String(right.squad_number), undefined, {
         numeric: true,
       }),

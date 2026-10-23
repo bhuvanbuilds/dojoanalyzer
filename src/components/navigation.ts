@@ -10,6 +10,9 @@ import {
   TrendingUp,
   Trophy,
   User,
+  Wrench,
+  Code2,
+  Inbox,
   UserRound,
   Users,
   type LucideIcon,
@@ -27,6 +30,8 @@ export type NavTab = {
   roles: readonly UserRole[];
   /** Match only this exact path (e.g. /leaderboard must not match /leaderboard/language). */
   exact?: boolean;
+  /** Shown only to developers (who otherwise count as super admins). */
+  developerOnly?: boolean;
 };
 
 export type NavGroup = {
@@ -152,6 +157,25 @@ export const navGroups: readonly NavGroup[] = [
         icon: ScrollText,
         roles: SUPER_ADMIN,
       },
+      {
+        href: "/support/inbox",
+        label: "Tickets",
+        icon: Inbox,
+        roles: SUPER_ADMIN,
+      },
+      {
+        href: "/settings/maintenance",
+        label: "Maintenance",
+        icon: Wrench,
+        roles: SUPER_ADMIN,
+      },
+      {
+        href: "/developer",
+        label: "Developer",
+        icon: Code2,
+        roles: SUPER_ADMIN,
+        developerOnly: true,
+      },
     ],
   },
 ];
@@ -162,13 +186,18 @@ export function isTabActive(tab: NavTab, pathname: string) {
 }
 
 /** Groups and tabs the role may see; groups left with no tabs are dropped. */
-export function visibleGroups(role: UserRole | undefined): NavGroup[] {
+export function visibleGroups(
+  role: UserRole | undefined,
+  isDeveloper = false,
+): NavGroup[] {
   if (!role) return [];
   return navGroups
     .filter((group) => group.roles.includes(role))
     .map((group) => ({
       ...group,
-      tabs: group.tabs.filter((tab) => tab.roles.includes(role)),
+      tabs: group.tabs.filter(
+        (tab) => tab.roles.includes(role) && (!tab.developerOnly || isDeveloper),
+      ),
     }))
     .filter((group) => group.tabs.length > 0);
 }

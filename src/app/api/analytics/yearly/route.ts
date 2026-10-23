@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUserProfile } from "@/lib/auth/profile";
 import { createRequestSupabaseClient } from "@/lib/auth/server";
 import { keepEarnedBelts } from "@/lib/earned-belts";
+import { inSquadLimit, squadLimit } from "@/lib/auth/scope";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 const LANGUAGES = ["cpp", "java", "nodejs", "python"] as const;
@@ -230,6 +231,11 @@ export async function GET(request: Request) {
       );
     }
 
+    // Mentors only see their own squads.
+    const limit = squadLimit(currentUser.profile);
+    if (requestedSquad && !inSquadLimit(limit, requestedSquad))
+      return NextResponse.json({ error: "Squad access is not authorized" }, { status: 403 });
+
     if (requestedSquad) {
       let squadQuery = supabaseAdmin
         .from("squads")
@@ -296,6 +302,7 @@ export async function GET(request: Request) {
       if (
         (!scope.studentId || membership.student_id === scope.studentId) &&
         (!requestedSquad || squad?.id === requestedSquad) &&
+        inSquadLimit(limit, squad?.id) &&
         !membershipByStudent.has(membership.student_id)
       ) {
         membershipByStudent.set(membership.student_id, membership);

@@ -4,6 +4,7 @@ import { createRequestSupabaseClient } from "@/lib/auth/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { writeAuditLog } from "@/lib/auth/authorization";
 import { trySyncStudentAccess } from "@/lib/auth/student-access";
+import { inSquadLimit, squadLimit } from "@/lib/auth/scope";
 
 function isManagerOrMentor(role: string) {
   return role === "campus_manager" || role === "mentor";
@@ -75,6 +76,7 @@ export async function GET(request: Request) {
         : authorization.profile.university_id;
     if (universityId) query = query.eq("squads.university_id", universityId);
     if (requestedSquadId) query = query.eq("squads.id", requestedSquadId);
+    const limit = squadLimit(authorization.profile);
     const { data, error } = await query;
 
     if (error) {
@@ -119,6 +121,8 @@ export async function GET(request: Request) {
         end_date: membership.end_date,
       };
 
+      // Mentors only see students in their own squads.
+      if (!inSquadLimit(limit, studentRow.squad_id)) continue;
       if (!studentsById.has(studentRow.id)) {
         studentsById.set(studentRow.id, studentRow);
       }

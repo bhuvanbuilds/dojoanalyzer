@@ -7,7 +7,7 @@ import { Dialog } from "@/components/ui/dialog";
 export type DeletableUser = {
   email: string;
   full_name: string | null;
-  role: "super_admin" | "campus_manager" | "mentor" | "student";
+  role: "super_admin" | "developer" | "campus_manager" | "mentor" | "student";
   status: "active" | "pending";
   student_name: string | null;
 };

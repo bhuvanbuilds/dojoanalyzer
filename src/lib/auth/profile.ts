@@ -1,5 +1,6 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase/client";
+import { applyViewAs, readViewAsCookie, type ViewAs } from "@/lib/view-as";
 
 export const USER_ROLES = [
   "super_admin",
@@ -10,15 +11,31 @@ export const USER_ROLES = [
 
 export type UserRole = (typeof USER_ROLES)[number];
 
+/**
+ * Roles that can be stored and assigned. A developer has every super admin
+ * power (the app treats them as `super_admin` with `is_developer` set) and
+ * is the only role that stays in the app while maintenance mode is on.
+ */
+export const ASSIGNABLE_ROLES = [...USER_ROLES, "developer"] as const;
+export type AssignableRole = (typeof ASSIGNABLE_ROLES)[number];
+
 export type UserProfile = {
   id: string;
   full_name: string | null;
   role: UserRole;
   university_id: string | null;
   student_id: string | null;
+  is_developer: boolean;
+  /**
+   * Squads this person is limited to: a mentor's assigned squads (possibly
+   * none). null means no squad limit (everyone except mentors).
+   */
+  squad_ids: string[] | null;
+  /** Set while a developer is using "View as"; role and scope are the viewed ones. */
+  viewing_as?: ViewAs | null;
 };
 
-type ProfileRow = Omit<UserProfile, "role"> & {
+type ProfileRow = Omit<UserProfile, "role" | "is_developer" | "squad_ids"> & {
   role: string;
 };
 
@@ -80,7 +97,9 @@ export async function getCurrentUserProfile(
   client: SupabaseClient = supabase,
 ): Promise<CurrentUserProfile> {
   if (typeof window === "undefined" || client !== supabase)
-    return loadCurrentUserProfile(client);
+    return loadCurrentUserProfile(client).then((result) =>
+      withViewAs(result, (client as { viewAsCookie?: string | null }).viewAsCookie),
+    );
 
   if (!listening) {
     listening = true;
@@ -92,7 +111,8 @@ export async function getCurrentUserProfile(
   if (!cached || Date.now() - cached.at > CACHE_MS) {
     const entry = {
       at: Date.now(),
-      promise: loadCurrentUserProfile(client).then((result) => {
+      promise: loadCurrentUserProfile(client).then((loaded) => {
+        const result = withViewAs(loaded, readViewAsCookie());
         // Only keep answers worth reusing.
         if (result.status === "error") {
           if (cached === entry) cached = null;
@@ -104,6 +124,22 @@ export async function getCurrentUserProfile(
     settled = null;
   }
   return cached.promise;
+}
+
+/** A mentor's assigned squads; an error counts as none, so nothing leaks. */
+async function loadMentorSquads(client: SupabaseClient, profileId: string) {
+  const { data, error } = await client
+    .from("mentor_squads")
+    .select("squad_id")
+    .eq("profile_id", profileId);
+  if (error) return [];
+  return (data ?? []).map((row) => row.squad_id as string);
+}
+
+/** Applies a developer's "View as" choice; everyone else is untouched. */
+function withViewAs(result: CurrentUserProfile, raw: string | null | undefined): CurrentUserProfile {
+  if (result.status !== "authenticated") return result;
+  return { ...result, profile: applyViewAs(result.profile, raw) };
 }
 
 async function loadCurrentUserProfile(
@@ -146,6 +182,16 @@ async function loadCurrentUserProfile(
 
   const profile = profileData as ProfileRow;
 
+  if (profile.role === "developer") {
+    if (profile.university_id !== null || profile.student_id !== null)
+      return { status: "invalid_role", user, profile: null };
+    return {
+      status: "authenticated",
+      user,
+      profile: { ...profile, role: "super_admin", is_developer: true, squad_ids: null },
+    };
+  }
+
   if (
     !isUserRole(profile.role) ||
     (profile.role === "super_admin" &&
@@ -167,6 +213,8 @@ async function loadCurrentUserProfile(
     profile: {
       ...profile,
       role: profile.role,
+      is_developer: false,
+      squad_ids: profile.role === "mentor" ? await loadMentorSquads(client, profile.id) : null,
     },
   };
 }
