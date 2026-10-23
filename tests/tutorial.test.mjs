@@ -81,7 +81,7 @@ test("role boundaries: staff-only pages never appear in lower roles' tours", () 
 test("every consequential control is click-guarded, never a plain click step", () => {
   const consequential = new Set([
     "ar-approve", "ar-reject", "users-delete", "users-edit", "uni-rename", "uni-save",
-    "st-new-squad", "st-add-student", "tk-internal", "tk-assignee", "tk-status", "tk-severity", "tk-changelog",
+    "st-new-squad", "st-add-student", "mentors-submit", "mentors-remove", "tk-internal", "tk-assignee", "tk-status", "tk-severity", "tk-changelog",
   ]);
   for (const steps of Object.values(TOURS))
     for (const step of steps)

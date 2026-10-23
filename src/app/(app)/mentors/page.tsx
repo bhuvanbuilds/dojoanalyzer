@@ -95,6 +95,7 @@ export default function MentorsPage() {
               <Dropdown
                 chevron
                 aria-label="University"
+                data-tour="mentors-university"
                 value={universityId}
                 onChange={(value) => {
                   setMentors(null);
@@ -228,7 +229,7 @@ function AddMentor({
     "h-9 rounded-lg border border-line-strong bg-surface px-3 text-[13.5px] outline-none placeholder:text-faint focus:border-ink";
   return (
     <form data-tour="mentors-add" onSubmit={submit} className="flex flex-col gap-3 px-4 py-4 sm:px-5">
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div data-tour="mentors-fields" className="grid gap-3 sm:grid-cols-2">
         <label className="flex flex-col gap-1.5 text-[12px] font-medium text-ink-2">
           Full name
           <input value={fullName} onChange={(event) => setFullName(event.target.value)} required maxLength={120} className={input} />
@@ -245,7 +246,7 @@ function AddMentor({
           />
         </label>
       </div>
-      <fieldset className="flex flex-col gap-1.5">
+      <fieldset data-tour="mentors-squads" className="flex flex-col gap-1.5">
         <legend className="mb-1.5 text-[12px] font-medium text-ink-2">Squads they look after</legend>
         <SquadChips squads={squads} value={squadIds} onChange={setSquadIds} disabled={busy} />
       </fieldset>
@@ -253,6 +254,7 @@ function AddMentor({
       <div>
         <button
           type="submit"
+          data-tour="mentors-submit"
           disabled={busy}
           className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-action px-3.5 text-[13px] font-semibold text-white transition hover:bg-action-hover disabled:cursor-wait disabled:opacity-70"
         >
@@ -348,6 +350,7 @@ function MentorRow({
         ) : (
           <button
             type="button"
+            data-tour="mentors-remove"
             onClick={() => setConfirming(true)}
             aria-label={`Remove ${mentor.full_name ?? mentor.email}`}
             className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line-strong px-3 text-[12.5px] font-semibold text-ink-2 transition hover:border-ink/40 hover:text-ink"
