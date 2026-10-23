@@ -45,6 +45,7 @@ export default function UsersPage() {
   const [universityId, setUniversityId] = useState("");
   const [studentId, setStudentId] = useState("");
   const [squadIds, setSquadIds] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
   const [squadOptions, setSquadOptions] = useState<Array<{ id: string; squad_number: string }>>([]);
   const [myEmail, setMyEmail] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<UserRow | null>(null);
@@ -119,39 +120,47 @@ export default function UsersPage() {
 
   async function assign(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (saving) return;
     setMessage("");
-    const response = await fetch("/api/super-admin/users", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        fullName: name,
-        email,
-        role,
-        universityId:
-          role === "super_admin" || role === "developer" ? null : universityId || null,
-        studentId: role === "student" ? studentId || null : null,
-        squadIds: role === "mentor" ? squadIds : [],
-      }),
-    });
-    const result = (await response.json()) as {
-      status?: string;
-      error?: string;
-    };
-    if (!response.ok) {
-      setMessage(result.error ?? "Unable to assign user.");
-      return;
+    setSaving(true);
+    try {
+      const response = await fetch("/api/super-admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullName: name,
+          email,
+          role,
+          universityId:
+            role === "super_admin" || role === "developer" ? null : universityId || null,
+          studentId: role === "student" ? studentId || null : null,
+          squadIds: role === "mentor" ? squadIds : [],
+        }),
+      });
+      const result = (await response.json()) as {
+        status?: string;
+        error?: string;
+      };
+      if (!response.ok) {
+        setMessage(result.error ?? "Unable to assign user.");
+        return;
+      }
+      setMessage(
+        result.status === "pending"
+          ? "Assignment saved. It will attach when this email first signs in with Google."
+          : "User assignment saved.",
+      );
+      setName("");
+      setEmail("");
+      setEditingEmail(null);
+      setStudentId("");
+      setSquadIds([]);
+      await load();
+    } catch {
+      setMessage("Couldn’t reach the server. Check your connection and try again.");
+    } finally {
+      setSaving(false);
     }
-    setMessage(
-      result.status === "pending"
-        ? "Assignment saved. It will attach when this email first signs in with Google."
-        : "User assignment saved.",
-    );
-    setName("");
-    setEmail("");
-    setEditingEmail(null);
-    setStudentId("");
-    setSquadIds([]);
-    await load();
   }
 
   function editUser(user: UserRow) {
@@ -299,9 +308,17 @@ export default function UsersPage() {
                 Cancel
               </button>
             )}
-            <button className="inline-flex items-center justify-center gap-2 rounded-lg bg-action-hover px-4 py-2 text-sm font-semibold text-white">
-              <UserPlus size={16} />
-              {editingEmail ? "Update assignment" : "Save assignment"}
+            <button
+              disabled={saving}
+              aria-busy={saving}
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-action-hover px-4 py-2 text-sm font-semibold text-white transition disabled:cursor-wait disabled:opacity-70"
+            >
+              {saving ? (
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              ) : (
+                <UserPlus size={16} />
+              )}
+              {saving ? "Saving…" : editingEmail ? "Update assignment" : "Save assignment"}
             </button>
           </div>
         </form>
