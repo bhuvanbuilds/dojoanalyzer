@@ -28,19 +28,6 @@ export async function proxy(request: NextRequest) {
   const currentUser = await getCurrentUserProfile(supabase);
   const pathname = request.nextUrl.pathname;
   if (
-    (currentUser.status === "unassigned" || currentUser.status === "invalid_role") &&
-    pathname !== "/maintenance"
-  ) {
-    // Signed in without an account: only the countdown page is open to them.
-    const redirectResponse = NextResponse.redirect(
-      new URL("/maintenance", request.url),
-    );
-    response.cookies
-      .getAll()
-      .forEach((cookie) => redirectResponse.cookies.set(cookie));
-    return redirectResponse;
-  }
-  if (
     currentUser.status === "authenticated" &&
     currentUser.profile.role === "student"
   ) {
@@ -93,7 +80,6 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     "/",
-    "/maintenance",
     "/dashboard",
     "/dashboard/:path*",
     "/students",
