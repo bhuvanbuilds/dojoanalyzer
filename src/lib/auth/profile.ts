@@ -1,5 +1,6 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase/client";
+import { applyViewAs, readViewAsCookie, type ViewAs } from "@/lib/view-as";
 
 export const USER_ROLES = [
   "super_admin",
@@ -25,9 +26,16 @@ export type UserProfile = {
   university_id: string | null;
   student_id: string | null;
   is_developer: boolean;
+  /**
+   * Squads this person is limited to: a mentor's assigned squads (possibly
+   * none). null means no squad limit (everyone except mentors).
+   */
+  squad_ids: string[] | null;
+  /** Set while a developer is using "View as"; role and scope are the viewed ones. */
+  viewing_as?: ViewAs | null;
 };
 
-type ProfileRow = Omit<UserProfile, "role" | "is_developer"> & {
+type ProfileRow = Omit<UserProfile, "role" | "is_developer" | "squad_ids"> & {
   role: string;
 };
 
@@ -89,7 +97,9 @@ export async function getCurrentUserProfile(
   client: SupabaseClient = supabase,
 ): Promise<CurrentUserProfile> {
   if (typeof window === "undefined" || client !== supabase)
-    return loadCurrentUserProfile(client);
+    return loadCurrentUserProfile(client).then((result) =>
+      withViewAs(result, (client as { viewAsCookie?: string | null }).viewAsCookie),
+    );
 
   if (!listening) {
     listening = true;
@@ -101,7 +111,8 @@ export async function getCurrentUserProfile(
   if (!cached || Date.now() - cached.at > CACHE_MS) {
     const entry = {
       at: Date.now(),
-      promise: loadCurrentUserProfile(client).then((result) => {
+      promise: loadCurrentUserProfile(client).then((loaded) => {
+        const result = withViewAs(loaded, readViewAsCookie());
         // Only keep answers worth reusing.
         if (result.status === "error") {
           if (cached === entry) cached = null;
@@ -113,6 +124,22 @@ export async function getCurrentUserProfile(
     settled = null;
   }
   return cached.promise;
+}
+
+/** A mentor's assigned squads; an error counts as none, so nothing leaks. */
+async function loadMentorSquads(client: SupabaseClient, profileId: string) {
+  const { data, error } = await client
+    .from("mentor_squads")
+    .select("squad_id")
+    .eq("profile_id", profileId);
+  if (error) return [];
+  return (data ?? []).map((row) => row.squad_id as string);
+}
+
+/** Applies a developer's "View as" choice; everyone else is untouched. */
+function withViewAs(result: CurrentUserProfile, raw: string | null | undefined): CurrentUserProfile {
+  if (result.status !== "authenticated") return result;
+  return { ...result, profile: applyViewAs(result.profile, raw) };
 }
 
 async function loadCurrentUserProfile(
@@ -161,7 +188,7 @@ async function loadCurrentUserProfile(
     return {
       status: "authenticated",
       user,
-      profile: { ...profile, role: "super_admin", is_developer: true },
+      profile: { ...profile, role: "super_admin", is_developer: true, squad_ids: null },
     };
   }
 
@@ -187,6 +214,7 @@ async function loadCurrentUserProfile(
       ...profile,
       role: profile.role,
       is_developer: false,
+      squad_ids: profile.role === "mentor" ? await loadMentorSquads(client, profile.id) : null,
     },
   };
 }

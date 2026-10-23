@@ -43,7 +43,7 @@ export async function GET(request: Request) {
     const email = currentUser.user.email.trim().toLowerCase();
     const { data: invitation, error: invitationError } = await supabaseAdmin
       .from("user_invitations")
-      .select("email, full_name, role, university_id, student_id, created_by")
+      .select("email, full_name, role, university_id, student_id, squad_ids, created_by")
       .eq("email", email)
       .maybeSingle();
 
@@ -63,6 +63,15 @@ export async function GET(request: Request) {
         );
 
       if (assignmentError) return redirectToLogin(requestUrl.origin);
+      // A pre-assigned mentor gets their squads on first sign-in.
+      const squadIds = (invitation.squad_ids as string[] | null) ?? [];
+      if (invitation.role === "mentor" && squadIds.length)
+        await supabaseAdmin
+          .from("mentor_squads")
+          .upsert(
+            squadIds.map((squadId) => ({ profile_id: currentUser.user!.id, squad_id: squadId })),
+            { onConflict: "profile_id,squad_id" },
+          );
       await supabaseAdmin.from("user_invitations").delete().eq("email", email);
       if (invitation.created_by) {
         await writeAuditLog(

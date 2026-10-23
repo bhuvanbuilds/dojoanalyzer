@@ -3,6 +3,7 @@ import { getCurrentUserProfile } from "@/lib/auth/profile";
 import { createRequestSupabaseClient } from "@/lib/auth/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/is-uuid";
+import { inSquadLimit, squadLimit } from "@/lib/auth/scope";
 
 type RouteContext = {
   params: Promise<{ studentId: string }>;
@@ -60,9 +61,14 @@ export async function GET(_request: Request, context: RouteContext) {
       return NextResponse.json({ error: "Student not found" }, { status: 404 });
     }
     if (currentUser.profile.role !== "super_admin") {
+      // Campus staff: their campus. Mentors: only students in their squads.
+      const limit = squadLimit(currentUser.profile);
       const onCampus = memberships.some((membership) => {
         const squad = Array.isArray(membership.squads) ? membership.squads[0] : membership.squads;
-        return squad?.university_id === currentUser.profile.university_id;
+        return (
+          squad?.university_id === currentUser.profile.university_id &&
+          (limit === null || (!membership.end_date && inSquadLimit(limit, squad?.id)))
+        );
       });
       if (!onCampus)
         return NextResponse.json({ error: "Student not found" }, { status: 404 });

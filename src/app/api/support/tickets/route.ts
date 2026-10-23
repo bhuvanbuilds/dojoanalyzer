@@ -12,7 +12,7 @@ import {
 } from "@/lib/support";
 
 const TICKET_COLUMNS =
-  "id, number, type, title, description, severity, status, page_url, reporter_email, reporter_name, reporter_role, created_at, updated_at, support_messages(count)";
+  "id, number, type, title, description, severity, status, page_url, reporter_email, reporter_name, reporter_role, assigned_to, resolved_at, created_at, updated_at, support_messages(count)";
 
 type Row = Record<string, unknown> & { support_messages?: Array<{ count: number }> };
 
@@ -44,6 +44,11 @@ export async function GET(request: Request) {
     if (!all) query = query.eq("user_id", authorization.user.id);
     if (isTicketStatus(status)) query = query.eq("status", status);
     if (isTicketType(type)) query = query.eq("type", type);
+    const severity = params.get("severity");
+    if (all && isSeverity(severity)) query = query.eq("severity", severity);
+    const assignee = params.get("assignee");
+    if (all && assignee === "me") query = query.eq("assigned_to", authorization.user.id);
+    else if (all && assignee === "none") query = query.is("assigned_to", null);
     if (q) {
       // Strip characters that would break PostgREST's or() filter syntax.
       const term = q.replace(/[%,()*]/g, " ");

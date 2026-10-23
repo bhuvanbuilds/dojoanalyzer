@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUserProfile } from "@/lib/auth/profile";
 import { createRequestSupabaseClient } from "@/lib/auth/server";
 import { keepEarnedBelts } from "@/lib/earned-belts";
+import { inSquadLimit, squadLimit } from "@/lib/auth/scope";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { LANGUAGES, type DashboardData } from "@/lib/dashboard/metrics";
 
@@ -156,8 +157,9 @@ export async function GET(request: Request) {
     );
     const weekIds = new Set(weeks.map((week) => week.id));
 
-    // Squads and active students
-    const squads = await fetchAll<{
+    // Squads and active students (mentors: only their own squads)
+    const limit = squadLimit(currentUser.profile);
+    const allSquads = await fetchAll<{
       id: string;
       squad_number: string;
       university_id: string;
@@ -169,6 +171,7 @@ export async function GET(request: Request) {
       if (universityId) query = query.eq("university_id", universityId);
       return query;
     });
+    const squads = allSquads.filter((squad) => inSquadLimit(limit, squad.id));
 
     const memberships = await fetchAll<MembershipRow>(() => {
       let query = supabaseAdmin
@@ -187,6 +190,7 @@ export async function GET(request: Request) {
     >();
     for (const membership of memberships) {
       if (students.has(membership.student_id)) continue;
+      if (!inSquadLimit(limit, membership.squad_id)) continue;
       students.set(membership.student_id, {
         id: membership.student_id,
         name: nested(membership.students)?.name ?? "Unnamed student",

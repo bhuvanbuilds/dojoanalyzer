@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUserProfile } from "@/lib/auth/profile";
 import { createRequestSupabaseClient } from "@/lib/auth/server";
 import { keepEarnedBelts } from "@/lib/earned-belts";
+import { inSquadLimit, squadLimit } from "@/lib/auth/scope";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 const LANGUAGES = ["cpp", "java", "nodejs", "python"] as const;
@@ -221,6 +222,11 @@ export async function GET(request: Request) {
       );
     }
 
+    // Mentors only see their own squads.
+    const limit = squadLimit(currentUser.profile);
+    if (squadId && !inSquadLimit(limit, squadId))
+      return NextResponse.json({ error: "Squad access is not authorized" }, { status: 403 });
+
     if (squadId) {
       let squadQuery = supabaseAdmin
         .from("squads")
@@ -348,6 +354,8 @@ export async function GET(request: Request) {
 
     const currentMembershipByStudent = new Map<string, Membership>();
     for (const membership of (membershipsResult.data ?? []) as Membership[]) {
+      const membershipSquad = Array.isArray(membership.squads) ? membership.squads[0] : membership.squads;
+      if (!inSquadLimit(limit, membershipSquad?.id)) continue;
       if (!currentMembershipByStudent.has(membership.student_id)) {
         currentMembershipByStudent.set(membership.student_id, membership);
       }
@@ -360,7 +368,10 @@ export async function GET(request: Request) {
     }
 
     const studentIds = new Set<string>(
-      (comparisonRecords as BeltRecord[]).map((record) => record.student_id),
+      (comparisonRecords as BeltRecord[])
+        .map((record) => record.student_id)
+        // Squad-limited viewers only get students in their squads.
+        .filter((id) => limit === null || currentMembershipByStudent.has(id)),
     );
 
     // A student without a record in the start week still has belts from

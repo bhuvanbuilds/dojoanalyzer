@@ -44,6 +44,8 @@ export async function GET(request: Request) {
       invitationsResult,
       universitiesResult,
       studentsResult,
+      mentorSquadsResult,
+      squadsResult,
     ] = await Promise.all([
       listAuthUsers(),
       supabaseAdmin
@@ -52,16 +54,20 @@ export async function GET(request: Request) {
       supabaseAdmin
         .from("user_invitations")
         .select(
-          "email, full_name, role, university_id, student_id, updated_at",
+          "email, full_name, role, university_id, student_id, squad_ids, updated_at",
         ),
       supabaseAdmin.from("universities").select("id, name").order("name"),
       supabaseAdmin.from("students").select("id, name, email").order("name"),
+      supabaseAdmin.from("mentor_squads").select("profile_id, squad_id"),
+      supabaseAdmin.from("squads").select("id, squad_number"),
     ]);
     for (const result of [
       profilesResult,
       invitationsResult,
       universitiesResult,
       studentsResult,
+      mentorSquadsResult,
+      squadsResult,
     ])
       if (result.error) throw result.error;
     const authById = new Map(authUsers.map((user) => [user.id, user]));
@@ -71,6 +77,14 @@ export async function GET(request: Request) {
     const studentNames = new Map(
       (studentsResult.data ?? []).map((row) => [row.id, row.name]),
     );
+    const squadNumbers = new Map(
+      (squadsResult.data ?? []).map((row) => [row.id as string, String(row.squad_number)]),
+    );
+    const squadsByProfile = new Map<string, string[]>();
+    for (const row of mentorSquadsResult.data ?? [])
+      squadsByProfile.set(row.profile_id, [...(squadsByProfile.get(row.profile_id) ?? []), row.squad_id]);
+    const squadView = (ids: string[]) =>
+      ids.map((id) => ({ id, squad_number: squadNumbers.get(id) ?? "?" }));
     const users = (profilesResult.data ?? []).map((profile) => {
       const authUser = authById.get(profile.id);
       return {
@@ -85,6 +99,7 @@ export async function GET(request: Request) {
         student_name: profile.student_id
           ? (studentNames.get(profile.student_id) ?? null)
           : null,
+        squads: squadView(squadsByProfile.get(profile.id) ?? []),
         status: "active" as const,
       };
     });
@@ -100,6 +115,7 @@ export async function GET(request: Request) {
       student_name: invitation.student_id
         ? (studentNames.get(invitation.student_id) ?? null)
         : null,
+      squads: squadView((invitation.squad_ids as string[] | null) ?? []),
       status: "pending" as const,
     }));
     const records = [...users, ...invitations].filter((user) => {
@@ -137,6 +153,7 @@ export async function POST(request: Request) {
       role?: unknown;
       universityId?: unknown;
       studentId?: unknown;
+      squadIds?: unknown;
     };
     const email = normalizeEmail(body.email);
     const fullName =
@@ -267,6 +284,28 @@ export async function POST(request: Request) {
     if (authUser && !isUuid(authUser.id)) {
       throw new Error("Authenticated account ID is not a valid UUID");
     }
+    // Mentors look after specific squads of their own campus.
+    let squadIds: string[] = [];
+    if (role === "mentor") {
+      const requested = Array.isArray(body.squadIds)
+        ? [...new Set(body.squadIds.filter((id): id is string => typeof id === "string" && isUuid(id)))]
+        : [];
+      if (requested.length) {
+        const { data: valid, error: squadError } = await supabaseAdmin
+          .from("squads")
+          .select("id")
+          .in("id", requested)
+          .eq("university_id", universityId!);
+        if (squadError) throw squadError;
+        if ((valid ?? []).length !== requested.length)
+          return NextResponse.json(
+            { error: "Pick squads from the mentor’s own university" },
+            { status: 400 },
+          );
+      }
+      squadIds = requested;
+    }
+
     const assignment = {
       full_name: fullName,
       role,
@@ -304,6 +343,18 @@ export async function POST(request: Request) {
         .from("profiles")
         .upsert({ id: authUser.id, ...assignment }, { onConflict: "id" });
       if (error) throw error;
+      // Replace the mentor's squads (other roles keep none).
+      const { error: clearError } = await supabaseAdmin
+        .from("mentor_squads")
+        .delete()
+        .eq("profile_id", authUser.id);
+      if (clearError) throw clearError;
+      if (squadIds.length) {
+        const { error: squadInsertError } = await supabaseAdmin
+          .from("mentor_squads")
+          .insert(squadIds.map((squadId) => ({ profile_id: authUser.id, squad_id: squadId })));
+        if (squadInsertError) throw squadInsertError;
+      }
       const action =
         previous?.role && previous.role !== role
           ? "role_changed"
@@ -338,6 +389,7 @@ export async function POST(request: Request) {
       {
         email,
         ...assignment,
+        squad_ids: squadIds,
         created_by: authorization.user.id,
       },
       { onConflict: "email" },

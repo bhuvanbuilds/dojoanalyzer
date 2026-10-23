@@ -19,6 +19,7 @@ type UserRow = {
   university_name: string | null;
   student_id: string | null;
   student_name: string | null;
+  squads?: Array<{ id: string; squad_number: string }>;
   status: "active" | "pending";
 };
 type Option = { id: string; name: string | null; email?: string | null };
@@ -43,6 +44,8 @@ export default function UsersPage() {
   const [role, setRole] = useState<Role>("campus_manager");
   const [universityId, setUniversityId] = useState("");
   const [studentId, setStudentId] = useState("");
+  const [squadIds, setSquadIds] = useState<string[]>([]);
+  const [squadOptions, setSquadOptions] = useState<Array<{ id: string; squad_number: string }>>([]);
   const [myEmail, setMyEmail] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<UserRow | null>(null);
   const [toast, setToast] = useState<ToastMessage | null>(null);
@@ -99,6 +102,21 @@ export default function UsersPage() {
     });
   }, []);
 
+  // A mentor is assigned squads from their own university.
+  useEffect(() => {
+    if (role !== "mentor" || !universityId) return;
+    let active = true;
+    fetch(`/api/squads?university_id=${encodeURIComponent(universityId)}`)
+      .then((response) => response.json())
+      .then((result: { squads?: Array<{ id: string; squad_number: string }> }) => {
+        if (active) setSquadOptions(result.squads ?? []);
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [role, universityId]);
+
   async function assign(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
@@ -112,6 +130,7 @@ export default function UsersPage() {
         universityId:
           role === "super_admin" || role === "developer" ? null : universityId || null,
         studentId: role === "student" ? studentId || null : null,
+        squadIds: role === "mentor" ? squadIds : [],
       }),
     });
     const result = (await response.json()) as {
@@ -131,6 +150,7 @@ export default function UsersPage() {
     setEmail("");
     setEditingEmail(null);
     setStudentId("");
+    setSquadIds([]);
     await load();
   }
 
@@ -141,6 +161,7 @@ export default function UsersPage() {
     setRole(user.role);
     setUniversityId(user.university_id ?? "");
     setStudentId(user.student_id ?? "");
+    setSquadIds((user.squads ?? []).map((squad) => squad.id));
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -229,6 +250,40 @@ export default function UsersPage() {
               </Dropdown>
             </label>
           )}
+          {role === "mentor" && universityId ? (
+            <fieldset className="flex flex-col gap-1.5 text-xs font-semibold text-ink-2 sm:col-span-2">
+              <legend className="mb-1.5">Squads this mentor looks after</legend>
+              {squadOptions.length === 0 ? (
+                <p className="text-[12.5px] font-normal text-muted">This university has no squads yet.</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {squadOptions.map((squad) => {
+                    const on = squadIds.includes(squad.id);
+                    return (
+                      <button
+                        key={squad.id}
+                        type="button"
+                        aria-pressed={on}
+                        onClick={() =>
+                          setSquadIds((current) =>
+                            on ? current.filter((id) => id !== squad.id) : [...current, squad.id],
+                          )
+                        }
+                        className={`rounded-full border px-3 py-1.5 text-[12.5px] font-semibold transition ${
+                          on ? "border-ink bg-ink text-page" : "border-line-strong text-ink-2 hover:border-ink/40"
+                        }`}
+                      >
+                        Squad {squad.squad_number}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              <p className="text-[11.5px] font-normal text-muted">
+                Mentors only see these squads{squadIds.length === 0 ? " — with none picked they see nothing yet" : ""}.
+              </p>
+            </fieldset>
+          ) : null}
           <div className="flex items-center justify-end gap-2 self-end">
             {editingEmail && (
               <button
@@ -321,6 +376,13 @@ export default function UsersPage() {
                     <td className="px-4 py-3 sm:px-5">{labels[user.role]}</td>
                     <td className="px-4 py-3 sm:px-5">
                       {user.university_name ?? user.student_name ?? "Global"}
+                      {user.role === "mentor" && user.squads?.length ? (
+                        <span className="block text-[12px] text-muted">
+                          Squads {user.squads.map((squad) => squad.squad_number).join(", ")}
+                        </span>
+                      ) : user.role === "mentor" ? (
+                        <span className="block text-[12px] text-brand-text">No squads assigned</span>
+                      ) : null}
                     </td>
                     <td className="px-4 py-3 sm:px-5">
                       <span

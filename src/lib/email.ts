@@ -7,7 +7,8 @@ import { Resend } from "resend";
  *   SUPPORT_EMAIL_TO    who gets support alerts; comma-separate several
  *   SUPPORT_EMAIL_FROM  sender; Resend's test sender until a domain is verified
  * Without a key, emails are skipped and a warning is logged, so tickets still
- * save. Resend's test sender only delivers to your own Resend account email.
+ * save. Resend's test sender only delivers to your own Resend account email;
+ * verify a domain in Resend to email reporters at other addresses.
  */
 const FROM = process.env.SUPPORT_EMAIL_FROM ?? "Dojo Belt Analyzer <onboarding@resend.dev>";
 const TO = (process.env.SUPPORT_EMAIL_TO ?? "")
@@ -32,25 +33,35 @@ export function escapeHtml(value: string) {
 }
 
 /**
- * Sends one alert to the support team. Never throws: the ticket is already
- * saved, so a mail hiccup is retried once and then only logged.
+ * Sends one email. Never throws: the ticket change is already saved, so a mail
+ * hiccup is retried once and then only logged.
  */
-export async function sendSupportEmail(subject: string, html: string) {
+export async function sendEmail(to: string[], subject: string, html: string) {
   const mailer = resend();
-  if (!mailer || TO.length === 0) {
-    console.warn("Support email skipped: set RESEND_API_KEY and SUPPORT_EMAIL_TO to enable it.");
+  const recipients = [...new Set(to.map((address) => address.trim()).filter(Boolean))];
+  if (!mailer || recipients.length === 0) {
+    if (!mailer) console.warn("Email skipped: set RESEND_API_KEY to enable it.");
     return;
   }
   for (let attempt = 1; attempt <= 2; attempt += 1) {
     try {
-      const { error } = await mailer.emails.send({ from: FROM, to: TO, subject, html });
+      const { error } = await mailer.emails.send({ from: FROM, to: recipients, subject, html });
       if (!error) return;
-      console.error(`Support email failed (attempt ${attempt}):`, error.message);
+      console.error(`Email failed (attempt ${attempt}):`, error.message);
     } catch (error) {
-      console.error(`Support email failed (attempt ${attempt}):`, error);
+      console.error(`Email failed (attempt ${attempt}):`, error);
     }
     if (attempt === 1) await new Promise((resolve) => setTimeout(resolve, 800));
   }
+}
+
+/** Alert for the support team (SUPPORT_EMAIL_TO). */
+export async function sendSupportEmail(subject: string, html: string) {
+  if (TO.length === 0) {
+    console.warn("Support email skipped: set SUPPORT_EMAIL_TO to enable it.");
+    return;
+  }
+  await sendEmail(TO, subject, html);
 }
 
 /** Email body for a ticket event, in the app's style and plain enough for any inbox. */

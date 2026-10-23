@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { ChevronRight, Headset, Ticket, X } from "lucide-react";
+import { ChevronRight, Headset, Sparkles, Ticket, X } from "lucide-react";
 import { TYPE_LABELS, type TicketType } from "@/lib/support";
 import { NewTicketDialog, TYPE_META } from "@/components/support/kit";
 
@@ -113,6 +113,27 @@ export function SupportLauncher() {
                   <span className="min-w-0 flex-1">
                     <span className="block text-[13.5px] font-semibold text-ink">My tickets</span>
                     <span className="block text-[12px] text-muted">Follow replies and past reports</span>
+                  </span>
+                  <ChevronRight
+                    size={15}
+                    className="text-faint transition group-hover:translate-x-0.5 group-hover:text-ink"
+                  />
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    router.push("/changelog");
+                  }}
+                  className="group flex w-full items-center gap-3 rounded-xl px-2.5 py-2.5 text-left transition hover:bg-sunken focus-visible:bg-sunken focus-visible:outline-none"
+                >
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-sunken text-ink-2">
+                    <Sparkles size={17} strokeWidth={2.2} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[13.5px] font-semibold text-ink">What’s new</span>
+                    <span className="block text-[12px] text-muted">Latest fixes and features</span>
                   </span>
                   <ChevronRight
                     size={15}

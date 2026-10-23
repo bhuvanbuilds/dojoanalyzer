@@ -51,13 +51,42 @@ export type Ticket = {
   reporter_role: string | null;
   created_at: string;
   updated_at: string;
+  assigned_to?: string | null;
+  resolved_at?: string | null;
+  reporter_avatar?: string | null;
   message_count?: number;
+};
+
+export type StaffMember = { id: string; name: string; email: string | null };
+
+export const CHANGELOG_KINDS = ["fix", "feature", "improvement"] as const;
+export type ChangelogKind = (typeof CHANGELOG_KINDS)[number];
+export const CHANGELOG_LABELS: Record<ChangelogKind, string> = {
+  fix: "Fix",
+  feature: "New",
+  improvement: "Improved",
+};
+
+export type ChangelogEntry = {
+  id: string;
+  kind: ChangelogKind;
+  title: string;
+  body: string | null;
+  image_url?: string | null;
+  ticket_id: string | null;
+  ticket_number?: number | null;
+  published: boolean;
+  published_at: string | null;
+  created_at: string;
 };
 
 export type TicketMessage = {
   id: string;
   author_name: string | null;
   is_staff: boolean;
+  /** Staff-only note; never sent to the reporter. */
+  is_internal?: boolean;
+  author_avatar?: string | null;
   body: string;
   created_at: string;
   mine: boolean;

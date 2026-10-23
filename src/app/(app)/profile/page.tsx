@@ -142,7 +142,7 @@ export default function ProfilePage() {
   const photo = avatarUrlOf(user);
   const provider =
     (user.app_metadata?.provider as string | undefined) ?? "email";
-  const groups = visibleGroups(profile.role);
+  const groups = visibleGroups(profile.role, profile.is_developer && !profile.viewing_as);
   const rise = (index: number) =>
     reduced
       ? {}

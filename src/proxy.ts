@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { getCurrentUserProfile } from "@/lib/auth/profile";
 import { getMaintenance } from "@/lib/maintenance";
+import { VIEW_AS_COOKIE } from "@/lib/view-as";
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -26,8 +27,28 @@ export async function proxy(request: NextRequest) {
     },
   );
 
-  const currentUser = await getCurrentUserProfile(supabase);
+  const currentUser = await getCurrentUserProfile(
+    Object.assign(supabase, {
+      viewAsCookie: request.cookies.get(VIEW_AS_COOKIE)?.value ?? null,
+    }),
+  );
   const pathname = request.nextUrl.pathname;
+
+  // "View as" is look-only: a developer viewing as someone else can't change
+  // anything until they exit (exiting itself is the one allowed write).
+  if (
+    currentUser.status === "authenticated" &&
+    currentUser.profile.viewing_as &&
+    pathname.startsWith("/api/") &&
+    pathname !== "/api/developer/view-as" &&
+    request.method !== "GET" &&
+    request.method !== "HEAD"
+  ) {
+    return NextResponse.json(
+      { error: "You're viewing as another role, which is read-only. Exit View as to make changes." },
+      { status: 403 },
+    );
+  }
 
   // Maintenance: only developers and super admins (who hold the switch) stay
   // in. Everyone else gets the maintenance page, and their API calls a 503.
@@ -35,7 +56,8 @@ export async function proxy(request: NextRequest) {
   if (!maintenanceExempt) {
     const maintenance = await getMaintenance();
     const insider =
-      currentUser.status === "authenticated" && currentUser.profile.role === "super_admin";
+      currentUser.status === "authenticated" &&
+      (currentUser.profile.role === "super_admin" || currentUser.profile.is_developer);
     if (maintenance.enabled && !insider) {
       if (pathname.startsWith("/api/"))
         return NextResponse.json(
@@ -59,8 +81,9 @@ export async function proxy(request: NextRequest) {
       pathname === "/profile" ||
       pathname === "/student" ||
       pathname.startsWith("/student/") ||
-      pathname === "/support" ||
-      pathname.startsWith("/support/");
+      pathname === "/changelog" ||
+      (pathname === "/support" || pathname.startsWith("/support/")) &&
+        !pathname.startsWith("/support/inbox");
     if (!studentAllowed) {
       const redirectResponse = NextResponse.redirect(
         new URL("/leaderboard", request.url),
@@ -80,7 +103,10 @@ export async function proxy(request: NextRequest) {
       pathname.startsWith("/universities/") ||
       pathname === "/audit-logs" ||
       pathname.startsWith("/audit-logs/") ||
-      pathname.startsWith("/settings");
+      pathname.startsWith("/settings") ||
+      pathname === "/developer" ||
+      pathname.startsWith("/developer/") ||
+      pathname.startsWith("/support/inbox");
     const managerOnly =
       pathname === "/imports" || pathname.startsWith("/imports/");
     if (
@@ -130,6 +156,9 @@ export const config = {
     "/support",
     "/support/:path*",
     "/settings/:path*",
+    "/developer",
+    "/developer/:path*",
+    "/changelog",
     "/maintenance",
     "/api/:path*",
   ],

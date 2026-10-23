@@ -32,7 +32,8 @@ import {
 } from "@/components/navigation";
 import { SectionTabs } from "@/components/section-tabs";
 
-function roleLabel(role: UserProfile["role"]) {
+function roleLabel(role: UserProfile["role"], profile?: Pick<UserProfile, "is_developer" | "viewing_as">) {
+  if (profile?.is_developer && !profile.viewing_as) return "Developer";
   if (role === "super_admin") return "Super Admin";
   if (role === "campus_manager") return "Campus Manager";
   if (role === "mentor") return "Mentor";
@@ -170,7 +171,7 @@ function ProfileButton({
                   <p className="truncate text-xs text-muted">{email}</p>
                 )}
                 <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-brand-text">
-                  {roleLabel(profile.role)}
+                  {roleLabel(profile.role, profile)}
                 </p>
               </div>
             </div>
@@ -545,7 +546,8 @@ export function NavbarView({
         bottom: `${headline.tested}/${headline.students} tested`,
       }
     : null;
-  const groups = visibleGroups(profile?.role);
+  // While viewing as someone, show exactly their navigation.
+  const groups = visibleGroups(profile?.role, Boolean(profile?.is_developer && !profile.viewing_as));
   const currentGroup = activeGroup(groups, pathname);
   const hasSectionTabs = (currentGroup?.tabs.length ?? 0) > 1;
 
@@ -771,7 +773,7 @@ export function NavbarView({
                         </p>
                       )}
                       <p className="text-[10px] font-semibold text-brand-text">
-                        {roleLabel(profile.role)}
+                        {roleLabel(profile.role, profile)}
                       </p>
                     </div>
                   </div>
