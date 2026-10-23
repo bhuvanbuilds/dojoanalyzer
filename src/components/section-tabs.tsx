@@ -14,7 +14,7 @@ export function SectionTabs({
   if (group.tabs.length < 2) return null;
 
   return (
-    <div className="border-t border-line">
+    <div>
       <nav
         aria-label={`${group.label} sections`}
         className="mx-auto flex h-10 max-w-[2200px] items-stretch gap-1 overflow-x-auto px-2 sm:px-3"

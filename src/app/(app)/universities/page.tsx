@@ -141,6 +141,7 @@ export default function UniversitiesPage() {
         {loading ? (
           <PanelSkeleton rows={6} label="Loading universities" flat />
         ) : (
+          <div className="grid lg:grid-cols-[minmax(0,1fr)_320px] lg:divide-x lg:divide-line">
           <div data-tour="uni-table" className="overflow-x-auto">
             <table className="w-full min-w-[760px] text-left text-sm">
               <thead className="border-b border-line bg-surface-2 text-[11px] uppercase tracking-[0.06em] text-muted">
@@ -156,7 +157,7 @@ export default function UniversitiesPage() {
               <tbody className="divide-y divide-line bg-surface">
                 {universities.map((university) => (
                   <Fragment key={university.id}>
-                    <tr>
+                    <tr className={expanded === university.id ? "bg-sunken/60" : undefined}>
                       <td className="px-4 py-3 font-semibold text-ink sm:px-5">
                         {editing === university.id ? (
                           <input
@@ -222,34 +223,6 @@ export default function UniversitiesPage() {
                         </div>
                       </td>
                     </tr>
-                    {expanded === university.id && detail && (
-                      <tr>
-                        <td colSpan={6} className="bg-surface-2 px-4 pb-4 sm:px-5">
-                          <div className="grid gap-5 border-t border-line pt-4 md:grid-cols-2">
-                            <div data-tour="uni-squads">
-                              <h2 className="font-semibold">Squads</h2>
-                              <p className="mt-1 text-sm text-muted">
-                                {detail.squads
-                                  .map((squad) => squad.squad_number)
-                                  .join(", ") || "No squads yet"}
-                              </p>
-                            </div>
-                            <div data-tour="uni-team">
-                              <h2 className="font-semibold">Campus team</h2>
-                              <p className="mt-1 text-sm text-muted">
-                                {detail.users
-                                  .map(
-                                    (user) =>
-                                      `${user.full_name ?? "Unnamed"} (${user.role === "mentor" ? "Mentor" : "Campus Manager"})`,
-                                  )
-                                  .join(", ") ||
-                                  "No assigned mentors or campus managers"}
-                              </p>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
                   </Fragment>
                 ))}
                 {!universities.length && (
@@ -264,6 +237,53 @@ export default function UniversitiesPage() {
                 )}
               </tbody>
             </table>
+          </div>
+          <aside className="border-t border-line px-4 py-4 sm:px-5 lg:border-t-0">
+            {expanded && detail ? (
+              <>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted">Details</p>
+                <h2 className="mt-1 text-[15px] font-semibold text-ink">
+                  {universities.find((item) => item.id === expanded)?.name}
+                </h2>
+                <div data-tour="uni-squads" className="mt-4">
+                  <h3 className="text-[12px] font-semibold text-ink-2">Squads</h3>
+                  {detail.squads.length ? (
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {detail.squads.map((squad) => (
+                        <span key={squad.squad_number} className="rounded-md bg-sunken px-2 py-0.5 text-[12px] text-ink-2">
+                          {squad.squad_number}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-1 text-[13px] text-muted">No squads yet</p>
+                  )}
+                </div>
+                <div data-tour="uni-team" className="mt-4">
+                  <h3 className="text-[12px] font-semibold text-ink-2">Campus team</h3>
+                  {detail.users.length ? (
+                    <ul className="mt-1.5 space-y-1.5">
+                      {detail.users.map((user, index) => (
+                        <li key={`${user.full_name}-${index}`} className="flex items-center justify-between gap-2 text-[13px]">
+                          <span className="truncate text-ink">{user.full_name ?? "Unnamed"}</span>
+                          <span className="shrink-0 text-[12px] text-muted">
+                            {user.role === "mentor" ? "Mentor" : "Campus Manager"}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-1 text-[13px] text-muted">No assigned mentors or campus managers</p>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="flex h-full min-h-40 flex-col justify-center text-[13px] text-muted">
+                <p className="font-medium text-ink-2">No university selected</p>
+                <p className="mt-1">Choose Details on a row to see its squads and campus team here.</p>
+              </div>
+            )}
+          </aside>
           </div>
         )}
       </Frame>

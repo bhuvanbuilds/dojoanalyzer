@@ -75,7 +75,7 @@ export function FrameTitle({
   return (
     <header
       data-tour={tour}
-      className={`flex flex-col gap-4 bg-surface-2 px-4 py-4 sm:px-5 lg:flex-row lg:items-end lg:justify-between ${className}`}
+      className={`flex flex-col gap-4 px-4 py-4 sm:px-5 lg:flex-row lg:items-end lg:justify-between ${className}`}
     >
       <div className="min-w-0">
         {eyebrow ? (

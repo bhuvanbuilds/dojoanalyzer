@@ -253,10 +253,10 @@ function Header({
   const prev = week === null ? null : previousWeek(model, week);
 
   return (
-    <header data-tour="dash-header" className="relative isolate overflow-hidden bg-[#0e0e10] text-white">
-      <div aria-hidden="true" className="absolute inset-0 opacity-80">
+    <header data-tour="dash-header" className="relative isolate overflow-hidden bg-[#09090b] text-white">
+      <div aria-hidden="true" className="absolute inset-0 opacity-45">
         <Grainient
-          color1="#0e0e10"
+          color1="#09090b"
           color2="#40181a"
           color3="#ef3837"
           timeSpeed={0.12}
@@ -271,7 +271,7 @@ function Header({
       </div>
       <div
         aria-hidden="true"
-        className="absolute inset-0 bg-gradient-to-r from-[#0e0e10] via-[#0e0e10]/70 to-[#0e0e10]/10"
+        className="absolute inset-0 bg-gradient-to-r from-[#09090b] via-[#09090b]/75 to-[#09090b]/20"
       />
 
       {/* Glow trail follows the cursor behind the hero content. */}

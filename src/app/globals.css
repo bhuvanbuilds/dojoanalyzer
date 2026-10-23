@@ -9,12 +9,12 @@
    hues are validated for colour-vision deficiency per theme.               */
 :root {
   color-scheme: light;
-  --page: #f4f3f1;
+  --page: #f7f7f8;
   --surface: #ffffff;
-  --surface-2: #faf9f7;
-  --sunken: #efeeeb;
-  --line: #e6e4e0;
-  --line-strong: #d6d3ce;
+  --surface-2: #fafafa;
+  --sunken: #f1f1f3;
+  --line: #ececef;
+  --line-strong: #dcdce0;
   --ink: #141414;
   --ink-2: #3d3b38;
   --muted: #6b6966;
@@ -40,8 +40,7 @@
   --glass-edge: rgba(255, 255, 255, 1);
   --glass-edge-dim: rgba(255, 255, 255, 0.25);
   --glass-shadow:
-    0 1px 2px rgba(17, 17, 26, 0.06), 0 8px 28px -6px rgba(17, 17, 26, 0.12),
-    0 24px 60px -24px rgba(198, 40, 40, 0.18);
+    0 1px 2px rgba(17, 17, 26, 0.06), 0 8px 28px -6px rgba(17, 17, 26, 0.12);
   --card-shadow: 0 1px 2px rgba(20, 20, 20, 0.04);
   --pop-shadow: 0 16px 40px -12px rgba(20, 20, 20, 0.22);
 
@@ -71,45 +70,44 @@
 
 [data-theme="dark"] {
   color-scheme: dark;
-  --page: #0e0e10;
-  --surface: #17171b;
-  --surface-2: #1b1b20;
-  --sunken: #222228;
-  --line: #27272d;
-  --line-strong: #35353c;
-  --ink: #f4f4f5;
+  --page: #09090b;
+  --surface: #111113;
+  --surface-2: #151518;
+  --sunken: #1c1c1f;
+  --line: #222226;
+  --line-strong: #2e2e33;
+  --ink: #fafafa;
   --ink-2: #d4d4d8;
-  --muted: #9a9aa3;
-  --faint: #85858e;
+  --muted: #a1a1aa;
+  --faint: #8a8a93;
 
   --brand: #ef3837;
   --action: #d32f2e;
   --action-hover: #e5403f;
   --brand-text: #ff6b66;
-  --brand-soft: #2a1718;
-  --brand-line: #4a2324;
+  --brand-soft: #1f1213;
+  --brand-line: #3d1d1e;
   --success-text: #4cc38a;
   --success-soft: #15291e;
   --success-line: #1f4a31;
   --warning-text: #e8b34a;
   --warning-soft: #2b2413;
 
-  --glass: rgba(23, 23, 27, 0.72);
-  --glass-strong: rgba(27, 27, 32, 0.96);
-  --glass-rim: rgba(255, 255, 255, 0.08);
+  --glass: rgba(13, 13, 15, 0.78);
+  --glass-strong: rgba(13, 13, 15, 0.96);
+  --glass-rim: rgba(255, 255, 255, 0.05);
   --glass-sheen: rgba(255, 255, 255, 0.05);
   --glass-glint: rgba(255, 255, 255, 0.1);
   --glass-edge: rgba(255, 255, 255, 0.16);
   --glass-edge-dim: rgba(255, 255, 255, 0.04);
   --glass-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.5), 0 8px 28px -6px rgba(0, 0, 0, 0.6),
-    0 24px 60px -24px rgba(239, 56, 55, 0.12);
-  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    0 1px 2px rgba(0, 0, 0, 0.5), 0 8px 28px -6px rgba(0, 0, 0, 0.6);
+  --card-shadow: none;
   --pop-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.7);
 
-  --chart-grid: #25252b;
-  --chart-axis: #35353c;
-  --chart-tick: #7c7c85;
+  --chart-grid: #1f1f23;
+  --chart-axis: #2e2e33;
+  --chart-tick: #8a8a93;
   --lang-cpp: #3f93e6;
   --lang-java: #f08a2a;
   --lang-nodejs: #5cb652;
@@ -127,7 +125,7 @@
   --status-same: #5c5b57;
   --status-down: #d03b3b;
   --status-first: #4f82c9;
-  --status-untested: #2c2c32;
+  --status-untested: #27272a;
 }
 
 @theme inline {
@@ -154,7 +152,7 @@
   --color-warning-soft: var(--warning-soft);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  --font-display: var(--font-inter-tight), var(--font-geist-sans), sans-serif;
+  --font-display: var(--font-geist-sans), sans-serif;
 }
 
 body {
@@ -624,29 +622,10 @@ body {
   }
 }
 
-/* ─── Dot matrix background ──────────────────────────────────────────────── */
-/* Faint dot grid fixed behind every app page. */
-:root {
-  --dot: rgba(20, 20, 20, 0.07);
-}
-[data-theme="dark"] {
-  --dot: rgba(255, 255, 255, 0.05);
-}
-/* The grid lives on its own fixed, GPU-composited layer: a fixed
-   background-attachment repaints the whole page on every scroll frame. */
+/* ─── App background ─────────────────────────────────────────────────────── */
+/* A plain page colour: no decorative patterns behind a working tool. */
 .dot-matrix {
   background-color: var(--page);
-  isolation: isolate;
-}
-.dot-matrix::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background-image: radial-gradient(var(--dot) 1px, transparent 1.4px);
-  background-size: 16px 16px;
-  transform: translateZ(0);
 }
 
 html {
