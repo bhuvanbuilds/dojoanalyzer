@@ -253,7 +253,7 @@ function Header({
   const prev = week === null ? null : previousWeek(model, week);
 
   return (
-    <header className="relative isolate overflow-hidden bg-[#0e0e10] text-white">
+    <header data-tour="dash-header" className="relative isolate overflow-hidden bg-[#0e0e10] text-white">
       <div aria-hidden="true" className="absolute inset-0 opacity-80">
         <Grainient
           color1="#0e0e10"
@@ -311,7 +311,7 @@ function Header({
             </p>
 
             {moves && week !== null && (
-              <div className="mt-7 flex flex-wrap items-end gap-x-6 gap-y-2">
+              <div data-tour="dash-headline" className="mt-7 flex flex-wrap items-end gap-x-6 gap-y-2">
                 <p className="font-display text-[56px] font-extrabold leading-none tracking-[-0.045em] sm:text-[68px]">
                   <CountUp
                     key={`${week}-${moves.beltsGained}`}
@@ -333,7 +333,7 @@ function Header({
             )}
           </div>
 
-          <div className="flex flex-wrap items-end gap-2">
+          <div data-tour="dash-filters" className="flex flex-wrap items-end gap-2">
             {data.role === "super_admin" && (
               <FilterSelect
                 label="University"
@@ -481,9 +481,10 @@ function KpiRow({ model, week }: { model: Model; week: number }) {
   }));
 
   return (
-    <Cells className="sm:grid-cols-2 lg:grid-cols-3">
+    <Cells data-tour="kpis" className="sm:grid-cols-2 lg:grid-cols-3">
       <KpiTile
         label="Students tested"
+        tour="kpi-tested"
         href={monitorHref}
         icon={<Users />}
         color="var(--lang-cpp)"
@@ -501,6 +502,7 @@ function KpiRow({ model, week }: { model: Model; week: number }) {
       />
       <KpiTile
         label="Avg belts per student"
+        tour="kpi-avg"
         href={leaderboardHref}
         icon={<Award />}
         color="var(--lang-nodejs)"
@@ -513,6 +515,7 @@ function KpiRow({ model, week }: { model: Model; week: number }) {
       />
       <KpiTile
         label="Moved up this week"
+        tour="kpi-moved"
         href={prev === null ? undefined : improvedHref}
         icon={<TrendingUp />}
         color="var(--brand)"
@@ -543,6 +546,7 @@ function KpiRow({ model, week }: { model: Model; week: number }) {
       />
       <KpiTile
         label="Total belts held"
+        tour="kpi-total"
         href={leaderboardHref}
         icon={<Trophy />}
         color="var(--lang-python)"
@@ -554,6 +558,7 @@ function KpiRow({ model, week }: { model: Model; week: number }) {
       />
       <KpiTile
         label="Not tested this week"
+        tour="kpi-untested"
         icon={<UserX />}
         color="var(--lang-java)"
         value={untested}
@@ -591,8 +596,10 @@ function KpiTile({
   prev,
   footer,
   href,
+  tour,
   className = "",
 }: {
+  tour?: string;
   label: string;
   icon: ReactNode;
   color: string;
@@ -662,7 +669,7 @@ function KpiTile({
   );
   const spot = `color-mix(in srgb, ${color} 12%, transparent)`;
   return (
-    <Cell className={className} style={tint(color)} spotlightColor={spot}>
+    <Cell data-tour={tour} className={className} style={tint(color)} spotlightColor={spot}>
       {href ? (
         <Link
           href={href}
@@ -813,7 +820,7 @@ function NeedsAttention({ model, week }: { model: Model; week: number }) {
   }>;
 
   return (
-    <section className="min-w-0">
+    <section data-tour="needs-attention" className="min-w-0">
       <div className="flex items-center justify-between border-b border-line px-4 py-3 sm:px-5">
         <h2 className="font-display text-[15px] font-bold tracking-[-0.015em]">
           Needs attention
@@ -902,7 +909,7 @@ function TopMovers({ model, week }: { model: Model; week: number }) {
   const { openStudent } = useStudentOpener();
 
   return (
-    <section className="min-w-0">
+    <section data-tour="top-movers" className="min-w-0">
       <div className="flex items-center justify-between border-b border-line px-4 py-3 sm:px-5">
         <div>
           <h2 className="font-display text-[15px] font-bold tracking-[-0.015em]">
@@ -999,7 +1006,7 @@ function GroupTable({ model, week }: { model: Model; week: number }) {
   );
 
   return (
-    <section className="min-w-0">
+    <section data-tour="squad-table" className="min-w-0">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3 sm:px-5">
         <div>
           <h2 className="font-display text-[15px] font-bold tracking-[-0.015em]">

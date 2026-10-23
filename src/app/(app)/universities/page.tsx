@@ -111,9 +111,11 @@ export default function UniversitiesPage() {
         <FrameTitle
           eyebrow="Global administration"
           title="Universities"
+          tour="uni-intro"
           description="Every campus on the platform, with its students, squads and team."
         />
         <form
+          data-tour="uni-add"
           onSubmit={createUniversity}
           className="flex flex-wrap items-end gap-3 px-4 py-4 sm:px-5"
         >
@@ -139,7 +141,7 @@ export default function UniversitiesPage() {
         {loading ? (
           <PanelSkeleton rows={6} label="Loading universities" flat />
         ) : (
-          <div className="overflow-x-auto">
+          <div data-tour="uni-table" className="overflow-x-auto">
             <table className="w-full min-w-[760px] text-left text-sm">
               <thead className="border-b border-line bg-surface-2 text-[11px] uppercase tracking-[0.06em] text-muted">
                 <tr>
@@ -178,6 +180,7 @@ export default function UniversitiesPage() {
                             <>
                               <button
                                 type="button"
+                                data-tour="uni-save"
                                 title="Save university name"
                                 onClick={() => void saveUniversity(university.id)}
                                 className="p-2 text-success-text"
@@ -196,6 +199,7 @@ export default function UniversitiesPage() {
                           ) : (
                             <button
                               type="button"
+                              data-tour="uni-rename"
                               title="Edit university name"
                               onClick={() => {
                                 setEditing(university.id);
@@ -208,6 +212,7 @@ export default function UniversitiesPage() {
                           )}
                           <button
                             type="button"
+                            data-tour="uni-details"
                             onClick={() => void toggleDetails(university.id)}
                             className="inline-flex items-center gap-1.5 rounded border border-line-strong px-2.5 py-1.5 text-xs font-semibold"
                           >
@@ -221,7 +226,7 @@ export default function UniversitiesPage() {
                       <tr>
                         <td colSpan={6} className="bg-surface-2 px-4 pb-4 sm:px-5">
                           <div className="grid gap-5 border-t border-line pt-4 md:grid-cols-2">
-                            <div>
+                            <div data-tour="uni-squads">
                               <h2 className="font-semibold">Squads</h2>
                               <p className="mt-1 text-sm text-muted">
                                 {detail.squads
@@ -229,7 +234,7 @@ export default function UniversitiesPage() {
                                   .join(", ") || "No squads yet"}
                               </p>
                             </div>
-                            <div>
+                            <div data-tour="uni-team">
                               <h2 className="font-semibold">Campus team</h2>
                               <p className="mt-1 text-sm text-muted">
                                 {detail.users

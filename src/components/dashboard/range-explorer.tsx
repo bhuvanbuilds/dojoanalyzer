@@ -172,7 +172,7 @@ export function RangeExplorer({ model, week }: { model: Model; week: number }) {
   ];
 
   return (
-    <section className="min-w-0">
+    <section data-tour="range" className="min-w-0">
       {/* Header & range controls */}
       <div className="flex flex-col gap-4 border-b border-line px-4 py-4 sm:px-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
@@ -183,7 +183,7 @@ export function RangeExplorer({ model, week }: { model: Model; week: number }) {
             Belts each student gained from one week to another.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div data-tour="range-controls" className="flex flex-wrap items-center gap-2.5">
           <div className="flex rounded-lg bg-ink/[0.045] p-0.5">
             {(
               [
@@ -230,7 +230,7 @@ export function RangeExplorer({ model, week }: { model: Model; week: number }) {
       </div>
 
       {/* Totals */}
-      <Cells className="border-b border-line sm:grid-cols-2 xl:grid-cols-4">
+      <Cells data-tour="range-stats" className="border-b border-line sm:grid-cols-2 xl:grid-cols-4">
         {stats.map((stat) => (
           <Cell key={stat.label} className="px-4 py-4 sm:px-5">
             <p className="text-[12.5px] font-medium text-muted">{stat.label}</p>
@@ -248,7 +248,7 @@ export function RangeExplorer({ model, week }: { model: Model; week: number }) {
       </Cells>
 
       {/* Per-language gains */}
-      <div className="grid gap-x-8 gap-y-3 px-4 py-4 sm:grid-cols-2 sm:px-5 lg:grid-cols-4">
+      <div data-tour="range-languages" className="grid gap-x-8 gap-y-3 px-4 py-4 sm:grid-cols-2 sm:px-5 lg:grid-cols-4">
         {LANGUAGES.map((language, index) => {
           const value = range.languageGain[index];
           return (
@@ -278,7 +278,7 @@ export function RangeExplorer({ model, week }: { model: Model; week: number }) {
       </div>
 
       {/* Student table controls */}
-      <div className="flex flex-col gap-3 border-t border-line bg-surface-2 px-4 py-3 sm:px-5 md:flex-row md:items-center md:justify-between">
+      <div data-tour="range-list" className="flex flex-col gap-3 border-t border-line bg-surface-2 px-4 py-3 sm:px-5 md:flex-row md:items-center md:justify-between">
         <div className="flex flex-wrap items-center gap-2">
           <label className="relative">
             <span className="sr-only">Search students</span>

@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { clearProfileCache } from "@/lib/auth/profile";
-import { Eye, LogOut } from "lucide-react";
+import { Compass, Eye, LogOut } from "lucide-react";
+import { tutorialRoleFor } from "@/lib/tutorial/config";
+import { startTutorial } from "@/components/tutorial/tutorial";
 import type { ViewAs } from "@/lib/view-as";
 
 /** Violet bar while a developer views the app as someone else. */
@@ -43,6 +45,15 @@ export function ViewAsBanner() {
         <Eye size={13} /> Viewing as {viewAs.label}
       </span>
       <span className="font-normal text-white/75">Read-only — changes are blocked</span>
+      {tutorialRoleFor({ role: viewAs.role, viewing_as: viewAs }) ? (
+        <button
+          type="button"
+          onClick={() => startTutorial()}
+          className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-0.5 transition hover:bg-white/25"
+        >
+          <Compass size={12} /> Show this role&apos;s tutorial
+        </button>
+      ) : null}
       <button
         type="button"
         onClick={() => void exit()}

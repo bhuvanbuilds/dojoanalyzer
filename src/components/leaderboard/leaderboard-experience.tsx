@@ -83,7 +83,7 @@ export function LeaderboardExperience({
     <Page className="pb-24">
       <Frame>
         {/* Hero stage */}
-        <section className="relative isolate overflow-hidden bg-[#0b0b0e] text-white">
+        <section data-tour="lb-hero" className="relative isolate overflow-hidden bg-[#0b0b0e] text-white">
           <div aria-hidden="true" className="absolute inset-0">
             <LightRays
               raysOrigin="top-center"
@@ -116,7 +116,7 @@ export function LeaderboardExperience({
             </p>
           </div>
 
-          <div className="relative px-3 pb-0 pt-8 sm:px-10">
+          <div data-tour="lb-podium" className="relative px-3 pb-0 pt-8 sm:px-10">
             {isLoading ? (
               <PodiumLoader />
             ) : error || entries.length === 0 ? (
@@ -255,7 +255,7 @@ function StatStrip({
     },
   ] as Array<{ label: string; value: number; decimals?: number; href?: string }>;
   return (
-    <Cells className="sm:grid-cols-2 xl:grid-cols-4">
+    <Cells data-tour="lb-stats" className="sm:grid-cols-2 xl:grid-cols-4">
       {stats.map((stat) => {
         const href = linkPages ? stat.href : undefined;
         const body = (
@@ -332,7 +332,7 @@ function RankingList({
   if (entries.length === 0) return null;
 
   return (
-    <section className="min-w-0">
+    <section data-tour="lb-rankings" className="min-w-0">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-2.5 sm:px-5">
         <div className="flex items-baseline gap-3">
           <h2 className="font-display text-[15px] font-bold tracking-[-0.015em]">
@@ -343,6 +343,7 @@ function RankingList({
         <div
           role="radiogroup"
           aria-label="Layout"
+          data-tour="lb-layout"
           className="flex rounded-xl bg-sunken p-1"
         >
           {(
@@ -650,6 +651,7 @@ function YouPill({
       {visible && (
         <motion.button
           type="button"
+          data-tour="lb-you-rank"
           initial={{ opacity: 0, y: 20, x: "-50%" }}
           animate={{ opacity: 1, y: 0, x: "-50%" }}
           exit={{ opacity: 0, y: 20, x: "-50%" }}

@@ -181,10 +181,12 @@ export default function UsersPage() {
         <FrameTitle
           eyebrow="Global administration"
           title="Users"
+          tour="users-intro"
           description="Assign Google accounts to a role, university or student record."
         />
         <AccessRequestsPanel onDecided={() => void load()} />
         <form
+          data-tour="users-assign"
           onSubmit={assign}
           className="grid gap-3 px-4 py-4 sm:grid-cols-2 sm:px-5 xl:grid-cols-5"
         >
@@ -262,7 +264,7 @@ export default function UsersPage() {
             </label>
           )}
           {role === "mentor" && universityId ? (
-            <fieldset className="flex flex-col gap-1.5 text-xs font-semibold text-ink-2 sm:col-span-2">
+            <fieldset data-tour="users-squads" className="flex flex-col gap-1.5 text-xs font-semibold text-ink-2 sm:col-span-2">
               <legend className="mb-1.5">Squads this mentor looks after</legend>
               {squadOptions.length === 0 ? (
                 <p className="text-[12.5px] font-normal text-muted">This university has no squads yet.</p>
@@ -329,7 +331,7 @@ export default function UsersPage() {
             {message}
           </p>
         )}
-        <div className="flex flex-wrap gap-2 bg-surface-2 px-4 py-2.5 sm:px-5">
+        <div data-tour="users-search" className="flex flex-wrap gap-2 bg-surface-2 px-4 py-2.5 sm:px-5">
           <label className="flex min-w-60 flex-1 items-center gap-2 rounded-lg border border-line-strong bg-surface px-3">
             <Search size={16} className="text-muted" />
             <input
@@ -372,7 +374,7 @@ export default function UsersPage() {
         {loading ? (
           <PanelSkeleton rows={6} label="Loading users" flat />
         ) : (
-          <div className="overflow-x-auto">
+          <div data-tour="users-table" className="overflow-x-auto">
             <table className="w-full min-w-[760px] text-left text-sm">
               <thead className="border-b border-line bg-surface-2 text-[11px] uppercase tracking-[0.06em] text-muted">
                 <tr>
@@ -421,6 +423,7 @@ export default function UsersPage() {
                         {user.status === "active" && (
                           <button
                             type="button"
+                            data-tour="users-edit"
                             onClick={() => editUser(user)}
                             className="h-8 rounded-lg border border-line-strong px-3 text-xs font-semibold text-ink-2 transition hover:text-ink"
                           >
@@ -432,6 +435,7 @@ export default function UsersPage() {
                             You
                           </span>
                         ) : (
+                          <span data-tour="users-delete" className="inline-flex">
                           <HoldButton
                             size="sm"
                             radius={8}
@@ -449,6 +453,7 @@ export default function UsersPage() {
                           >
                             Hold to delete
                           </HoldButton>
+                          </span>
                         )}
                       </div>
                     </td>

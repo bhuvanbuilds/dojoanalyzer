@@ -180,7 +180,7 @@ export function StudentOverviewPage({ studentId }: { studentId: string | null })
           </FrameMessage>
         ) : data ? (
           <>
-            <Cells className="grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
+            <Cells data-tour="student-stats" className="grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
               {[
                 {
                   label: "Overall rank",
@@ -228,7 +228,7 @@ export function StudentOverviewPage({ studentId }: { studentId: string | null })
               ))}
             </Cells>
             <OverviewPanels data={data} />
-            <Split className="xl:grid-cols-2">
+            <Split data-tour="student-compare" className="xl:grid-cols-2">
               <Panel
                 title="Against their squad"
                 description="Belt level vs the squad average, per language"

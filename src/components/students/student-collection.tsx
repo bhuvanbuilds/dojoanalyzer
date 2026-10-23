@@ -53,7 +53,7 @@ export function StudentCollection({
   const reduced = useReducedMotion();
 
   return (
-    <div>
+    <div data-tour={shared.monitor ? "st-monitor" : "st-collection"}>
       {view === "cards" ? (
         <motion.div
           layout={!reduced}

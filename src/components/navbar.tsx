@@ -130,6 +130,7 @@ function ProfileButton({
         aria-expanded={open}
         aria-haspopup="true"
         aria-label="Account menu"
+        data-tour="account"
         className={`flex items-center gap-1.5 rounded-xl px-1.5 py-1 transition-all duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-action ${
           open ? "bg-ink/8" : "hover:bg-ink/5"
         }`}
@@ -359,6 +360,7 @@ function DesktopNav({
             key={group.key}
             href={group.tabs[0].href}
             data-active={active}
+            data-tour={`nav-${group.key}`}
             aria-current={active ? "page" : undefined}
             aria-description={
               group.key === "dashboard" && dashboardHint
@@ -432,6 +434,7 @@ function GroupMenu({
     <div ref={containerRef} className="relative z-10">
       <button
         type="button"
+        data-tour={`nav-${group.key}`}
         data-active={active}
         aria-haspopup="menu"
         aria-expanded={open}
@@ -466,6 +469,7 @@ function GroupMenu({
               <Link
                 key={tab.href}
                 href={tab.href}
+                data-tour={`go-${tab.href}`}
                 role="menuitem"
                 aria-current={tabActive ? "page" : undefined}
                 className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 font-display text-[13.5px] font-semibold tracking-[-0.01em] outline-none transition-colors focus-visible:bg-ink/5 ${
@@ -616,6 +620,7 @@ export function NavbarView({
           <div className="flex shrink-0 items-center gap-2">
             {/* Upload CSV — main import action */}
             {canUploadCsv && (
+              <span data-tour="upload" className="hidden sm:inline-flex">
               <ShinyButton
                 onClick={handleUploadClick}
                 className="group hidden h-9 px-3.5 font-display text-[13px] font-semibold tracking-[-0.01em] sm:inline-flex sm:items-center"
@@ -627,9 +632,12 @@ export function NavbarView({
                 />
                 Upload CSV
               </ShinyButton>
+              </span>
             )}
 
-            <ThemeToggle />
+            <span data-tour="theme" className="inline-flex">
+              <ThemeToggle />
+            </span>
 
             {/* Profile dropdown button (desktop) */}
             {profile ? (
@@ -652,6 +660,7 @@ export function NavbarView({
               className="flex h-9 w-9 items-center justify-center rounded-xl text-ink-2 hover:bg-ink/5 lg:hidden"
               onClick={() => setMobileOpenAtPath(pathname)}
               aria-label="Open navigation"
+              data-tour="mobile-menu"
             >
               <Menu size={18} />
             </button>
@@ -720,6 +729,7 @@ export function NavbarView({
                       <Link
                         key={tab.href}
                         href={tab.href}
+                        data-tour={`go-${tab.href}`}
                         aria-current={active ? "page" : undefined}
                         className={`flex items-center gap-3 rounded-xl px-3.5 py-2.5 font-display text-sm font-semibold transition-all duration-150 ${
                           active
@@ -744,6 +754,7 @@ export function NavbarView({
               {canUploadCsv && (
                 <button
                   type="button"
+                  data-tour="upload-mobile"
                   onClick={() => {
                     setMobileOpenAtPath(null);
                     handleUploadClick();

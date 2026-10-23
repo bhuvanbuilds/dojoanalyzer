@@ -396,7 +396,7 @@ function WeeklyComparisonContent() {
           </div>
 
           {/* Week range */}
-          <div className="relative mx-4 mt-5 flex flex-wrap items-stretch gap-2 sm:mx-5">
+          <div data-tour="wc-weeks" className="relative mx-4 mt-5 flex flex-wrap items-stretch gap-2 sm:mx-5">
             <WeekPicker label="From" value={fromWeekId} weeks={weeks} onChange={setFromWeekId} />
             <button
               type="button"
@@ -409,7 +409,7 @@ function WeeklyComparisonContent() {
             <WeekPicker label="To" value={toWeekId} weeks={weeks} onChange={setToWeekId} />
           </div>
 
-          <div className="relative mt-5 flex flex-wrap items-center gap-2 border-t border-line bg-surface-2 px-4 py-2.5 sm:px-5">
+          <div data-tour="wc-filters" className="relative mt-5 flex flex-wrap items-center gap-2 border-t border-line bg-surface-2 px-4 py-2.5 sm:px-5">
             <div className="relative min-w-[220px] flex-1">
               <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
               <input
@@ -508,7 +508,7 @@ function WeeklyComparisonContent() {
               aria-busy={isLoading}
             >
               {summary ? (
-                <div className="grid divide-y divide-line lg:grid-cols-[1.6fr_1fr] lg:divide-x lg:divide-y-0">
+                <div data-tour="wc-summary" className="grid divide-y divide-line lg:grid-cols-[1.6fr_1fr] lg:divide-x lg:divide-y-0">
                   <section className="px-4 py-5 sm:px-5">
                     <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
                       <h2 className="font-display text-[16px] font-semibold">
@@ -548,7 +548,7 @@ function WeeklyComparisonContent() {
               ) : null}
 
               {rows.length ? (
-                <div className="grid divide-y divide-line lg:grid-cols-2 lg:divide-x lg:divide-y-0">
+                <div data-tour="wc-climbers" className="grid divide-y divide-line lg:grid-cols-2 lg:divide-x lg:divide-y-0">
                   <section className="px-4 py-4 sm:px-5">
                     <h2 className="flex items-center gap-2 font-display text-[16px] font-semibold">
                       <Rocket size={16} className="text-brand-text" /> Top climbers
@@ -590,7 +590,7 @@ function WeeklyComparisonContent() {
                       <p className="mt-6 text-center text-sm text-muted">Nobody moved up in this view.</p>
                     )}
                   </section>
-                  <section className="px-4 py-4 sm:px-5">
+                  <section data-tour="wc-histogram" className="px-4 py-4 sm:px-5">
                     <h2 className="font-display text-[16px] font-semibold">Change in belts</h2>
                     <p className="text-[12px] text-muted">How many students gained or lost how many belts</p>
                     <Histogram data={distribution} />
@@ -601,7 +601,7 @@ function WeeklyComparisonContent() {
               {rows.length === 0 ? (
                 <Empty title="No matching students" detail="Try a different squad, status or search." icon />
               ) : (
-                <section className="min-w-0">
+                <section data-tour="wc-table" className="min-w-0">
                   <div className="flex items-center justify-between border-b border-line px-4 py-3 sm:px-5">
                     <h2 className="font-display text-[15px] font-semibold">Every student</h2>
                     <span className="text-[12px] text-muted">

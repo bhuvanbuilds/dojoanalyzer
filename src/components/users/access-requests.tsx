@@ -52,7 +52,7 @@ export function AccessRequestsPanel({ onDecided }: { onDecided?: () => void }) {
   if (requests.length === 0 && !error) return null;
 
   return (
-    <section className="border-b border-line">
+    <section data-tour="ar-panel" className="border-b border-line">
       <header className="flex items-center gap-2 bg-[color-mix(in_srgb,#f59e0b_8%,var(--surface))] px-4 py-3 sm:px-5">
         <Inbox size={15} className="text-[#b45309] dark:text-[#fcd34d]" />
         <h2 className="text-[13.5px] font-semibold">
@@ -172,7 +172,7 @@ function RequestRow({
       </div>
 
       <div className="flex flex-col gap-2.5">
-        <div className="grid gap-2 sm:grid-cols-2">
+        <div data-tour="ar-grant" className="grid gap-2 sm:grid-cols-2">
           <Dropdown
             chevron
             aria-label="Grant role"
@@ -203,7 +203,7 @@ function RequestRow({
           ) : null}
         </div>
         {role === "mentor" && squads.length ? (
-          <div className="flex flex-wrap gap-1.5">
+          <div data-tour="ar-squads" className="flex flex-wrap gap-1.5">
             {squads.map((squad) => {
               const on = squadIds.includes(squad.id);
               return (
@@ -240,6 +240,7 @@ function RequestRow({
           <button
             type="button"
             disabled={busy !== null}
+            data-tour="ar-approve"
             onClick={() => void decide("approve")}
             className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-ink px-3.5 text-[13px] font-semibold text-page transition hover:opacity-90 disabled:opacity-60"
           >
@@ -253,6 +254,7 @@ function RequestRow({
           <button
             type="button"
             disabled={busy !== null}
+            data-tour="ar-reject"
             onClick={() => void decide("reject")}
             className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line-strong px-3.5 text-[13px] font-semibold text-ink-2 transition hover:border-ink/40 hover:text-ink disabled:opacity-60"
           >

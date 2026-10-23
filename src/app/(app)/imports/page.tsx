@@ -277,7 +277,7 @@ export default function ImportsPage() {
           }
         />
 
-        <div className="grid gap-3 bg-surface-2 px-4 py-3 sm:px-5 md:grid-cols-[minmax(0,1fr)_180px_150px] md:items-end">
+        <div data-tour="im-filters" className="grid gap-3 bg-surface-2 px-4 py-3 sm:px-5 md:grid-cols-[minmax(0,1fr)_180px_150px] md:items-end">
           <label className="flex items-center gap-2 rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm text-muted">
             <Search size={16} />
             <span className="sr-only">Search imports</span>
@@ -344,7 +344,7 @@ export default function ImportsPage() {
           </div>
         ) : (
           <div>
-            <div className="overflow-x-auto">
+            <div data-tour="im-table" className="overflow-x-auto">
               <table className="w-full min-w-[850px] text-left text-sm">
                 <thead className="border-b border-line text-[11px] uppercase tracking-[0.12em] text-muted">
                   <tr>
@@ -430,7 +430,7 @@ export default function ImportsPage() {
             </div>
 
             {pagination.totalPages > 1 ? (
-              <div className="flex items-center justify-between border-t border-line px-4 py-3 sm:px-5">
+              <div data-tour="im-pages" className="flex items-center justify-between border-t border-line px-4 py-3 sm:px-5">
                 <p className="text-sm text-muted">
                   Page {pagination.page} of {pagination.totalPages}
                 </p>

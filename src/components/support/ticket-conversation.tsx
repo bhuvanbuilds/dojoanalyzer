@@ -300,7 +300,7 @@ export function TicketConversation({
         {/* Triage bar */}
         {isStaff ? (
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <Control label="Status">
+            <Control label="Status" tour="tk-status">
               <Dropdown
                 chevron
                 aria-label="Status"
@@ -315,7 +315,7 @@ export function TicketConversation({
                 ))}
               </Dropdown>
             </Control>
-            <Control label="Severity">
+            <Control label="Severity" tour="tk-severity">
               <Dropdown
                 chevron
                 aria-label="Severity"
@@ -331,7 +331,7 @@ export function TicketConversation({
                 ))}
               </Dropdown>
             </Control>
-            <Control label="Assignee">
+            <Control label="Assignee" tour="tk-assignee">
               <Dropdown
                 chevron
                 aria-label="Assignee"
@@ -350,6 +350,7 @@ export function TicketConversation({
             {isDeveloper && ticket.type !== "other" ? (
               <button
                 type="button"
+                data-tour="tk-changelog"
                 onClick={() => setChangelogOpen(true)}
                 className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-xl border border-line-strong px-3 text-[13px] font-semibold text-ink-2 transition hover:border-ink/40 hover:text-ink"
               >
@@ -364,6 +365,7 @@ export function TicketConversation({
         {/* Thread */}
         <div className={`relative flex min-h-0 min-w-0 flex-col border-line ${panel ? "xl:border-r" : "lg:border-r"}`}>
           <div
+            data-tour="tk-thread"
             ref={threadRef}
             onScroll={onThreadScroll}
             className={`min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 sm:px-6 ${panel ? "" : "h-[min(62vh,640px)]"}`}
@@ -434,6 +436,7 @@ export function TicketConversation({
                 <button
                   type="button"
                   role="switch"
+                  data-tour="tk-internal"
                   aria-checked={internal}
                   onClick={() => setInternal((value) => !value)}
                   className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[12px] font-semibold transition ${
@@ -515,6 +518,7 @@ export function TicketConversation({
 
         {/* Details */}
         <aside
+          data-tour="tk-details"
           className={
             panel
               ? "hidden overflow-y-auto px-4 py-4 xl:block"
@@ -669,9 +673,9 @@ function ChatRow({
   );
 }
 
-function Control({ label, children }: { label: string; children: React.ReactNode }) {
+function Control({ label, tour, children }: { label: string; tour?: string; children: React.ReactNode }) {
   return (
-    <span className="inline-flex items-center gap-1.5">
+    <span data-tour={tour} className="inline-flex items-center gap-1.5">
       <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-faint">{label}</span>
       {children}
     </span>

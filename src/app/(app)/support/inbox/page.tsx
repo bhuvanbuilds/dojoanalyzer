@@ -143,7 +143,7 @@ function Workspace() {
   return (
     <div className="mx-auto w-full max-w-[1600px] px-3 pb-10 pt-5 sm:px-5">
       {/* Header */}
-      <div className="flex flex-wrap items-end justify-between gap-4 px-1">
+      <div data-tour="inbox-intro" className="flex flex-wrap items-end justify-between gap-4 px-1">
         <div>
           <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-action">Kalvium support</p>
           <h1 className="mt-1 font-display text-[28px] font-bold leading-tight tracking-[-0.03em]">Tickets</h1>
@@ -159,6 +159,7 @@ function Workspace() {
           <button
             type="button"
             aria-label="Refresh tickets"
+            data-tour="inbox-refresh"
             onClick={() => setTick((value) => value + 1)}
             className="grid h-9 w-9 place-items-center rounded-xl border border-line-strong text-muted transition hover:text-ink"
           >
@@ -202,7 +203,7 @@ function Workspace() {
       </div>
 
       {/* Toolbar */}
-      <div className="mt-4 flex flex-wrap items-center gap-2">
+      <div data-tour="inbox-filters" className="mt-4 flex flex-wrap items-center gap-2">
         <div role="tablist" aria-label="Status" className="flex flex-wrap gap-1 rounded-xl bg-sunken p-1">
           {VIEWS.map((item) => (
             <button
@@ -259,7 +260,7 @@ function Workspace() {
           <option value="me">Assigned to me</option>
           <option value="none">Unassigned</option>
         </Dropdown>
-        <label className="relative min-w-[200px] flex-1">
+        <label data-tour="inbox-search" className="relative min-w-[200px] flex-1">
           <span className="sr-only">Search tickets</span>
           <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
           <input
@@ -283,7 +284,7 @@ function Workspace() {
 
       {/* List + conversation */}
       <div className="mt-4 grid overflow-hidden rounded-2xl border border-line bg-surface lg:h-[calc(100dvh-var(--app-bar-h,97px)-300px)] lg:min-h-[560px] lg:grid-cols-[380px_minmax(0,1fr)]">
-        <ul className="min-h-0 divide-y divide-line overflow-y-auto border-line lg:border-r">
+        <ul data-tour="inbox-list" className="min-h-0 divide-y divide-line overflow-y-auto border-line lg:border-r">
           {!tickets ? (
             <li className="px-5 py-10 text-center text-[13px] text-muted">Loading tickets…</li>
           ) : shown.length === 0 ? (

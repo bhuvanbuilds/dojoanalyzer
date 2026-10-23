@@ -255,12 +255,13 @@ export function LeaderboardBoard({ kind }: { kind: Kind }) {
     : squads;
 
   const controls = (
-    <div className="space-y-3 bg-surface-2 px-4 py-3 sm:px-5">
+    <div data-tour="lb-controls" className="space-y-3 bg-surface-2 px-4 py-3 sm:px-5">
       <div className="flex flex-wrap items-center gap-2">
         {kind === "language" ? (
           <div
             role="radiogroup"
             aria-label="Language"
+            data-tour="lb-languages"
             className="flex flex-wrap gap-1 rounded-xl bg-ink/[0.045] p-1"
           >
             {LANGUAGES.map((item) => {
@@ -294,6 +295,7 @@ export function LeaderboardBoard({ kind }: { kind: Kind }) {
         <div
           role="radiogroup"
           aria-label="Scope"
+          data-tour="lb-scope"
           className="flex gap-1 rounded-xl bg-ink/[0.045] p-1"
         >
           {scopes.map((scope) => (
@@ -325,7 +327,7 @@ export function LeaderboardBoard({ kind }: { kind: Kind }) {
         </span>
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-[repeat(3,minmax(0,220px))_minmax(0,1fr)]">
+      <div data-tour="lb-filters" className="grid gap-2 sm:grid-cols-2 xl:grid-cols-[repeat(3,minmax(0,220px))_minmax(0,1fr)]">
         <SelectBox
           label="University"
           value={universityId}

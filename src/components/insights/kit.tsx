@@ -455,7 +455,7 @@ export function TrendPanel({
   const decimals = metric === "average_belts_per_student" ? 2 : 0;
 
   return (
-    <section className="px-4 py-4 sm:px-5">
+    <section data-tour="an-trend" className="px-4 py-4 sm:px-5">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="font-display text-[16px] font-semibold">{title}</h2>

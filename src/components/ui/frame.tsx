@@ -61,8 +61,11 @@ export function FrameTitle({
   title,
   description,
   actions,
+  tour,
   className = "",
 }: {
+  /** data-tour marker for the guided tutorial. */
+  tour?: string;
   eyebrow?: ReactNode;
   title: ReactNode;
   description?: ReactNode;
@@ -71,6 +74,7 @@ export function FrameTitle({
 }) {
   return (
     <header
+      data-tour={tour}
       className={`flex flex-col gap-4 bg-surface-2 px-4 py-4 sm:px-5 lg:flex-row lg:items-end lg:justify-between ${className}`}
     >
       <div className="min-w-0">
@@ -144,12 +148,14 @@ export function Panel({
 export function Split({
   children,
   className = "",
-}: {
+  ...rest
+}: HTMLAttributes<HTMLDivElement> & {
   children: ReactNode;
   className?: string;
 }) {
   return (
     <div
+      {...rest}
       className={`grid divide-y divide-line xl:divide-x xl:divide-y-0 ${className}`}
     >
       {children}
@@ -169,11 +175,16 @@ export const cellsClass =
 export function Cells({
   children,
   className = "",
-}: {
+  ...rest
+}: HTMLAttributes<HTMLDivElement> & {
   children: ReactNode;
   className?: string;
 }) {
-  return <div className={`${cellsClass} ${className}`}>{children}</div>;
+  return (
+    <div {...rest} className={`${cellsClass} ${className}`}>
+      {children}
+    </div>
+  );
 }
 
 /**

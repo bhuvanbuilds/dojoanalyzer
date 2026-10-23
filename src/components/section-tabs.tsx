@@ -26,6 +26,7 @@ export function SectionTabs({
             <Link
               key={tab.href}
               href={tab.href}
+              data-tour={`go-${tab.href}`}
               aria-current={active ? "page" : undefined}
               className={`relative flex shrink-0 items-center gap-2 whitespace-nowrap px-3 font-display text-[13px] font-semibold tracking-[-0.01em] outline-none transition-colors duration-200 focus-visible:bg-ink/5 ${
                 active ? "text-ink" : "text-muted hover:text-ink"

@@ -263,6 +263,7 @@ function Analytics() {
                 language is moving fastest.
               </p>
             </div>
+            <div data-tour="an-tabs">
             <Segmented
               id="analytics-tab"
               value={tab}
@@ -272,8 +273,9 @@ function Analytics() {
                 { value: "yearly", label: "Yearly", icon: <CalendarRange size={14} /> },
               ]}
             />
+            </div>
           </div>
-          <div className="relative mt-5 flex flex-wrap items-center gap-2 border-t border-line bg-surface-2 px-4 py-2.5 sm:px-5">
+          <div data-tour="an-filters" className="relative mt-5 flex flex-wrap items-center gap-2 border-t border-line bg-surface-2 px-4 py-2.5 sm:px-5">
             <PillSelect
               label="Year"
               value={String(mYear ?? filters?.year ?? "")}
@@ -496,7 +498,7 @@ function MonthlyView({
 
   return (
     <>
-      <div className="grid divide-y divide-line lg:grid-cols-[1.6fr_1fr] lg:divide-x lg:divide-y-0">
+      <div data-tour="an-summary" className="grid divide-y divide-line lg:grid-cols-[1.6fr_1fr] lg:divide-x lg:divide-y-0">
         <section className="px-4 py-5 sm:px-5">
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted">
             {name} {data.filters?.year} at a glance
@@ -550,7 +552,7 @@ function MonthlyView({
         </section>
       </div>
 
-      <div className={`${cellsClass} grid-cols-2 xl:grid-cols-4`}>
+      <div data-tour="an-tiles" className={`${cellsClass} grid-cols-2 xl:grid-cols-4`}>
         <StatTile
           index={0}
           label="Belts earned"
@@ -591,7 +593,7 @@ function MonthlyView({
       </div>
 
       {trend.length > 1 ? (
-        <section className="px-4 py-4 sm:px-5">
+        <section data-tour="an-calendar" className="px-4 py-4 sm:px-5">
           <div className="mb-3 flex items-baseline justify-between">
             <h2 className="font-display text-[16px] font-semibold">Pick a month</h2>
             <span className="text-[12px] text-muted">Darker = more belts earned</span>
@@ -600,7 +602,7 @@ function MonthlyView({
         </section>
       ) : null}
 
-      <section>
+      <section data-tour="an-languages">
         <div className="flex items-baseline justify-between border-b border-line px-4 py-3 sm:px-5">
           <h2 className="font-display text-[16px] font-semibold">By language</h2>
           <span className="text-[12px] text-muted">Click a language to focus on it</span>
@@ -640,7 +642,7 @@ function YearlyView({
 
   return (
     <>
-      <div className="grid divide-y divide-line lg:grid-cols-[1.6fr_1fr] lg:divide-x lg:divide-y-0">
+      <div data-tour="an-summary" className="grid divide-y divide-line lg:grid-cols-[1.6fr_1fr] lg:divide-x lg:divide-y-0">
         <section className="px-4 py-5 sm:px-5">
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted">
             {year} in review
@@ -681,7 +683,7 @@ function YearlyView({
         </section>
       </div>
 
-      <div className={`${cellsClass} grid-cols-2 xl:grid-cols-4`}>
+      <div data-tour="an-tiles" className={`${cellsClass} grid-cols-2 xl:grid-cols-4`}>
         <StatTile index={0} href="/weekly-comparison?status=improved" label="Belts earned" value={summary.belts_earned} icon={<Award size={17} />} tint="var(--series-2)" />
         <StatTile index={1} href="/students" label="Students" value={summary.total_students} icon={<Users size={17} />} tint="var(--series-1)" />
         <StatTile index={2} href="/leaderboard" label="Total belts" value={summary.total_belts} icon={<Layers size={17} />} tint="var(--series-3)" />
@@ -697,7 +699,7 @@ function YearlyView({
       </div>
 
       {trend.length ? (
-        <section className="px-4 py-4 sm:px-5">
+        <section data-tour="an-calendar" className="px-4 py-4 sm:px-5">
           <div className="mb-3 flex items-baseline justify-between">
             <h2 className="font-display text-[16px] font-semibold">Month by month</h2>
             <span className="text-[12px] text-muted">Click a month to open it</span>
@@ -706,7 +708,7 @@ function YearlyView({
         </section>
       ) : null}
 
-      <section>
+      <section data-tour="an-languages">
         <h2 className="border-b border-line px-4 py-3 font-display text-[16px] font-semibold sm:px-5">By language</h2>
         <LanguageCards breakdown={data.languageBreakdown} />
       </section>

@@ -643,9 +643,10 @@ function StudentsPageContent() {
               ) : null}
             </div>
             {isManager ? (
-              <div className="flex flex-wrap items-center gap-2">
+              <div data-tour="st-actions" className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
+                  data-tour="st-new-squad"
                   onClick={() => openCreate("squad")}
                   className="inline-flex h-9 items-center gap-2 rounded-full border border-line-strong bg-surface px-3.5 text-[13px] font-semibold text-ink-2 transition hover:border-ink/40 hover:text-ink active:scale-[0.98]"
                 >
@@ -653,6 +654,7 @@ function StudentsPageContent() {
                 </button>
                 <button
                   type="button"
+                  data-tour="st-add-student"
                   onClick={() => openCreate("student")}
                   className="inline-flex h-9 items-center gap-2 rounded-full bg-ink px-3.5 text-[13px] font-semibold text-page transition hover:opacity-90 active:scale-[0.98]"
                 >
@@ -673,7 +675,7 @@ function StudentsPageContent() {
         </section>
 
         {/* ── Stats ────────────────────────────────────────────── */}
-        <Cells className="grid-cols-2 lg:grid-cols-4">
+        <Cells data-tour="st-stats" className="grid-cols-2 lg:grid-cols-4">
           {stats.map((stat) => (
             <Cell key={stat.label} className="px-4 py-4 sm:px-5">
               <div className="flex items-center gap-3">
@@ -752,7 +754,7 @@ function StudentsPageContent() {
         ) : null}
 
         {/* ── Squad rail ──────────────────────────────────────── */}
-        <section className="px-4 pb-2 pt-3.5 sm:px-5">
+        <section data-tour="st-squads" className="px-4 pb-2 pt-3.5 sm:px-5">
           <div className="mb-2.5 flex items-baseline justify-between gap-3">
             <h2 className="font-display text-[15px] font-semibold">Squads</h2>
             {activeSquad && isCampusManager ? (
@@ -824,7 +826,7 @@ function StudentsPageContent() {
         </section>
 
         {/* ── Toolbar ─────────────────────────────────────────── */}
-        <div className="sticky top-[var(--app-bar-h,57px)] z-20 bg-surface/[0.97] px-3 py-2 sm:px-4">
+        <div data-tour="st-toolbar" className="sticky top-[var(--app-bar-h,57px)] z-20 bg-surface/[0.97] px-3 py-2 sm:px-4">
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative min-w-[220px] flex-1">
               <Search

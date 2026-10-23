@@ -153,6 +153,7 @@ function StalledStudents() {
               <ArrowLeft size={12} /> Dashboard · Needs attention
             </Link>
           }
+          tour="stalled-intro"
           title={`${rows.length} stalled ${rows.length === 1 ? "student" : "students"}`}
           description={`No belt gained across their last ${SPAN} tests, as of Week ${week}. Open a student to see their full history.`}
           actions={

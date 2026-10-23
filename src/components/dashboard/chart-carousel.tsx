@@ -34,11 +34,12 @@ export function ChartCarousel({ slides }: { slides: Slide[] }) {
     <section
       aria-roledescription="carousel"
       aria-label="Dashboard charts"
+      data-tour="charts"
       onKeyDown={onKeyDown}
       className="min-w-0"
     >
       {/* Slide tabs */}
-      <div className="flex items-stretch gap-2 border-b border-line bg-surface-2 pl-2 pr-2 sm:pl-3">
+      <div data-tour="chart-tabs" className="flex items-stretch gap-2 border-b border-line bg-surface-2 pl-2 pr-2 sm:pl-3">
         <div
           role="tablist"
           aria-label="Charts"
@@ -49,6 +50,7 @@ export function ChartCarousel({ slides }: { slides: Slide[] }) {
               key={slide.key}
               type="button"
               role="tab"
+              data-tour={`chart-tab-${slide.key}`}
               aria-selected={slideIndex === index}
               onClick={() => setIndex(slideIndex)}
               className={`relative shrink-0 whitespace-nowrap px-3 py-3 font-display text-[13px] font-semibold tracking-[-0.01em] transition-colors ${
@@ -65,7 +67,7 @@ export function ChartCarousel({ slides }: { slides: Slide[] }) {
             </button>
           ))}
         </div>
-        <div className="flex shrink-0 items-center gap-0.5">
+        <div data-tour="chart-arrows" className="flex shrink-0 items-center gap-0.5">
           <button
             type="button"
             onClick={() => go(index - 1)}
@@ -93,11 +95,12 @@ export function ChartCarousel({ slides }: { slides: Slide[] }) {
           </h2>
           <p className="mt-0.5 text-[13px] text-muted">{current.subtitle}</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div data-tour="chart-controls" className="flex flex-wrap items-center gap-2.5">
           {current.controls}
           <div
             role="group"
             aria-label="Chart or table"
+            data-tour="chart-view"
             className="flex rounded-lg bg-ink/[0.045] p-0.5"
           >
             {(["chart", "table"] as const).map((option) => (

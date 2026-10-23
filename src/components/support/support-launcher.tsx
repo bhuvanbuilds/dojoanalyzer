@@ -3,7 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { ChevronRight, Headset, Sparkles, Ticket, X } from "lucide-react";
+import { ChevronRight, Compass, Headset, Sparkles, Ticket, X } from "lucide-react";
+import { useCachedProfile } from "@/lib/auth/use-cached-profile";
+import { tutorialRoleFor } from "@/lib/tutorial/config";
+import { openTutorialHelp } from "@/components/tutorial/tutorial";
 import { TYPE_LABELS, type TicketType } from "@/lib/support";
 import { NewTicketDialog, TYPE_META } from "@/components/support/kit";
 
@@ -20,6 +23,9 @@ export function SupportLauncher() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [dialogType, setDialogType] = useState<TicketType | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const cached = useCachedProfile();
+  // Developers have no tutorial of their own (only while using View as).
+  const hasTutorial = cached?.status === "authenticated" && tutorialRoleFor(cached.profile) !== null;
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -98,6 +104,29 @@ export function SupportLauncher() {
                   );
                 })}
                 <div className="mx-2.5 my-1 h-px bg-line" />
+                {hasTutorial ? (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      openTutorialHelp();
+                    }}
+                    className="group flex w-full items-center gap-3 rounded-xl px-2.5 py-2.5 text-left transition hover:bg-sunken focus-visible:bg-sunken focus-visible:outline-none"
+                  >
+                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-sunken text-ink-2">
+                      <Compass size={17} strokeWidth={2.2} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[13.5px] font-semibold text-ink">Tutorials and guides</span>
+                      <span className="block text-[12px] text-muted">Replay the tour or read a page guide</span>
+                    </span>
+                    <ChevronRight
+                      size={15}
+                      className="text-faint transition group-hover:translate-x-0.5 group-hover:text-ink"
+                    />
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   role="menuitem"
@@ -148,6 +177,7 @@ export function SupportLauncher() {
         <button
           type="button"
           aria-label={menuOpen ? "Close support menu" : "Help and feedback"}
+          data-tour="help"
           aria-haspopup="menu"
           aria-expanded={menuOpen}
           aria-controls={menuOpen ? "support-menu" : undefined}

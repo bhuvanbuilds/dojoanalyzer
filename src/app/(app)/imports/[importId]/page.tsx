@@ -231,6 +231,7 @@ export default function ImportDetailPage() {
         <FrameTitle
           eyebrow="Data management"
           title="Import details"
+          tour="imd-meta"
           description="Review the uploaded file and its preserved validation data."
           actions={<BackLink />}
         />
@@ -287,6 +288,7 @@ export default function ImportDetailPage() {
 
         {detail.errors.length > 0 ? (
           <DetailSection
+            tour="imd-errors"
             title="Validation Errors"
             count={detail.errors.length}
             emptyMessage="No validation errors"
@@ -347,6 +349,7 @@ export default function ImportDetailPage() {
 
         {detail.import.status === "imported" ? (
           <DetailSection
+            tour="imd-records"
             title="Imported Student Records"
             count={detail.rawRows.length}
             emptyMessage="No imported student records"
@@ -399,6 +402,7 @@ export default function ImportDetailPage() {
         ) : null}
 
         <DetailSection
+          tour="imd-raw"
           title="Raw Import Rows"
           count={detail.rawRows.length}
           emptyMessage="No raw import rows"
@@ -514,18 +518,20 @@ function ImportState({
 }
 
 function DetailSection({
+  tour,
   title,
   count,
   emptyMessage,
   children,
 }: {
+  tour?: string;
   title: string;
   count: number;
   emptyMessage: string;
   children: React.ReactNode;
 }) {
   return (
-    <section className="min-w-0">
+    <section data-tour={tour} className="min-w-0">
       <div className="flex items-center justify-between gap-4 border-b border-line px-4 py-3 sm:px-5">
         <h2 className="font-display text-[15px] font-bold">{title}</h2>
         <span className="text-xs font-semibold text-muted">

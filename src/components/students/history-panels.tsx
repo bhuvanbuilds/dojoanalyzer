@@ -104,13 +104,14 @@ export function BeltsPanel({
   const bestBelt = beltOf(levels?.[best] ?? 0);
   return (
     <div
+      data-tour="progress"
       className={
         flat
           ? "grid divide-y divide-line lg:grid-cols-[1fr_280px] lg:divide-x lg:divide-y-0"
           : "grid gap-4 lg:grid-cols-[1fr_240px]"
       }
     >
-      <section className={flat ? "min-w-0" : "rounded-2xl border border-line"}>
+      <section data-tour="belts" className={flat ? "min-w-0" : "rounded-2xl border border-line"}>
         <div className="flex items-center gap-3 border-b border-line px-5 py-3.5">
           <h3 className="font-display text-[15px] font-semibold">
             Coding belts

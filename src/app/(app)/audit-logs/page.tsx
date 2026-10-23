@@ -45,6 +45,7 @@ export default function AuditLogsPage() {
         <FrameTitle
           eyebrow="Global administration"
           title="Audit logs"
+          tour="audit-intro"
           description="Every import, assignment and edit, newest first."
         />
         {message && (
@@ -55,19 +56,19 @@ export default function AuditLogsPage() {
         {loading && (
           <PanelSkeleton rows={6} label="Loading audit history" flat />
         )}
-        <div className="divide-y divide-line">
+        <div data-tour="audit-list" className="divide-y divide-line">
           {logs.map((log, index) => (
             <article
               key={`${log.created_at}:${index}`}
               className="grid gap-1 px-4 py-3 transition-colors hover:bg-surface-2 sm:grid-cols-[1fr_auto] sm:px-5"
             >
               <div>
-                <p className="font-semibold">{log.action.replaceAll("_", " ")}</p>
-                <p className="text-xs text-muted">
+                <p data-tour="audit-action" className="font-semibold">{log.action.replaceAll("_", " ")}</p>
+                <p data-tour="audit-actor" className="text-xs text-muted">
                   {log.actor} · {log.target_type}
                 </p>
               </div>
-              <time className="text-xs text-muted">
+              <time data-tour="audit-time" className="text-xs text-muted">
                 {new Date(log.created_at).toLocaleString()}
               </time>
             </article>
