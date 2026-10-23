@@ -91,11 +91,13 @@ export async function GET(request: Request) {
       if (access?.activated) currentUser = await getCurrentUserProfile(supabase);
     }
   }
+  // No account yet: straight to the access request form.
   const destination =
-    currentUser.status === "authenticated" &&
-    currentUser.profile.role === "student"
-      ? "/leaderboard"
-      : "/";
+    currentUser.status === "unassigned" || currentUser.status === "invalid_role"
+      ? "/request-access"
+      : currentUser.status === "authenticated" && currentUser.profile.role === "student"
+        ? "/leaderboard"
+        : "/";
 
   return NextResponse.redirect(new URL(destination, requestUrl.origin));
 }

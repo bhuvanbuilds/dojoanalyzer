@@ -69,6 +69,15 @@ export async function proxy(request: NextRequest) {
     }
   }
   if (pathname.startsWith("/api/") || pathname === "/maintenance") return response;
+
+  // Signed in without an account: the only page for them is the request form.
+  const noAccount = currentUser.status === "unassigned" || currentUser.status === "invalid_role";
+  if (noAccount && pathname !== "/request-access") {
+    const redirectResponse = NextResponse.redirect(new URL("/request-access", request.url));
+    response.cookies.getAll().forEach((cookie) => redirectResponse.cookies.set(cookie));
+    return redirectResponse;
+  }
+  if (pathname === "/request-access") return response;
   if (
     currentUser.status === "authenticated" &&
     currentUser.profile.role === "student"
@@ -165,6 +174,7 @@ export const config = {
     "/developer/:path*",
     "/changelog",
     "/maintenance",
+    "/request-access",
     "/api/:path*",
   ],
 };

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { AccessRequestsPanel } from "@/components/users/access-requests";
 import { Search, Trash2, UserPlus } from "lucide-react";
 import { getCurrentUserProfile } from "@/lib/auth/profile";
 import { PanelSkeleton } from "@/components/ui/skeleton";
@@ -182,6 +183,7 @@ export default function UsersPage() {
           title="Users"
           description="Assign Google accounts to a role, university or student record."
         />
+        <AccessRequestsPanel onDecided={() => void load()} />
         <form
           onSubmit={assign}
           className="grid gap-3 px-4 py-4 sm:grid-cols-2 sm:px-5 xl:grid-cols-5"

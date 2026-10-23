@@ -100,3 +100,39 @@ export function ticketEmail({
     </div>
   </div></body></html>`;
 }
+
+/** A plain notification email in the same style, with one button. */
+export function noticeEmail({
+  eyebrow = "Dojo Belt Analyzer",
+  heading,
+  body,
+  meta = [],
+  link,
+  cta,
+}: {
+  eyebrow?: string;
+  heading: string;
+  body: string;
+  meta?: Array<[string, string]>;
+  link: string;
+  cta: string;
+}) {
+  const rows = meta
+    .map(
+      ([label, value]) =>
+        `<tr><td style="padding:4px 12px 4px 0;color:#6b6966;font-size:13px">${escapeHtml(label)}</td><td style="padding:4px 0;font-size:13px;color:#141414">${escapeHtml(value)}</td></tr>`,
+    )
+    .join("");
+  return `<!doctype html><html><body style="margin:0;background:#f4f3f1;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
+  <div style="max-width:560px;margin:24px auto;background:#ffffff;border:1px solid #e6e3de;border-radius:16px;overflow:hidden">
+    <div style="padding:20px 24px;border-bottom:1px solid #eeebe6">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#d32f2e">${escapeHtml(eyebrow)}</div>
+      <div style="margin-top:6px;font-size:20px;font-weight:700;color:#141414">${escapeHtml(heading)}</div>
+    </div>
+    <div style="padding:20px 24px">
+      <div style="white-space:pre-wrap;font-size:14px;line-height:1.6;color:#141414">${escapeHtml(body)}</div>
+      ${rows ? `<table style="margin-top:18px;border-collapse:collapse">${rows}</table>` : ""}
+      <a href="${escapeHtml(link)}" style="display:inline-block;margin-top:20px;background:#141414;color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:10px 16px;border-radius:10px">${escapeHtml(cta)}</a>
+    </div>
+  </div></body></html>`;
+}

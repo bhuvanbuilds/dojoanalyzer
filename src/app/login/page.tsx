@@ -21,7 +21,12 @@ export default function LoginPage() {
       // Loaded after first paint so the auth client never blocks the page.
       const { getCurrentUserProfile } = await import("@/lib/auth/profile");
       const currentUser = await getCurrentUserProfile();
-      if (!isMounted || currentUser.status !== "authenticated") return;
+      if (!isMounted) return;
+      if (currentUser.status === "unassigned" || currentUser.status === "invalid_role") {
+        window.location.replace("/request-access");
+        return;
+      }
+      if (currentUser.status !== "authenticated") return;
       window.location.replace(
         currentUser.profile.role === "student" ? "/leaderboard" : "/",
       );
