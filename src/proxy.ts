@@ -116,7 +116,9 @@ export async function proxy(request: NextRequest) {
       pathname.startsWith("/developer/") ||
       pathname.startsWith("/support/inbox");
     const managerOnly =
-      pathname === "/imports" || pathname.startsWith("/imports/");
+      pathname === "/imports" ||
+      pathname.startsWith("/imports/") ||
+      pathname === "/mentors";
     // Developer tools: maintenance settings and the developer console.
     const developerOnly =
       pathname.startsWith("/settings") ||
@@ -149,6 +151,7 @@ export const config = {
     "/students",
     "/students/:path*",
     "/imports",
+    "/mentors",
     "/imports/:path*",
     "/weekly-comparison",
     "/weekly-comparison/:path*",

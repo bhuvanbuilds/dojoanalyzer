@@ -15,6 +15,7 @@ import {
   Inbox,
   UserRound,
   Users,
+  UserCheck,
   type LucideIcon,
 } from "lucide-react";
 import type { UserRole } from "@/lib/auth/profile";
@@ -134,6 +135,7 @@ export const navGroups: readonly NavGroup[] = [
     roles: MANAGERS,
     tabs: [
       { href: "/students", label: "Squads", icon: Users, roles: MANAGERS },
+      { href: "/mentors", label: "Mentors", icon: UserCheck, roles: MANAGERS },
       { href: "/imports", label: "Imports", icon: FileText, roles: MANAGERS },
     ],
   },
