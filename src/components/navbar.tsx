@@ -131,7 +131,7 @@ function ProfileButton({
         aria-haspopup="true"
         aria-label="Account menu"
         data-tour="account"
-        className={`flex items-center gap-1.5 rounded-xl px-1.5 py-1 transition-all duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-action ${
+        className={`flex items-center gap-1.5 rounded-lg px-1.5 py-1 transition-all duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-action ${
           open ? "bg-ink/8" : "hover:bg-ink/5"
         }`}
       >
@@ -184,7 +184,7 @@ function ProfileButton({
               href="/profile"
               role="menuitem"
               onClick={() => setOpen(false)}
-              className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium text-ink-2 transition-colors hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action"
+              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-ink-2 transition-colors hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action"
             >
               <User size={14} className="text-faint" />
               Account Profile
@@ -203,7 +203,7 @@ function ProfileButton({
               role="menuitem"
               onClick={handleSignOut}
               disabled={signOutState === "pending"}
-              className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium text-ink-2 transition-colors hover:bg-red-50 hover:text-brand-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-ink-2 transition-colors hover:bg-red-50 hover:text-brand-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action disabled:cursor-not-allowed disabled:opacity-50"
             >
               <LogOut size={14} className="text-faint" />
               {signOutState === "pending" ? "Signing out…" : "Log out"}
@@ -256,7 +256,7 @@ function Brand({ compact = false }: { compact?: boolean }) {
 
 // ─── Desktop nav with a sliding glass lens ─────────────────────────────────────
 const navItemClass =
-  "relative z-10 flex h-9 shrink-0 items-center gap-1 whitespace-nowrap rounded-xl px-3.5 font-display text-[13.5px] font-semibold tracking-[-0.01em] outline-none transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-action/40";
+  "relative z-10 flex h-9 shrink-0 items-center gap-1 whitespace-nowrap rounded-lg px-3.5 font-display text-[13.5px] font-semibold tracking-[-0.01em] outline-none transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-action/40";
 
 function DesktopNav({
   groups,
@@ -324,7 +324,7 @@ function DesktopNav({
       <span
         ref={lensRef}
         aria-hidden="true"
-        className="pointer-events-none absolute left-0 top-1/2 h-9 -translate-y-1/2 rounded-xl opacity-0 transition-[transform,width,opacity] duration-300 ease-[cubic-bezier(0.25,0.8,0.25,1)] motion-reduce:transition-none"
+        className="pointer-events-none absolute left-0 top-1/2 h-9 -translate-y-1/2 rounded-lg opacity-0 transition-[transform,width,opacity] duration-300 ease-[cubic-bezier(0.25,0.8,0.25,1)] motion-reduce:transition-none"
         style={{
           background: "color-mix(in srgb, var(--ink) 5.5%, transparent)",
           boxShadow: "inset 0 0 0 0.5px var(--line)",
@@ -472,7 +472,7 @@ function GroupMenu({
                 data-tour={`go-${tab.href}`}
                 role="menuitem"
                 aria-current={tabActive ? "page" : undefined}
-                className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 font-display text-[13.5px] font-semibold tracking-[-0.01em] outline-none transition-colors focus-visible:bg-ink/5 ${
+                className={`flex items-center gap-2.5 rounded-lg px-3 py-2.5 font-display text-[13.5px] font-semibold tracking-[-0.01em] outline-none transition-colors focus-visible:bg-ink/5 ${
                   tabActive
                     ? "bg-ink/[0.05] text-ink"
                     : "text-ink-2 hover:bg-ink/[0.04] hover:text-ink"
@@ -595,7 +595,7 @@ export function NavbarView({
           WebkitBackdropFilter: "blur(18px) saturate(160%)",
         }}
       >
-        <header className="mx-auto flex h-14 max-w-[2200px] items-center justify-between gap-4 pl-3 pr-2 sm:pl-4 sm:pr-3">
+        <header className="flex h-14 items-center justify-between gap-4 px-5">
           {/* Brand */}
           <Link
             href="/"
@@ -657,7 +657,7 @@ export function NavbarView({
             {/* Mobile hamburger */}
             <button
               type="button"
-              className="flex h-9 w-9 items-center justify-center rounded-xl text-ink-2 hover:bg-ink/5 lg:hidden"
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-ink-2 hover:bg-ink/5 lg:hidden"
               onClick={() => setMobileOpenAtPath(pathname)}
               aria-label="Open navigation"
               data-tour="mobile-menu"
@@ -702,7 +702,7 @@ export function NavbarView({
               <Brand compact />
               <button
                 type="button"
-                className="flex h-8 w-8 items-center justify-center rounded-xl text-muted hover:bg-ink/5"
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-muted hover:bg-ink/5"
                 onClick={() => setMobileOpenAtPath(null)}
                 aria-label="Close navigation"
               >
@@ -731,7 +731,7 @@ export function NavbarView({
                         href={tab.href}
                         data-tour={`go-${tab.href}`}
                         aria-current={active ? "page" : undefined}
-                        className={`flex items-center gap-3 rounded-xl px-3.5 py-2.5 font-display text-sm font-semibold transition-all duration-150 ${
+                        className={`flex items-center gap-3 rounded-lg px-3.5 py-2.5 font-display text-sm font-semibold transition-all duration-150 ${
                           active
                             ? "bg-ink/[0.05] text-ink"
                             : "text-ink-2 hover:bg-ink/[0.04] hover:text-ink"
@@ -759,7 +759,7 @@ export function NavbarView({
                     setMobileOpenAtPath(null);
                     handleUploadClick();
                   }}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-action px-4 py-2.5 text-sm font-semibold text-white"
+                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-action px-4 py-2.5 text-sm font-semibold text-white"
                 >
                   <FileUp size={14} /> Upload CSV
                 </button>
@@ -768,7 +768,7 @@ export function NavbarView({
               {profile && (
                 <>
                   {/* User info */}
-                  <div className="flex items-center gap-3 rounded-xl px-2 py-2">
+                  <div className="flex items-center gap-3 rounded-lg px-2 py-2">
                     <AvatarCircle
                       name={profile.full_name}
                       src={avatarUrl}
@@ -793,7 +793,7 @@ export function NavbarView({
                   <Link
                     href="/profile"
                     onClick={() => setMobileOpenAtPath(null)}
-                    className="flex w-full items-center gap-2.5 rounded-xl border border-line px-3.5 py-2.5 text-sm font-medium text-ink-2 transition hover:border-action hover:text-brand-text"
+                    className="flex w-full items-center gap-2.5 rounded-lg border border-line px-3.5 py-2.5 text-sm font-medium text-ink-2 transition hover:border-action hover:text-brand-text"
                   >
                     <User size={14} className="text-faint" />
                     Account Profile
@@ -809,7 +809,7 @@ export function NavbarView({
                     type="button"
                     onClick={handleMobileSignOut}
                     disabled={mobileSignOutState === "pending"}
-                    className="flex w-full items-center gap-2.5 rounded-xl border border-line px-3.5 py-2.5 text-sm font-medium text-ink-2 transition hover:border-action hover:bg-red-50 hover:text-brand-text disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex w-full items-center gap-2.5 rounded-lg border border-line px-3.5 py-2.5 text-sm font-medium text-ink-2 transition hover:border-action hover:bg-red-50 hover:text-brand-text disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <LogOut size={14} className="text-faint" />
                     {mobileSignOutState === "pending"

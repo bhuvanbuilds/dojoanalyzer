@@ -2,15 +2,19 @@
 
 import {
   ArrowUpRight,
+  BarChart3,
+  ChevronLeft,
+  ChevronRight,
   Download,
   Minus,
+  MinusCircle,
   Search,
+  TrendingUp,
+  Users,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { CountUp } from "@/components/reactbits/count-up";
-import { Cell, Cells } from "@/components/ui/frame";
 import { useStudentOpener } from "@/components/dashboard/student-opener";
-import { ShinyButton } from "@/components/ui/shiny-button";
 import {
   LANGUAGE_COLORS,
   ViewSelect,
@@ -27,7 +31,6 @@ import {
   type RangeStatus,
   type StudentRange,
 } from "@/lib/dashboard/metrics";
-import { LanguageLogo } from "@/components/belts/belts";
 
 type SortKey = "gain" | "end" | "name";
 type StatusFilter = "all" | "improved" | "same" | "untested";
@@ -50,7 +53,7 @@ export function RangeExplorer({ model, week }: { model: Model; week: number }) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [sort, setSort] = useState<SortKey>("gain");
-  const [expanded, setExpanded] = useState(false);
+  const [page, setPage] = useState(0);
 
   const canSplitUniversity =
     model.data.role === "super_admin" && model.multiUniversity;
@@ -95,7 +98,12 @@ export function RangeExplorer({ model, week }: { model: Model; week: number }) {
       });
   }, [range, query, status, sort]);
 
-  const visible = expanded ? rows : rows.slice(0, PAGE);
+  const pages = Math.max(1, Math.ceil(rows.length / PAGE));
+  const current = Math.min(page, pages - 1);
+  const visible = rows.slice(current * PAGE, current * PAGE + PAGE);
+  const endIndex = weeks.indexOf(week);
+  const activePreset =
+    high !== week ? null : low === weeks[0] ? "all" : low === weeks[Math.max(0, endIndex - 4)] ? 4 : low === weeks[Math.max(0, endIndex - 1)] ? 1 : null;
   const maxLanguageGain = Math.max(1, ...range.languageGain.map(Math.abs));
 
   function preset(span: number | "all") {
@@ -103,6 +111,7 @@ export function RangeExplorer({ model, week }: { model: Model; week: number }) {
     const startIndex = span === "all" ? 0 : Math.max(0, endIndex - span);
     setFrom(weeks[startIndex]);
     setTo(week);
+    setPage(0);
   }
 
   function exportCsv() {
@@ -151,11 +160,13 @@ export function RangeExplorer({ model, week }: { model: Model; week: number }) {
       value: range.beltsGained,
       prefix: range.beltsGained > 0 ? "+" : "",
       detail: `Week ${low} → Week ${high}`,
+      icon: BarChart3,
     },
     {
       label: "Students improved",
       value: range.improved,
       detail: `of ${range.tested} tested in range`,
+      icon: Users,
     },
     {
       label: "Avg gain per student",
@@ -163,28 +174,26 @@ export function RangeExplorer({ model, week }: { model: Model; week: number }) {
       decimals: 2,
       prefix: (range.avgGain ?? 0) > 0 ? "+" : "",
       detail: "Across students tested in range",
+      icon: TrendingUp,
     },
     {
       label: "No change",
       value: range.same,
       detail: `${range.untested} not tested in range`,
+      icon: MinusCircle,
     },
   ];
 
   return (
     <section data-tour="range" className="min-w-0">
       {/* Header & range controls */}
-      <div className="flex flex-col gap-4 border-b border-line px-4 py-4 sm:px-5 lg:flex-row lg:items-end lg:justify-between">
+      <div className="flex flex-col gap-4 px-5 pb-5 pt-6 sm:px-6 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h2 className="font-display text-[15px] font-bold tracking-[-0.015em]">
-            Progress between weeks
-          </h2>
-          <p className="mt-0.5 text-[13px] text-muted">
-            Belts each student gained from one week to another.
-          </p>
+          <h2 className="text-[18px] font-semibold tracking-[-0.015em] text-ink">Progress between weeks</h2>
+          <p className="mt-0.5 text-[13px] text-muted">Belts each student gained from one week to another.</p>
         </div>
         <div data-tour="range-controls" className="flex flex-wrap items-center gap-2.5">
-          <div className="flex rounded-lg bg-ink/[0.045] p-0.5">
+          <div className="flex rounded-lg bg-sunken p-0.5">
             {(
               [
                 ["Last week", 1],
@@ -195,8 +204,13 @@ export function RangeExplorer({ model, week }: { model: Model; week: number }) {
               <button
                 key={label}
                 type="button"
+                aria-pressed={activePreset === span}
                 onClick={() => preset(span)}
-                className="rounded-md px-2.5 py-1 font-display text-[12.5px] font-semibold text-muted transition hover:bg-surface hover:text-ink"
+                className={`rounded-md px-2.5 py-1 text-[12.5px] font-medium transition ${
+                  activePreset === span
+                    ? "bg-surface text-ink shadow-[var(--card-shadow)] ring-[0.5px] ring-line"
+                    : "text-muted hover:text-ink"
+                }`}
               >
                 {label}
               </button>
@@ -205,57 +219,69 @@ export function RangeExplorer({ model, week }: { model: Model; week: number }) {
           <ViewSelect
             label="From"
             value={String(from)}
-            options={weeks.map((item) => ({
-              value: String(item),
-              label: `Week ${item}`,
-            }))}
-            onChange={(value) => setFrom(Number(value))}
+            options={weeks.map((item) => ({ value: String(item), label: `Week ${item}` }))}
+            onChange={(value) => {
+              setFrom(Number(value));
+              setPage(0);
+            }}
           />
           <ViewSelect
             label="To"
             value={String(to)}
-            options={weeks.map((item) => ({
-              value: String(item),
-              label: `Week ${item}`,
-            }))}
-            onChange={(value) => setTo(Number(value))}
+            options={weeks.map((item) => ({ value: String(item), label: `Week ${item}` }))}
+            onChange={(value) => {
+              setTo(Number(value));
+              setPage(0);
+            }}
           />
           <ViewSelect
             label="Scope"
             value={scope}
             options={scopeOptions}
-            onChange={setScope}
+            onChange={(value) => {
+              setScope(value);
+              setPage(0);
+            }}
           />
         </div>
       </div>
 
       {/* Totals */}
-      <Cells data-tour="range-stats" className="border-b border-line sm:grid-cols-2 xl:grid-cols-4">
-        {stats.map((stat) => (
-          <Cell key={stat.label} className="px-4 py-4 sm:px-5">
-            <p className="text-[12.5px] font-medium text-muted">{stat.label}</p>
-            <p className="mt-1.5 font-display text-[28px] font-bold leading-none tracking-[-0.03em] text-ink">
-              <CountUp
-                key={`${low}-${high}-${scope}-${stat.value}`}
-                to={stat.value}
-                decimals={stat.decimals ?? 0}
-                prefix={stat.prefix}
-              />
-            </p>
-            <p className="mt-2 text-[12px] text-muted">{stat.detail}</p>
-          </Cell>
-        ))}
-      </Cells>
+      <dl
+        data-tour="range-stats"
+        className="mx-5 grid border-y border-line sm:mx-6 sm:grid-cols-2 xl:grid-cols-4 xl:divide-x xl:divide-line"
+      >
+        {stats.map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <div key={stat.label} className="flex items-start justify-between gap-3 py-4 xl:px-5 xl:first:pl-0">
+              <div className="min-w-0">
+                <dt className="text-[13px] text-muted">{stat.label}</dt>
+                <dd className="mt-1 text-[28px] font-semibold leading-tight tracking-[-0.02em] text-ink tabular-nums">
+                  <CountUp
+                    key={`${low}-${high}-${scope}-${stat.value}`}
+                    to={stat.value}
+                    decimals={stat.decimals ?? 0}
+                    prefix={stat.prefix}
+                  />
+                </dd>
+                <dd className="mt-0.5 text-[12.5px] text-muted">{stat.detail}</dd>
+              </div>
+              <Icon size={18} strokeWidth={1.75} className="mt-0.5 shrink-0 text-faint" aria-hidden="true" />
+            </div>
+          );
+        })}
+      </dl>
 
       {/* Per-language gains */}
-      <div data-tour="range-languages" className="grid gap-x-8 gap-y-3 px-4 py-4 sm:grid-cols-2 sm:px-5 lg:grid-cols-4">
+      <div data-tour="range-languages" className="grid gap-x-8 gap-y-4 px-5 py-5 sm:grid-cols-2 sm:px-6 xl:grid-cols-4">
         {LANGUAGES.map((language, index) => {
           const value = range.languageGain[index];
           return (
             <div key={language}>
-              <div className="flex items-center justify-between text-[12.5px]">
-                <span className="flex items-center gap-1.5 text-ink-2">
-                  <LanguageLogo language={language} size={16} />
+              <div className="flex items-center justify-between text-[13px]">
+                <span className="flex items-center gap-2 text-ink-2">
+                  <span className="size-2.5 rounded-full" style={{ background: LANGUAGE_COLORS[language] }} aria-hidden="true" />
                   {LANGUAGE_LABELS[language]}
                 </span>
                 <span className="font-semibold tabular-nums text-ink">
@@ -263,7 +289,7 @@ export function RangeExplorer({ model, week }: { model: Model; week: number }) {
                   {value}
                 </span>
               </div>
-              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-sunken">
+              <div className="mt-2 h-2 overflow-hidden rounded-full bg-sunken">
                 <div
                   className="h-full rounded-full transition-[width] duration-700"
                   style={{
@@ -278,22 +304,22 @@ export function RangeExplorer({ model, week }: { model: Model; week: number }) {
       </div>
 
       {/* Student table controls */}
-      <div data-tour="range-list" className="flex flex-col gap-3 border-t border-line bg-surface-2 px-4 py-3 sm:px-5 md:flex-row md:items-center md:justify-between">
+      <div data-tour="range-list" className="flex flex-col gap-3 border-t border-line px-5 py-4 sm:px-6 md:flex-row md:items-center md:justify-between">
         <div className="flex flex-wrap items-center gap-2">
           <label className="relative">
             <span className="sr-only">Search students</span>
-            <Search
-              size={15}
-              className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-faint"
-            />
+            <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
             <input
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search students"
-              className="h-8 w-52 rounded-lg border border-line bg-surface pl-8 pr-3 text-[13px] text-ink outline-none transition placeholder:text-faint focus-visible:ring-2 focus-visible:ring-ink/10"
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setPage(0);
+              }}
+              placeholder="Search students…"
+              className="h-9 w-64 rounded-lg border border-line-strong bg-surface pl-9 pr-3 text-[13px] text-ink outline-none transition placeholder:text-faint focus-visible:ring-2 focus-visible:ring-ink/10"
             />
           </label>
-          <div className="flex rounded-lg bg-ink/[0.045] p-0.5">
+          <div className="flex rounded-lg bg-sunken p-0.5">
             {(
               [
                 ["all", "All"],
@@ -306,8 +332,11 @@ export function RangeExplorer({ model, week }: { model: Model; week: number }) {
                 key={value}
                 type="button"
                 aria-pressed={status === value}
-                onClick={() => setStatus(value)}
-                className={`rounded-md px-2.5 py-1 font-display text-[12.5px] font-semibold transition ${
+                onClick={() => {
+                  setStatus(value);
+                  setPage(0);
+                }}
+                className={`rounded-md px-2.5 py-1 text-[12.5px] font-medium transition ${
                   status === value
                     ? "bg-surface text-ink shadow-[var(--card-shadow)] ring-[0.5px] ring-line"
                     : "text-muted hover:text-ink"
@@ -329,29 +358,28 @@ export function RangeExplorer({ model, week }: { model: Model; week: number }) {
             ]}
             onChange={setSort}
           />
-          <ShinyButton
+          <button
+            type="button"
             onClick={exportCsv}
-            className="h-8 px-3.5 font-display text-[12.5px] font-semibold"
+            className="inline-flex h-9 items-center gap-2 rounded-lg border border-line-strong px-3 text-[13px] font-medium text-ink-2 transition hover:border-ink/30 hover:text-ink"
           >
             <Download size={14} />
             Export CSV
-          </ShinyButton>
+          </button>
         </div>
       </div>
 
       {/* Student table */}
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[820px] text-left text-[13.5px]">
-          <thead className="text-[11.5px] font-medium text-muted">
-            <tr className="border-y border-line bg-surface-2">
-              <th className="px-5 py-2.5 font-medium lg:px-6">Student</th>
-              <th className="px-4 py-2.5 text-right font-medium">Start</th>
-              <th className="px-4 py-2.5 text-right font-medium">End</th>
-              <th className="px-4 py-2.5 text-right font-medium">Gain</th>
+        <table className="w-full min-w-[860px] text-left text-[13.5px]">
+          <thead className="text-[12px] text-muted">
+            <tr className="border-y border-line">
+              <th className="px-5 py-2.5 font-medium sm:px-6">Student</th>
+              <th className="px-4 py-2.5 font-medium">Start</th>
+              <th className="px-4 py-2.5 font-medium">End</th>
+              <th className="px-4 py-2.5 font-medium">Gain</th>
               <th className="px-4 py-2.5 font-medium">By language</th>
-              <th className="px-5 py-2.5 text-right font-medium lg:px-6">
-                Tests
-              </th>
+              <th className="px-5 py-2.5 text-right font-medium sm:px-6">Tests</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
@@ -373,21 +401,62 @@ export function RangeExplorer({ model, week }: { model: Model; week: number }) {
           </tbody>
         </table>
       </div>
-      <div className="flex items-center justify-between px-5 py-3.5 text-[12.5px] text-muted lg:px-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-5 py-3.5 text-[12.5px] text-muted sm:px-6">
         <span>
           Showing {visible.length} of {rows.length} students
         </span>
-        {rows.length > PAGE && (
-          <button
-            type="button"
-            onClick={() => setExpanded((value) => !value)}
-            className="font-display font-semibold text-ink-2 hover:text-ink"
-          >
-            {expanded ? "Show less" : `Show all ${rows.length}`}
-          </button>
-        )}
+        {pages > 1 ? <Pager page={current} pages={pages} onPage={setPage} /> : null}
       </div>
     </section>
+  );
+}
+
+/** Compact numbered pager: 1 2 3 4 5 … 10 with previous/next. */
+function Pager({ page, pages, onPage }: { page: number; pages: number; onPage: (page: number) => void }) {
+  const items: Array<number | "gap"> = [];
+  for (let index = 0; index < pages; index += 1) {
+    if (index === 0 || index === pages - 1 || Math.abs(index - page) <= 2 || (page < 4 && index < 5)) items.push(index);
+    else if (items.at(-1) !== "gap") items.push("gap");
+  }
+  const button = "grid h-8 min-w-8 place-items-center rounded-lg border px-2 text-[12.5px] tabular-nums transition";
+  return (
+    <nav aria-label="Pages" className="flex items-center gap-1">
+      <button
+        type="button"
+        aria-label="Previous page"
+        disabled={page === 0}
+        onClick={() => onPage(page - 1)}
+        className={`${button} border-line text-ink-2 hover:text-ink disabled:opacity-40`}
+      >
+        <ChevronLeft size={14} />
+      </button>
+      {items.map((item, index) =>
+        item === "gap" ? (
+          <span key={`gap-${index}`} className="px-1 text-faint">
+            …
+          </span>
+        ) : (
+          <button
+            key={item}
+            type="button"
+            aria-current={item === page ? "page" : undefined}
+            onClick={() => onPage(item)}
+            className={`${button} ${item === page ? "border-ink/40 bg-sunken text-ink" : "border-line text-ink-2 hover:text-ink"}`}
+          >
+            {item + 1}
+          </button>
+        ),
+      )}
+      <button
+        type="button"
+        aria-label="Next page"
+        disabled={page >= pages - 1}
+        onClick={() => onPage(page + 1)}
+        className={`${button} border-line text-ink-2 hover:text-ink disabled:opacity-40`}
+      >
+        <ChevronRight size={14} />
+      </button>
+    </nav>
   );
 }
 
@@ -407,12 +476,12 @@ function StudentRow({
   })).filter((item) => item.value !== 0);
 
   return (
-    <tr className="hover:bg-surface-2">
-      <td className="px-5 py-3 lg:px-6">
+    <tr className="transition-colors hover:bg-sunken/50">
+      <td className="px-5 py-3 sm:px-6">
         <button
           type="button"
           onClick={() => openStudent(student.studentId)}
-          className="text-left font-display font-semibold text-ink hover:underline"
+          className="text-left font-medium text-ink hover:underline"
         >
           {student.name}
         </button>
@@ -421,7 +490,7 @@ function StudentRow({
           {student.joinedInRange && " · first test in range"}
         </span>
       </td>
-      <td className="px-4 py-3 text-right tabular-nums text-ink-2">
+      <td className="px-4 py-3 tabular-nums text-ink-2">
         {start === null ? (
           "—"
         ) : (
@@ -433,7 +502,7 @@ function StudentRow({
           </>
         )}
       </td>
-      <td className="px-4 py-3 text-right tabular-nums text-ink-2">
+      <td className="px-4 py-3 tabular-nums text-ink-2">
         {end === null ? (
           "—"
         ) : (
@@ -445,7 +514,7 @@ function StudentRow({
           </>
         )}
       </td>
-      <td className="px-4 py-3 text-right">
+      <td className="px-4 py-3">
         {student.status === "untested" || student.status === "no_data" ? (
           <span className="text-[12.5px] text-faint">
             {STATUS_LABEL[student.status]}
@@ -471,9 +540,9 @@ function StudentRow({
             {changed.map((item) => (
               <span
                 key={item.language}
-                className="inline-flex items-center gap-1 rounded-md border border-line px-1.5 py-0.5 text-[12px] text-ink-2"
+                className="inline-flex items-center gap-1.5 rounded-md border border-line px-2 py-0.5 text-[12px] text-ink-2"
               >
-                <LanguageLogo language={item.language} size={16} />
+                <span className="size-2 rounded-full" style={{ background: LANGUAGE_COLORS[item.language] }} aria-hidden="true" />
                 {LANGUAGE_LABELS[item.language]}
                 <span className="font-semibold tabular-nums text-ink">
                   {item.value > 0 ? "+" : ""}
@@ -484,7 +553,7 @@ function StudentRow({
           </span>
         )}
       </td>
-      <td className="px-5 py-3 text-right tabular-nums text-muted lg:px-6">
+      <td className="px-5 py-3 text-right tabular-nums text-muted sm:px-6">
         {formatNumber(student.tests)}
       </td>
     </tr>

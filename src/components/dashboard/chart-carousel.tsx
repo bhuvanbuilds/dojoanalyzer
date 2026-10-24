@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Table2, BarChart3 } from "lucide-react";
+import { Table2, BarChart3 } from "lucide-react";
 import { useState, type KeyboardEvent, type ReactNode } from "react";
 import { DataTable, type TableData } from "@/components/dashboard/chart-kit";
 
@@ -43,7 +43,7 @@ export function ChartCarousel({ slides }: { slides: Slide[] }) {
         <div
           role="tablist"
           aria-label="Charts"
-          className="flex min-w-0 flex-1 overflow-x-auto"
+          className="flex min-w-0 flex-1 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {slides.map((slide, slideIndex) => (
             <button
@@ -66,24 +66,6 @@ export function ChartCarousel({ slides }: { slides: Slide[] }) {
               />
             </button>
           ))}
-        </div>
-        <div data-tour="chart-arrows" className="flex shrink-0 items-center gap-0.5">
-          <button
-            type="button"
-            onClick={() => go(index - 1)}
-            aria-label="Previous chart"
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-2 transition hover:bg-ink/5"
-          >
-            <ChevronLeft size={17} />
-          </button>
-          <button
-            type="button"
-            onClick={() => go(index + 1)}
-            aria-label="Next chart"
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-2 transition hover:bg-ink/5"
-          >
-            <ChevronRight size={17} />
-          </button>
         </div>
       </div>
 

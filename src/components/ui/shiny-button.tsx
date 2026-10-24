@@ -14,8 +14,8 @@ export function ShinyButton({
   ...rest
 }: ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
-    <button type={type} className={`shiny-cta ${className}`} {...rest}>
-      <span className="inline-flex items-center gap-2">{children}</span>
+    <button type={type} className={`shiny-cta inline-flex items-center justify-center leading-none ${className}`} {...rest}>
+      <span className="inline-flex items-center justify-center gap-2 leading-none">{children}</span>
     </button>
   );
 }

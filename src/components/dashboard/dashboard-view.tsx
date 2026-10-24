@@ -17,6 +17,17 @@ import {
   Trophy,
   UserX,
   Users,
+  BarChart3,
+  Boxes,
+  ChevronRight,
+  FileUp,
+  GraduationCap,
+  Landmark,
+  Newspaper,
+  ScrollText,
+  ShieldCheck,
+  UserCog,
+  UserMinus,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ChartCarousel } from "@/components/dashboard/chart-carousel";
@@ -24,10 +35,7 @@ import { RangeExplorer } from "@/components/dashboard/range-explorer";
 import { loadOverview, overviewQuery } from "@/lib/dashboard/load-overview";
 import { useStudentOpener } from "@/components/dashboard/student-opener";
 import { AnimatedList } from "@/components/reactbits/animated-list";
-import { ClickSpark } from "@/components/reactbits/click-spark";
 import { CountUp } from "@/components/reactbits/count-up";
-import { GlowCursor } from "@/components/reactbits/glow-cursor";
-import { Grainient } from "@/components/reactbits/grainient";
 import { useChartSlides } from "@/components/dashboard/chart-slides";
 import { formatNumber } from "@/components/dashboard/chart-kit";
 import {
@@ -45,14 +53,9 @@ import {
   type Model,
 } from "@/lib/dashboard/metrics";
 import { formatWeekDateRange } from "@/lib/weeks";
-import {
-  Cell,
-  Cells,
-  Frame,
-  FrameMessage,
-  Page,
-  Split,
-} from "@/components/ui/frame";
+import { GlowCursor } from "@/components/reactbits/glow-cursor";
+import { Grainient } from "@/components/reactbits/grainient";
+import { FrameMessage, Page } from "@/components/ui/frame";
 import { LanguageLogo } from "@/components/belts/belts";
 import { Dropdown } from "@/components/ui/dropdown";
 
@@ -149,6 +152,15 @@ export function DashboardView() {
   );
 }
 
+/** A dashboard tile: rounded, bordered, sections inside split by hairlines. */
+function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return (
+    <div className={`min-w-0 overflow-hidden rounded-xl border border-line bg-surface divide-y divide-line ${className}`}>
+      {children}
+    </div>
+  );
+}
+
 function Shell({ children }: { children: ReactNode }) {
   return <Page>{children}</Page>;
 }
@@ -175,34 +187,27 @@ function LoadedDashboard({
     : "All universities";
 
   return (
-    <ClickSpark sparkColor="#ef3837">
-      <Shell>
-        <Frame>
-          <Header
-            model={model}
-            week={week}
-            scopeName={scopeName}
-            onChange={onChange}
-          />
-
-          {data.academicYears.length === 0 || week === null ? (
+    <Shell>
+      <div className="flex flex-col gap-8">
+        <Header model={model} week={week} scopeName={scopeName} onChange={onChange} />
+        {data.academicYears.length === 0 || week === null ? (
+          <Card>
             <FrameMessage title="No belt data yet">
               {data.role === "mentor"
                 ? "Your campus manager hasn't imported any weekly belt results yet."
                 : "Upload a weekly belt CSV to start seeing progress here."}
             </FrameMessage>
-          ) : (
-            <DashboardBody
-              model={model}
-              week={week}
-              isSuperAdmin={isSuperAdmin}
-            />
-          )}
-        </Frame>
-      </Shell>
-    </ClickSpark>
+          </Card>
+        ) : (
+          <DashboardBody model={model} week={week} isSuperAdmin={isSuperAdmin} />
+        )}
+      </div>
+    </Shell>
   );
 }
+
+/** Charts that need width; the rest are donuts and sit in the narrow card. */
+const WIDE_SLIDES = ["trend", "levels", "compare"];
 
 function DashboardBody({
   model,
@@ -214,19 +219,38 @@ function DashboardBody({
   isSuperAdmin: boolean;
 }) {
   const slides = useChartSlides(model, week);
-  // Fragments keep every block a direct child of the Frame, so each one is
-  // separated by the frame's own hairline rule.
+  // Tiled: a row of KPI cards, then one card per section.
   return (
     <>
       <KpiRow model={model} week={week} />
-      <ChartCarousel slides={slides} />
-      <RangeExplorer key={week} model={model} week={week} />
-      <Split className="xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
-        <NeedsAttention model={model} week={week} />
-        <TopMovers model={model} week={week} />
-      </Split>
-      <GroupTable model={model} week={week} />
-      {isSuperAdmin && <PlatformPanel />}
+      {/* Big charts on the left (3), round share charts on the right (2). */}
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <Card>
+          <ChartCarousel slides={slides.filter((slide) => WIDE_SLIDES.includes(slide.key))} />
+        </Card>
+        <Card>
+          <ChartCarousel slides={slides.filter((slide) => !WIDE_SLIDES.includes(slide.key))} />
+        </Card>
+      </div>
+      <Card>
+        <RangeExplorer key={week} model={model} week={week} />
+      </Card>
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+        <Card>
+          <NeedsAttention model={model} week={week} />
+        </Card>
+        <Card>
+          <TopMovers model={model} week={week} />
+        </Card>
+      </div>
+      <Card>
+        <GroupTable model={model} week={week} />
+      </Card>
+      {isSuperAdmin && (
+        <Card>
+          <PlatformPanel />
+        </Card>
+      )}
     </>
   );
 }
@@ -253,8 +277,8 @@ function Header({
   const prev = week === null ? null : previousWeek(model, week);
 
   return (
-    <header data-tour="dash-header" className="relative isolate overflow-hidden bg-[#09090b] text-white">
-      <div aria-hidden="true" className="absolute inset-0 opacity-45">
+    <header data-tour="dash-header" className="relative isolate overflow-hidden rounded-xl border border-line bg-[#09090b] text-white">
+      <div aria-hidden="true" className="absolute inset-0 opacity-30">
         <Grainient
           color1="#09090b"
           color2="#40181a"
@@ -409,7 +433,7 @@ function FilterSelect({
         <Dropdown
           value={value}
           onChange={(value) => onChange(value)}
-          className="h-10 min-w-[150px] cursor-pointer appearance-none rounded-xl border border-white/15 bg-white/10 pl-3.5 pr-9 font-display text-[14px] font-semibold text-white outline-none backdrop-blur-md transition hover:border-white/30 hover:bg-white/15 focus-visible:ring-2 focus-visible:ring-white/30 [&>option]:bg-surface [&>option]:text-ink"
+          className="h-10 min-w-[150px] cursor-pointer appearance-none rounded-lg border border-white/15 bg-white/10 pl-3.5 pr-9 font-display text-[14px] font-semibold text-white outline-none backdrop-blur-md transition hover:border-white/30 hover:bg-white/15 focus-visible:ring-2 focus-visible:ring-white/30 [&>option]:bg-surface [&>option]:text-ink"
         >
           {children}
         </Dropdown>
@@ -435,18 +459,11 @@ function relativeTime(iso: string) {
 
 // ─── KPI bento (layout after the stats-06 block) ───────────────────────────────
 /** Faint cell wash from a theme colour; text stays in ink tokens. */
-function tint(color: string) {
-  return {
-    background: `color-mix(in srgb, ${color} 4%, var(--surface))`,
-  };
-}
-
 function KpiRow({ model, week }: { model: Model; week: number }) {
   const prev = previousWeek(model, week);
   const now = snapshot(model, week);
   const before = prev === null ? null : snapshot(model, prev);
   const moves = movement(model, week);
-  const untested = now.students - now.tested;
   // Where each tile leads: the filtered page behind the number.
   const academicYear = String(model.data.academicYear ?? "");
   const leaderboardHref = `/leaderboard?${new URLSearchParams({
@@ -481,7 +498,7 @@ function KpiRow({ model, week }: { model: Model; week: number }) {
   }));
 
   return (
-    <Cells data-tour="kpis" className="sm:grid-cols-2 lg:grid-cols-3">
+    <div data-tour="kpis" className="grid auto-rows-fr gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <KpiTile
         label="Students tested"
         tour="kpi-tested"
@@ -521,7 +538,6 @@ function KpiRow({ model, week }: { model: Model; week: number }) {
         color="var(--brand)"
         value={moves.up}
         prev={prev}
-        className="lg:row-span-2"
         footer={
           <div className="flex h-full flex-col">
             <p>
@@ -556,31 +572,7 @@ function KpiRow({ model, week }: { model: Model; week: number }) {
         prev={prev}
         footer={<LanguageSplit totals={now.languageTotals} />}
       />
-      <KpiTile
-        label="Not tested this week"
-        tour="kpi-untested"
-        icon={<UserX />}
-        color="var(--lang-java)"
-        value={untested}
-        prev={prev}
-        href={
-          untested > 0
-            ? `/students?${new URLSearchParams({
-                academicYear,
-                week: String(week),
-                status: "missing",
-              })}`
-            : undefined
-        }
-        footer={
-          <span>
-            {untested === 0
-              ? "Everyone has a belt record this week"
-              : "Students with no belt record this week"}
-          </span>
-        }
-      />
-    </Cells>
+    </div>
   );
 }
 
@@ -624,63 +616,48 @@ function KpiTile({
   const body = (
     <>
       <div className="flex items-start justify-between gap-2">
-        <span
-          aria-hidden="true"
-          className="[&>svg]:h-7 [&>svg]:w-7 [&>svg]:stroke-[1.75px]"
-          style={{ color }}
-        >
-          {icon}
-        </span>
+        <p className="flex items-center gap-1.5 text-[13px] text-muted">
+          <span aria-hidden="true" className="[&>svg]:h-3.5 [&>svg]:w-3.5" style={{ color }}>
+            {icon}
+          </span>
+          {label}
+        </p>
         {hasDelta && (
           <span
-            className={`inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[12px] font-semibold ${
-              direction > 0
-                ? "bg-success-soft text-success-text"
-                : direction < 0
-                  ? "bg-brand-soft text-brand-text"
-                  : "bg-ink/[0.05] text-ink-2"
-            }`}
+            className="inline-flex items-center gap-0.5 rounded-full border border-line-strong px-2 py-0.5 text-[11.5px] font-medium text-ink-2"
             title={`Compared with Week ${prev}`}
           >
             {direction > 0 ? (
-              <ArrowUpRight size={13} />
+              <ArrowUpRight size={12} className="text-success-text" />
             ) : direction < 0 ? (
-              <ArrowDownRight size={13} />
+              <ArrowDownRight size={12} className="text-brand-text" />
             ) : (
-              <Minus size={13} />
+              <Minus size={12} />
             )}
             {deltaFormat ? deltaFormat(delta) : delta}
           </span>
         )}
       </div>
-      <p className="mt-5 font-display text-[40px] font-bold leading-none tracking-[-0.04em] text-ink">
+      <p className="mt-2 text-[28px] font-semibold leading-tight tracking-[-0.02em] text-ink tabular-nums">
         <CountUp key={value} to={value} decimals={decimals} />
-        {suffix && (
-          <span className="ml-1.5 text-[20px] font-semibold tracking-[-0.02em] text-faint">
-            {suffix}
-          </span>
-        )}
+        {suffix && <span className="ml-1 text-[15px] font-medium text-faint">{suffix}</span>}
       </p>
-      <p className="mt-2.5 text-[14px] font-medium text-ink-2">{label}</p>
-      <div className="mt-auto flex-1 pt-4 text-[12.5px] text-muted">
-        {footer}
-      </div>
+      <div className="mt-auto flex-1 pt-3 text-[12.5px] text-muted">{footer}</div>
     </>
   );
-  const spot = `color-mix(in srgb, ${color} 12%, transparent)`;
-  return (
-    <Cell data-tour={tour} className={className} style={tint(color)} spotlightColor={spot}>
-      {href ? (
-        <Link
-          href={href}
-          className="flex flex-1 flex-col px-5 py-5 outline-none focus-visible:bg-ink/[0.03] sm:px-6"
-        >
-          {body}
-        </Link>
-      ) : (
-        <div className="flex flex-1 flex-col px-5 py-5 sm:px-6">{body}</div>
-      )}
-    </Cell>
+  const shell = "noise-card flex min-w-0 flex-col rounded-xl border border-line px-5 py-5";
+  return href ? (
+    <Link
+      data-tour={tour}
+      href={href}
+      className={`${shell} outline-none transition hover:border-line-strong focus-visible:ring-2 focus-visible:ring-ink/15 ${className}`}
+    >
+      {body}
+    </Link>
+  ) : (
+    <div data-tour={tour} className={`${shell} ${className}`}>
+      {body}
+    </div>
   );
 }
 
@@ -693,34 +670,36 @@ function WeeklyBars({
   current: number;
 }) {
   const max = Math.max(1, ...data.map((item) => item.up));
+  const first = data[0]?.week;
+  const last = data.at(-1)?.week;
   return (
-    <div className="mt-6 flex flex-1 flex-col justify-end">
-      <ul
-        className="flex h-40 items-end gap-2"
-        aria-label="Students who moved up each week"
-      >
+    <div className="mt-1">
+      <ul className="flex h-9 items-end gap-[3px]" aria-label="Students who moved up each week">
         {data.map((item) => (
           <li
             key={item.week}
-            className="flex h-full flex-1 flex-col items-center justify-end gap-1.5"
+            title={`Week ${item.week}: ${item.up} moved up`}
+            className="h-full flex-1"
           >
-            <span className="text-[11.5px] font-semibold tabular-nums text-ink-2">
-              {item.up}
+            <span className="flex h-full items-end">
+              <span
+                className="w-full rounded-t-[2px] transition-[height] duration-700"
+                style={{
+                  height: `${Math.max(6, (item.up / max) * 100)}%`,
+                  background:
+                    item.week === current
+                      ? "var(--brand)"
+                      : "color-mix(in srgb, var(--brand) 26%, var(--surface))",
+                }}
+              />
             </span>
-            <span
-              className="w-full max-w-7 rounded-t-[4px] transition-[height] duration-700"
-              style={{
-                height: `${Math.max(4, (item.up / max) * 100)}%`,
-                background:
-                  item.week === current
-                    ? "var(--brand)"
-                    : "color-mix(in srgb, var(--brand) 28%, var(--surface))",
-              }}
-            />
-            <span className="text-[11px] text-faint">W{item.week}</span>
           </li>
         ))}
       </ul>
+      <div className="mt-1 flex justify-between text-[10.5px] text-faint">
+        <span>W{first}</span>
+        <span>W{last}</span>
+      </div>
     </div>
   );
 }
@@ -1128,21 +1107,49 @@ function Delta({ value }: { value: number | null }) {
 }
 
 // ─── Super admin: platform & activity ─────────────────────────────────────────
+type PlatformTotals = {
+  universities: number;
+  students: number;
+  squads: number;
+  campus_managers: number;
+  mentors: number;
+};
+
 type PlatformOverview = {
-  totals: {
-    universities: number;
-    students: number;
-    squads: number;
-    campus_managers: number;
-    mentors: number;
-  };
+  totals: PlatformTotals;
+  thisMonth?: Omit<PlatformTotals, "students">;
   recentActivity: Array<{
     actor: string;
     action: string;
     target_type: string;
+    detail?: string;
     created_at: string;
   }>;
 };
+
+/** Icon for each kind of audited action. */
+function activityIcon(action: string) {
+  if (action.startsWith("import") || action.includes("csv")) return FileUp;
+  if (action.startsWith("university")) return Landmark;
+  if (action.startsWith("squad")) return Boxes;
+  if (action.startsWith("changelog")) return Newspaper;
+  if (action.startsWith("access") || action.startsWith("role")) return ShieldCheck;
+  if (action.includes("deleted") || action.includes("removed")) return UserMinus;
+  return UserCog;
+}
+
+/** "today, 9:24 AM", "yesterday, 6:55 PM" or "12 Oct, 4:10 PM". */
+function activityTime(iso: string) {
+  const date = new Date(iso);
+  const time = date.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" });
+  const today = new Date();
+  const days = Math.round(
+    (new Date(today.toDateString()).getTime() - new Date(date.toDateString()).getTime()) / 86_400_000,
+  );
+  if (days === 0) return `today, ${time}`;
+  if (days === 1) return `yesterday, ${time}`;
+  return `${date.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}, ${time}`;
+}
 
 function PlatformPanel() {
   const [overview, setOverview] = useState<PlatformOverview | null>(null);
@@ -1152,14 +1159,11 @@ function PlatformPanel() {
     const controller = new AbortController();
     async function load() {
       try {
-        const response = await fetch("/api/super-admin/dashboard", {
-          signal: controller.signal,
-        });
+        const response = await fetch("/api/super-admin/dashboard", { signal: controller.signal });
         if (!response.ok) throw new Error();
         setOverview((await response.json()) as PlatformOverview);
       } catch (error) {
-        if (error instanceof DOMException && error.name === "AbortError")
-          return;
+        if (error instanceof DOMException && error.name === "AbortError") return;
         setFailed(true);
       }
     }
@@ -1169,94 +1173,118 @@ function PlatformPanel() {
 
   if (failed) return null;
   const totals = overview?.totals;
+  const month = overview?.thisMonth;
   const stats = [
-    {
-      label: "Universities",
-      value: totals?.universities,
-      href: "/universities",
-    },
-    { label: "Squads", value: totals?.squads },
-    {
-      label: "Campus managers",
-      value: totals?.campus_managers,
-      href: "/users",
-    },
-    { label: "Mentors", value: totals?.mentors, href: "/users" },
+    { label: "Universities", icon: GraduationCap, value: totals?.universities, added: month?.universities, href: "/universities" },
+    { label: "Squads", icon: Boxes, value: totals?.squads, added: month?.squads, href: "/students" },
+    { label: "Campus managers", icon: UserCog, value: totals?.campus_managers, added: month?.campus_managers, href: "/users" },
+    { label: "Mentors", icon: Users, value: totals?.mentors, added: month?.mentors, href: "/mentors" },
   ];
 
   return (
-    <Split className="xl:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)]">
-      <section className="min-w-0">
-        <div className="border-b border-line px-4 py-3 sm:px-5">
-          <h2 className="font-display text-[15px] font-bold tracking-[-0.015em]">
-            Platform
-          </h2>
-        </div>
-        <dl className="grid grid-cols-2">
-          {stats.map((stat, index) => {
-            const body = (
-              <>
-                <dt className="text-[12.5px] text-muted">{stat.label}</dt>
-                <dd className="mt-1 font-display text-[26px] font-bold tracking-[-0.03em] text-ink">
-                  {stat.value === undefined ? "—" : formatNumber(stat.value)}
-                </dd>
-              </>
-            );
-            const className = `block px-5 py-4 ${index % 2 === 0 ? "border-r border-line" : ""} ${index < 2 ? "border-b border-line" : ""}`;
-            return stat.href ? (
+    <div className="grid divide-y divide-line xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] xl:divide-x xl:divide-y-0">
+      <section className="min-w-0 p-5 sm:p-6">
+        <PanelHeading
+          title="Platform overview"
+          subtitle="Key numbers across every campus"
+          action={{ href: "/analytics", label: "View analytics", icon: BarChart3 }}
+        />
+        <dl className="mt-5 grid gap-3 sm:grid-cols-2">
+          {stats.map((stat) => {
+            const Icon = stat.icon;
+            return (
               <Link
                 key={stat.label}
                 href={stat.href}
-                className={`${className} transition hover:bg-surface-2`}
+                className="group flex items-start gap-3.5 rounded-xl border border-line bg-surface-2 p-4 outline-none transition hover:border-line-strong hover:bg-sunken/50 focus-visible:ring-2 focus-visible:ring-ink/15"
               >
-                {body}
+                <span className="grid size-10 shrink-0 place-items-center rounded-lg border border-line bg-surface text-ink-2 transition group-hover:text-brand-text">
+                  <Icon size={18} strokeWidth={1.75} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <dt className="text-[12.5px] text-muted">{stat.label}</dt>
+                  <dd className="mt-0.5 text-[26px] font-semibold leading-tight tracking-[-0.02em] text-ink tabular-nums">
+                    {stat.value === undefined ? "—" : formatNumber(stat.value)}
+                  </dd>
+                  <dd className="mt-1 text-[12px]">
+                    {stat.added ? (
+                      <span className="inline-flex items-center gap-1 text-success-text">
+                        <ArrowUpRight size={12} /> +{stat.added} this month
+                      </span>
+                    ) : (
+                      <span className="text-faint">No change this month</span>
+                    )}
+                  </dd>
+                </span>
+                <ChevronRight size={16} className="mt-1 shrink-0 text-faint transition group-hover:translate-x-0.5 group-hover:text-ink" />
               </Link>
-            ) : (
-              <div key={stat.label} className={className}>
-                {body}
-              </div>
             );
           })}
         </dl>
       </section>
 
-      <section className="min-w-0">
-        <div className="flex items-center justify-between border-b border-line px-4 py-3 sm:px-5">
-          <h2 className="font-display text-[15px] font-bold tracking-[-0.015em]">
-            Recent activity
-          </h2>
-          <Link
-            href="/audit-logs"
-            className="text-[13px] font-semibold text-ink-2 hover:text-ink"
-          >
-            Audit logs
-          </Link>
-        </div>
+      <section className="min-w-0 p-5 sm:p-6">
+        <PanelHeading
+          title="Recent activity"
+          subtitle="Latest changes across the platform"
+          action={{ href: "/audit-logs", label: "Audit logs", icon: ScrollText }}
+        />
         {!overview ? (
-          <p className="px-6 py-8 text-sm text-muted">Loading…</p>
+          <p className="mt-5 text-[13px] text-muted">Loading…</p>
         ) : overview.recentActivity.length === 0 ? (
-          <p className="px-6 py-8 text-sm text-muted">No activity yet.</p>
+          <p className="mt-5 text-[13px] text-muted">No activity yet.</p>
         ) : (
-          <ul className="divide-y divide-line">
-            {overview.recentActivity.slice(0, 5).map((entry, index) => (
-              <li
-                key={`${entry.created_at}-${index}`}
-                className="flex items-center justify-between gap-4 px-5 py-3 text-[13.5px]"
-              >
-                <span className="min-w-0">
-                  <span className="font-semibold text-ink">{entry.actor}</span>{" "}
-                  <span className="text-ink-2">
-                    {entry.action.replaceAll("_", " ")}
+          <ul className="mt-3 divide-y divide-line">
+            {overview.recentActivity.slice(0, 5).map((entry, index) => {
+              const Icon = activityIcon(entry.action);
+              return (
+                <li key={`${entry.created_at}-${index}`} className="flex items-center gap-3.5 py-3">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-lg border border-line bg-surface-2 text-ink-2">
+                    <Icon size={16} strokeWidth={1.75} />
                   </span>
-                </span>
-                <span className="shrink-0 text-[12.5px] text-muted">
-                  {relativeTime(entry.created_at)}
-                </span>
-              </li>
-            ))}
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[13.5px]">
+                      <span className="font-semibold text-ink">{entry.actor}</span>{" "}
+                      <span className="text-ink-2">{entry.action.replaceAll("_", " ")}</span>
+                    </span>
+                    {entry.detail ? (
+                      <span className="block truncate text-[12.5px] text-muted">{entry.detail}</span>
+                    ) : null}
+                  </span>
+                  <span className="shrink-0 text-[12px] text-muted tabular-nums">{activityTime(entry.created_at)}</span>
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>
-    </Split>
+    </div>
+  );
+}
+
+function PanelHeading({
+  title,
+  subtitle,
+  action,
+}: {
+  title: string;
+  subtitle: string;
+  action: { href: string; label: string; icon: typeof BarChart3 };
+}) {
+  const Icon = action.icon;
+  return (
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <h2 className="text-[16px] font-semibold tracking-[-0.01em] text-ink">{title}</h2>
+        <p className="mt-0.5 text-[13px] text-muted">{subtitle}</p>
+      </div>
+      <Link
+        href={action.href}
+        className="group inline-flex h-8 items-center gap-1.5 rounded-lg border border-line-strong px-2.5 text-[12.5px] font-medium text-ink-2 transition hover:text-ink"
+      >
+        <Icon size={14} /> {action.label}
+        <ChevronRight size={14} className="text-faint transition group-hover:translate-x-0.5" />
+      </Link>
+    </div>
   );
 }

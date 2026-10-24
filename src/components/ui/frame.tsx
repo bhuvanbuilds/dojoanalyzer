@@ -27,7 +27,7 @@ export function Page({
 }) {
   return (
     <main
-      className={`mx-auto w-full max-w-[2200px] px-2 pb-6 pt-2 sm:px-3 sm:pt-3 ${className}`}
+      className={`w-full px-5 py-5 ${className}`}
     >
       {children}
     </main>

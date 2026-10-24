@@ -17,7 +17,7 @@ export function SectionTabs({
     <div>
       <nav
         aria-label={`${group.label} sections`}
-        className="mx-auto flex h-10 max-w-[2200px] items-stretch gap-1 overflow-x-auto px-2 sm:px-3"
+        className="flex h-10 items-stretch gap-1 overflow-x-auto overflow-y-hidden px-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {group.tabs.map((tab) => {
           const active = isTabActive(tab, pathname);
