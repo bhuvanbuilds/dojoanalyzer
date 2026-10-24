@@ -7,8 +7,8 @@ export const metadata: Metadata = {
   description: "How Dojo Belt Analyzer collects, uses and protects your information.",
 };
 
-const UPDATED = "October 23, 2026";
-const CONTACT = "prem582023@gmail.com";
+const UPDATED = "October 24, 2026";
+const CONTACT = "kalvium.dojo@gmail.com";
 
 const SECTIONS: Array<{ title: string; body: string[] }> = [
   {
