@@ -84,7 +84,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Pick a university" }, { status: 400 });
       const { data: university, error } = await supabaseAdmin
         .from("universities")
-        .select("id, name")
+        .select("id, name:display_name")
         .eq("id", body.universityId)
         .maybeSingle();
       if (error) throw error;

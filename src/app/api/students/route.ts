@@ -66,7 +66,7 @@ export async function GET(request: Request) {
     let query = supabaseAdmin
       .from("student_memberships")
       .select(
-        "student_id, start_date, end_date, students!inner(id, name, email), squads!inner(id, squad_number, university_id, universities(name))",
+        "student_id, start_date, end_date, students!inner(id, name, email), squads!inner(id, squad_number, university_id, universities(name:display_name))",
       )
       .is("end_date", null)
       .order("start_date", { ascending: false });

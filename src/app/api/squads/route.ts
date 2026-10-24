@@ -48,7 +48,7 @@ export async function GET(request: Request) {
     }
     let query = supabaseAdmin
       .from("squads")
-      .select("id, squad_number, university_id, universities(name)")
+      .select("id, squad_number, university_id, universities(name:display_name)")
       .order("squad_number", { ascending: true });
     const universityId =
       currentUser.profile.role === "super_admin"

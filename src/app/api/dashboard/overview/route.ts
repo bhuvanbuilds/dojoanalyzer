@@ -120,7 +120,7 @@ export async function GET(request: Request) {
     // Universities in scope
     let universitiesQuery = supabaseAdmin
       .from("universities")
-      .select("id, name")
+      .select("id, name:display_name")
       .order("name");
     if (!isSuperAdmin && universityId)
       universitiesQuery = universitiesQuery.eq("id", universityId);

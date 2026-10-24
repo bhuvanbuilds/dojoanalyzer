@@ -4,7 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 
 async function loadUniversityCounts() {
   const [universities, squads, memberships, profiles] = await Promise.all([
-    supabaseAdmin.from("universities").select("id, name").order("name"),
+    supabaseAdmin.from("universities").select("id, full_name:name, alias, name:display_name").order("name"),
     supabaseAdmin.from("squads").select("university_id"),
     supabaseAdmin
       .from("student_memberships")

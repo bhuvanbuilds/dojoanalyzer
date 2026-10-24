@@ -395,7 +395,7 @@ export async function GET(request: Request) {
       universityIds.length
         ? await supabaseAdmin
             .from("universities")
-            .select("id, name")
+            .select("id, name:display_name")
             .in("id", universityIds)
         : { data: [], error: null };
 

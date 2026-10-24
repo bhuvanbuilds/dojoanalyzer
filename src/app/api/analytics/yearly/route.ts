@@ -281,7 +281,7 @@ export async function GET(request: Request) {
     };
     let universitiesQuery = supabaseAdmin
       .from("universities")
-      .select("id, name")
+      .select("id, name:display_name")
       .order("name");
     if (scope.universityId) {
       membershipsQuery = membershipsQuery.eq(

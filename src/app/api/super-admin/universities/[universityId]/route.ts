@@ -73,7 +73,7 @@ export async function PATCH(request: Request, context: Context) {
     const { universityId } = await context.params;
     if (!isUuid(universityId))
       return NextResponse.json({ error: "University not found" }, { status: 404 });
-    const body = (await request.json().catch(() => ({}))) as { name?: unknown };
+    const body = (await request.json().catch(() => ({}))) as { name?: unknown; alias?: unknown };
     const name =
       typeof body.name === "string" ? body.name.trim().replace(/\s+/g, " ") : "";
     if (!name || name.length > 120)
@@ -81,15 +81,20 @@ export async function PATCH(request: Request, context: Context) {
         { error: "A university name of up to 120 characters is required" },
         { status: 400 },
       );
+    // Short name shown across the app; empty clears it back to the full name.
+    const alias =
+      typeof body.alias === "string" ? body.alias.trim().replace(/\s+/g, " ") || null : undefined;
+    if (alias && alias.length > 24)
+      return NextResponse.json({ error: "Keep the alias to 24 characters or fewer" }, { status: 400 });
     const { data, error } = await supabaseAdmin
       .from("universities")
-      .update({ name })
+      .update(alias === undefined ? { name } : { name, alias })
       .eq("id", universityId)
-      .select("id, name")
+      .select("id, name, alias")
       .maybeSingle();
     if (error?.code === "23505")
       return NextResponse.json(
-        { error: "That university already exists" },
+        { error: "That name or alias is already used by another university" },
         { status: 409 },
       );
     if (error) throw error;
@@ -103,7 +108,7 @@ export async function PATCH(request: Request, context: Context) {
       "university_updated",
       "university",
       data.id,
-      { name },
+      { name, alias: data.alias },
     );
     return NextResponse.json({ university: data });
   } catch (error) {

@@ -8,7 +8,10 @@ import { Frame, FrameTitle, Page } from "@/components/ui/frame";
 
 type University = {
   id: string;
+  /** Alias when set, otherwise the full name. */
   name: string;
+  full_name: string;
+  alias: string | null;
   student_count: number;
   squad_count: number;
   mentor_count: number;
@@ -20,6 +23,7 @@ export default function UniversitiesPage() {
   const [name, setName] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
+  const [editAlias, setEditAlias] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [detail, setDetail] = useState<{
     squads: Array<{ squad_number: string }>;
@@ -74,7 +78,7 @@ export default function UniversitiesPage() {
     const response = await fetch(`/api/super-admin/universities/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: editName }),
+      body: JSON.stringify({ name: editName, alias: editAlias }),
     });
     const result = (await response.json()) as { error?: string };
     if (!response.ok)
@@ -147,6 +151,7 @@ export default function UniversitiesPage() {
               <thead className="border-b border-line bg-surface-2 text-[11px] uppercase tracking-[0.06em] text-muted">
                 <tr>
                   <th className="px-4 py-2.5 font-semibold sm:px-5">University</th>
+                  <th className="px-4 py-2.5 font-semibold sm:px-5">Alias</th>
                   <th className="px-4 py-2.5 font-semibold sm:px-5">Students</th>
                   <th className="px-4 py-2.5 font-semibold sm:px-5">Squads</th>
                   <th className="px-4 py-2.5 font-semibold sm:px-5">Mentors</th>
@@ -163,10 +168,29 @@ export default function UniversitiesPage() {
                           <input
                             value={editName}
                             onChange={(event) => setEditName(event.target.value)}
-                            className="rounded border px-2 py-1"
+                            aria-label="Full name"
+                            className="w-full rounded-md border border-line-strong bg-surface px-2 py-1"
                           />
                         ) : (
-                          university.name
+                          university.full_name
+                        )}
+                      </td>
+                      <td className="px-4 py-3 sm:px-5">
+                        {editing === university.id ? (
+                          <input
+                            value={editAlias}
+                            onChange={(event) => setEditAlias(event.target.value)}
+                            maxLength={24}
+                            placeholder="e.g. KARE"
+                            aria-label="Alias"
+                            className="w-24 rounded-md border border-line-strong bg-surface px-2 py-1"
+                          />
+                        ) : university.alias ? (
+                          <span className="rounded-md bg-sunken px-2 py-0.5 text-[12.5px] font-semibold text-ink">
+                            {university.alias}
+                          </span>
+                        ) : (
+                          <span className="text-faint">—</span>
                         )}
                       </td>
                       <td className="px-4 py-3 sm:px-5">{university.student_count}</td>
@@ -204,7 +228,8 @@ export default function UniversitiesPage() {
                               title="Edit university name"
                               onClick={() => {
                                 setEditing(university.id);
-                                setEditName(university.name);
+                                setEditName(university.full_name);
+                                setEditAlias(university.alias ?? "");
                               }}
                               className="p-2 text-muted"
                             >
@@ -228,7 +253,7 @@ export default function UniversitiesPage() {
                 {!universities.length && (
                   <tr>
                     <td
-                      colSpan={6}
+                      colSpan={7}
                       className="px-4 py-10 text-center text-muted"
                     >
                       No universities found.
@@ -243,7 +268,7 @@ export default function UniversitiesPage() {
               <>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted">Details</p>
                 <h2 className="mt-1 text-[15px] font-semibold text-ink">
-                  {universities.find((item) => item.id === expanded)?.name}
+                  {universities.find((item) => item.id === expanded)?.full_name}
                 </h2>
                 <div data-tour="uni-squads" className="mt-4">
                   <h3 className="text-[12px] font-semibold text-ink-2">Squads</h3>

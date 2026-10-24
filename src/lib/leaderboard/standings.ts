@@ -236,7 +236,7 @@ export async function loadStandings(requestedPeriod: string | null) {
     ? await loadAll(async (from, to) => {
         const { data, error } = await supabaseAdmin
           .from("universities")
-          .select("id, name")
+          .select("id, name:display_name")
           .in("id", [...universityIds])
           .order("name", { ascending: true })
           .range(from, to);

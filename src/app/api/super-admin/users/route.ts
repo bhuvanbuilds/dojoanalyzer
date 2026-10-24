@@ -56,7 +56,7 @@ export async function GET(request: Request) {
         .select(
           "email, full_name, role, university_id, student_id, squad_ids, updated_at",
         ),
-      supabaseAdmin.from("universities").select("id, name").order("name"),
+      supabaseAdmin.from("universities").select("id, name:display_name").order("name"),
       supabaseAdmin.from("students").select("id, name, email").order("name"),
       supabaseAdmin.from("mentor_squads").select("profile_id, squad_id"),
       supabaseAdmin.from("squads").select("id, squad_number"),
