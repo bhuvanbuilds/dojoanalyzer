@@ -5,6 +5,7 @@ import { MaintenanceBanner } from "@/components/maintenance-banner";
 import { ViewAsBanner } from "@/components/view-as-banner";
 import { WhatsNewPopup } from "@/components/whats-new-popup";
 import { Tutorial } from "@/components/tutorial/tutorial";
+import { PresenceHeartbeat } from "@/components/presence-heartbeat";
 
 /**
  * Layout for all authenticated campus/mentor management pages.
@@ -29,6 +30,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       <SupportLauncher />
       <WhatsNewPopup />
       <Tutorial />
+      <PresenceHeartbeat />
     </div>
   );
 }

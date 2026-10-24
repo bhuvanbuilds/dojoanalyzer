@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AccessRequestsPanel } from "@/components/users/access-requests";
-import { Search, Trash2, UserPlus } from "lucide-react";
+import { Trash2, UserPlus } from "lucide-react";
 import { getCurrentUserProfile } from "@/lib/auth/profile";
 import { PanelSkeleton } from "@/components/ui/skeleton";
 import { Frame, FrameTitle, Page } from "@/components/ui/frame";
 import { HoldButton } from "@/components/reactbits/hold-button";
 import { DeleteUserDialog } from "@/components/users/delete-user-dialog";
+import { MemberList, Pill } from "@/components/ui/member-list";
+import { UserFilters } from "@/components/users/user-filters";
+import { EMPTY_FILTERS, applyUserFilters, lastActiveLabel, presenceOf, type UserFilterState } from "@/lib/user-filters";
 import { Toast, type ToastMessage } from "@/components/ui/toast";
 import { Dropdown } from "@/components/ui/dropdown";
 
@@ -22,6 +25,8 @@ type UserRow = {
   student_name: string | null;
   squads?: Array<{ id: string; squad_number: string }>;
   status: "active" | "pending";
+  last_seen_at: string | null;
+  last_sign_in_at: string | null;
 };
 type Option = { id: string; name: string | null; email?: string | null };
 
@@ -37,8 +42,9 @@ export default function UsersPage() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [universities, setUniversities] = useState<Option[]>([]);
   const [students, setStudents] = useState<Option[]>([]);
-  const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState("all");
+  const [filters, setFilters] = useState<UserFilterState>(EMPTY_FILTERS);
+  // Re-evaluated once a minute so "Active now" fades to "Not active".
+  const [now, setNow] = useState(() => Date.now());
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [editingEmail, setEditingEmail] = useState<string | null>(null);
@@ -53,14 +59,15 @@ export default function UsersPage() {
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
+  const visibleUsers = useMemo(() => applyUserFilters(users, filters, now), [users, filters, now]);
 
-  async function load(filters: { search?: string; roleFilter?: string } = {}) {
-    const query = new URLSearchParams();
-    const activeSearch = filters.search ?? search;
-    const activeRole = filters.roleFilter ?? roleFilter;
-    if (activeSearch.trim()) query.set("search", activeSearch.trim());
-    if (activeRole !== "all") query.set("role", activeRole);
-    const response = await fetch(`/api/super-admin/users?${query}`);
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  async function load() {
+    const response = await fetch("/api/super-admin/users");
     const result = (await response.json()) as {
       users?: UserRow[];
       universities?: Option[];
@@ -331,147 +338,122 @@ export default function UsersPage() {
             {message}
           </p>
         )}
-        <div data-tour="users-search" className="flex flex-wrap gap-2 bg-surface-2 px-4 py-2.5 sm:px-5">
-          <label className="flex min-w-60 flex-1 items-center gap-2 rounded-lg border border-line-strong bg-surface px-3">
-            <Search size={16} className="text-muted" />
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  void load();
-                }
-              }}
-              placeholder="Search name or email"
-              className="w-full bg-transparent py-2 text-sm outline-none"
-            />
-          </label>
-          <Dropdown chevron
-            aria-label="Filter by role"
-            value={roleFilter}
-            onChange={(value) => {
-              setRoleFilter(value);
-              void load({ roleFilter: value });
-            }}
-            className="rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm"
-          >
-            <option value="all">All roles</option>
-            {Object.entries(labels).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </Dropdown>
-          <button
-            type="button"
-            onClick={() => void load()}
-            className="rounded-lg border border-line-strong bg-surface px-4 py-2 text-sm font-semibold"
-          >
-            Search
-          </button>
-        </div>
+        <UserFilters
+          value={filters}
+          onChange={setFilters}
+          universities={universities}
+          roles={Object.entries(labels)}
+          shown={visibleUsers.length}
+          total={users.length}
+        />
         {loading ? (
           <PanelSkeleton rows={6} label="Loading users" flat />
         ) : (
-          <div data-tour="users-table" className="overflow-x-auto">
-            <table className="w-full min-w-[760px] text-left text-sm">
-              <thead className="border-b border-line bg-surface-2 text-[11px] uppercase tracking-[0.06em] text-muted">
-                <tr>
-                  <th className="px-4 py-2.5 font-semibold sm:px-5">User</th>
-                  <th className="px-4 py-2.5 font-semibold sm:px-5">Role</th>
-                  <th className="px-4 py-2.5 font-semibold sm:px-5">University / student</th>
-                  <th className="px-4 py-2.5 font-semibold sm:px-5">Status</th>
-                  <th className="px-4 py-2.5 text-right font-semibold sm:px-5">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-line bg-surface">
-                {users.map((user) => (
-                  <tr key={`${user.status}:${user.email}`}>
-                    <td className="px-4 py-3 sm:px-5">
-                      <p className="font-semibold text-ink">
-                        {user.full_name ?? "—"}
-                      </p>
-                      <p className="text-xs text-muted">{user.email}</p>
-                    </td>
-                    <td className="px-4 py-3 sm:px-5">{labels[user.role]}</td>
-                    <td className="px-4 py-3 sm:px-5">
-                      {user.university_name ?? user.student_name ?? "Global"}
-                      {user.role === "mentor" && user.squads?.length ? (
-                        <span className="block text-[12px] text-muted">
-                          Squads {user.squads.map((squad) => squad.squad_number).join(", ")}
-                        </span>
-                      ) : user.role === "mentor" ? (
-                        <span className="block text-[12px] text-brand-text">No squads assigned</span>
-                      ) : null}
-                    </td>
-                    <td className="px-4 py-3 sm:px-5">
-                      <span
-                        className={
-                          user.status === "active"
-                            ? "text-success-text"
-                            : "text-warning-text"
-                        }
-                      >
-                        {user.status === "active"
-                          ? "Active"
-                          : "Pending Google sign-in"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 sm:px-5">
-                      <div className="flex items-center justify-end gap-2">
-                        {user.status === "active" && (
-                          <button
-                            type="button"
-                            data-tour="users-edit"
-                            onClick={() => editUser(user)}
-                            className="h-8 rounded-lg border border-line-strong px-3 text-xs font-semibold text-ink-2 transition hover:text-ink"
-                          >
-                            Edit
-                          </button>
-                        )}
-                        {user.email.toLowerCase() === myEmail ? (
-                          <span className="px-2 text-[11.5px] text-faint">
-                            You
-                          </span>
-                        ) : (
-                          <span data-tour="users-delete" className="inline-flex">
-                          <HoldButton
-                            size="sm"
-                            radius={8}
-                            holdTime={1200}
-                            resetAfter={900}
-                            backgroundColor="color-mix(in srgb, var(--action) 10%, var(--surface))"
-                            textColor="var(--brand-text)"
-                            fillColor="#dc2626"
-                            fillTextColor="#ffffff"
-                            waveAmplitude={5}
-                            icon={<Trash2 size={13} />}
-                            doneLabel="Confirm…"
-                            aria-label={`Hold to delete ${user.full_name ?? user.email}`}
-                            onHold={() => setDeleting(user)}
-                          >
-                            Hold to delete
-                          </HoldButton>
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {!users.length && (
-                  <tr>
-                    <td
-                      colSpan={5}
-                      className="px-4 py-10 text-center text-muted"
+          <MemberList
+            data-tour="users-table"
+            rows={visibleUsers}
+            rowKey={(user) => `${user.status}:${user.email}`}
+            leadHeader="User"
+            empty="No matching users."
+            lead={(user) => ({
+              title: user.full_name ?? user.email,
+              subtitle: user.email,
+              avatar: { name: user.full_name ?? user.email, seed: user.email },
+              presence: presenceOf(user, now),
+              presenceLabel: lastActiveLabel(user, now),
+            })}
+            columns={[
+              {
+                key: "role",
+                header: "Role",
+                width: "w-36",
+                render: (user) => (
+                  <Pill tone={user.role === "super_admin" || user.role === "developer" ? "brand" : "neutral"}>
+                    {labels[user.role]}
+                  </Pill>
+                ),
+              },
+              {
+                key: "scope",
+                header: "Campus · squads",
+                width: "w-52",
+                hideBelow: "md",
+                render: (user) => (
+                  <span className="min-w-0 truncate">
+                    {user.university_name ?? user.student_name ?? "All campuses"}
+                    {user.role === "mentor" ? (
+                      user.squads?.length ? (
+                        <span className="text-muted"> · {user.squads.map((squad) => squad.squad_number).join(", ")}</span>
+                      ) : (
+                        <span className="text-brand-text"> · no squads</span>
+                      )
+                    ) : null}
+                  </span>
+                ),
+              },
+              {
+                key: "status",
+                header: "Last active",
+                width: "w-32",
+                hideBelow: "lg",
+                render: (user) => {
+                  const presence = presenceOf(user, now);
+                  return (
+                    <span
+                      className={
+                        presence === "online" ? "text-success-text" : presence === "never" ? "text-brand-text" : "text-muted"
+                      }
                     >
-                      No matching users.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                      {lastActiveLabel(user, now)}
+                    </span>
+                  );
+                },
+              },
+              {
+                key: "actions",
+                header: <span className="sr-only">Actions</span>,
+                width: "w-44",
+                align: "right",
+                render: (user) => (
+                  <div className="flex items-center justify-end gap-2">
+                    {user.status === "active" && (
+                      <button
+                        type="button"
+                        data-tour="users-edit"
+                        onClick={() => editUser(user)}
+                        className="h-7 rounded-md border border-line-strong px-2.5 text-[12px] font-medium text-ink-2 transition hover:text-ink"
+                      >
+                        Edit
+                      </button>
+                    )}
+                    {user.email.toLowerCase() === myEmail ? (
+                      <span className="px-2 text-[11.5px] text-faint">You</span>
+                    ) : (
+                      <span data-tour="users-delete" className="inline-flex">
+                        <HoldButton
+                          size="sm"
+                          radius={6}
+                          holdTime={1200}
+                          resetAfter={900}
+                          backgroundColor="color-mix(in srgb, var(--action) 10%, var(--surface))"
+                          textColor="var(--brand-text)"
+                          fillColor="#dc2626"
+                          fillTextColor="#ffffff"
+                          waveAmplitude={5}
+                          icon={<Trash2 size={13} />}
+                          doneLabel="Confirm…"
+                          aria-label={`Hold to delete ${user.full_name ?? user.email}`}
+                          onHold={() => setDeleting(user)}
+                        >
+                          Delete
+                        </HoldButton>
+                      </span>
+                    )}
+                  </div>
+                ),
+              },
+            ]}
+          />
         )}
       </Frame>
 

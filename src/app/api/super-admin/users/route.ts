@@ -50,7 +50,7 @@ export async function GET(request: Request) {
       listAuthUsers(),
       supabaseAdmin
         .from("profiles")
-        .select("id, full_name, role, university_id, student_id"),
+        .select("id, full_name, role, university_id, student_id, last_seen_at"),
       supabaseAdmin
         .from("user_invitations")
         .select(
@@ -100,6 +100,8 @@ export async function GET(request: Request) {
           ? (studentNames.get(profile.student_id) ?? null)
           : null,
         squads: squadView(squadsByProfile.get(profile.id) ?? []),
+        last_seen_at: (profile.last_seen_at as string | null) ?? null,
+        last_sign_in_at: authUser?.last_sign_in_at ?? null,
         status: "active" as const,
       };
     });
@@ -116,6 +118,8 @@ export async function GET(request: Request) {
         ? (studentNames.get(invitation.student_id) ?? null)
         : null,
       squads: squadView((invitation.squad_ids as string[] | null) ?? []),
+      last_seen_at: null,
+      last_sign_in_at: null,
       status: "pending" as const,
     }));
     const records = [...users, ...invitations].filter((user) => {
