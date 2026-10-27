@@ -26,6 +26,7 @@ export function Dialog({
   icon,
   size = "md",
   locked = false,
+  layer,
   header,
   footer,
   children,
@@ -38,6 +39,8 @@ export function Dialog({
   icon?: ReactNode;
   size?: keyof typeof SIZES;
   locked?: boolean;
+  /** z-index override, e.g. to sit above the guided tour. */
+  layer?: number;
   /** Replaces the default title block when given. */
   header?: ReactNode;
   footer?: ReactNode;
@@ -111,6 +114,7 @@ export function Dialog({
         <div
           key="dialog"
           className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center sm:p-6"
+          style={layer ? { zIndex: layer } : undefined}
         >
           <motion.div
             aria-hidden="true"

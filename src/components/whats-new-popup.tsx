@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { Bug, Sparkles, Wand2 } from "lucide-react";
 import { Dialog } from "@/components/ui/dialog";
 import { CHANGELOG_LABELS, type ChangelogEntry, type ChangelogKind } from "@/lib/support";
+import { setWhatsNewState } from "@/lib/whats-new-gate";
 
 const SEEN_KEY = "dojo:changelog-seen";
 const FIRST_VISIT_LIMIT = 3;
@@ -49,25 +50,27 @@ export function WhatsNewPopup() {
       .then((response) => (response.ok ? response.json() : { entries: [] }))
       .then((result: { entries?: ChangelogEntry[] }) => {
         if (!active) return;
+        const nothing = () => setWhatsNewState("done");
         const published = (result.entries ?? [])
           .filter((entry) => entry.published && entry.published_at)
           .sort((a, b) => b.published_at!.localeCompare(a.published_at!));
         const newest = published[0]?.published_at;
-        if (!newest) return;
+        if (!newest) return nothing();
         const seen = readSeen();
-        if (seen && seen >= newest) return;
+        if (seen && seen >= newest) return nothing();
         // Reading the changelog itself counts as having seen it.
         if (window.location.pathname === "/changelog") {
           writeSeen(newest);
-          return;
+          return nothing();
         }
         const fresh = seen
           ? published.filter((entry) => entry.published_at! > seen)
           : published.slice(0, FIRST_VISIT_LIMIT);
         setEntries(fresh);
         setOpen(fresh.length > 0);
+        setWhatsNewState(fresh.length > 0 ? "open" : "done");
       })
-      .catch(() => undefined);
+      .catch(() => setWhatsNewState("done"));
     return () => {
       active = false;
     };
@@ -77,6 +80,7 @@ export function WhatsNewPopup() {
     const newest = entries[0]?.published_at;
     if (newest) writeSeen(newest);
     setOpen(false);
+    setWhatsNewState("done");
   }
 
   if (!entries.length || onChangelog) return null;
@@ -88,6 +92,7 @@ export function WhatsNewPopup() {
       open={open}
       onClose={dismiss}
       size="lg"
+      layer={400}
       eyebrow="What’s new"
       title={entries.length === 1 ? "A new update just landed" : `${entries.length} new updates`}
       description="Here’s what changed since you were last here."
