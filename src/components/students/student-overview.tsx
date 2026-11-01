@@ -1,5 +1,6 @@
 "use client";
 
+import { MyTargetCard } from "@/components/targets/my-target";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
@@ -167,6 +168,7 @@ export function StudentOverviewPage({ studentId }: { studentId: string | null })
         </div>
 
         <Hero studentId={studentId} data={data} />
+        {data?.isSelf ? <MyTargetCard /> : null}
 
         {load.status === "loading" ? (
           <PanelSkeleton rows={6} label="Loading profile" flat />

@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { getCurrentUserProfile } from "@/lib/auth/profile";
 import { Dialog } from "@/components/ui/dialog";
-import { whenWhatsNewDone } from "@/lib/whats-new-gate";
+import { whenPopupsDone } from "@/lib/whats-new-gate";
 import {
   CHECKLISTS,
   CSV_DEMO_SAMPLE,
@@ -128,8 +128,8 @@ export function Tutorial() {
         if (!response.ok) return; // Unknown state: don't risk nagging.
         const body = (await response.json()) as { completed?: string[] };
         if (!active || (body.completed ?? []).includes(TOUR_IDS[tour])) return;
-        // Let the What's new popup finish first; the tour comes after it.
-        await whenWhatsNewDone();
+        // What's new and any new belt target come first; the tour after them.
+        await whenPopupsDone();
         if (active) setIntro(true);
       })
       .catch(() => undefined);

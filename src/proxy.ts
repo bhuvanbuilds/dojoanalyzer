@@ -161,6 +161,7 @@ export const config = {
     "/leaderboard/:path*",
     "/analytics",
     "/analytics/:path*",
+    "/targets",
     "/universities",
     "/universities/:path*",
     "/users",

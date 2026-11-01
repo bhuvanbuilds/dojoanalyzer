@@ -50,6 +50,7 @@ export const PAGE_LABELS: Record<string, string> = {
   "/students": "Students",
   "/students/stalled": "Stalled students",
   "/mentors": "Mentors",
+  "/targets": "Belt targets",
   "/imports": "Imports",
   "/imports/[id]": "Import details",
   "/universities": "Universities",
@@ -127,6 +128,8 @@ const MENTOR: TutorialStep[] = [
   s("M19", "/analytics", "an-summary", "none", "Read the summary", "A one-sentence summary and the improvement-rate ring give the high-level picture for the selected period."),
   s("M20", "/analytics", "an-tiles", "click", "Explore the statistics", "Click a tile to see the data behind it. The selected period and filters still apply."),
   s("M21", "/analytics", "an-trend", "click", "Follow the trend", "See progress across the year or month by month."),
+  s("MT1", "/targets", "targets-filters", "click", "Pick students for a target", "Filter by squad, by belt level (e.g. everyone at Java belt 3), or by who has no target yet. Tick students, or use the top checkbox to select everyone shown."),
+  s("MT2", "/targets", "targets-list", "none", "Monthly belt targets", "Each row shows the student's belts now, their target for the month and progress so far. Once you select students, a bar appears to set a total or per-language target and email them."),
   ...CLOSING,
 ];
 
@@ -172,6 +175,8 @@ const CAMPUS_MANAGER: TutorialStep[] = [
   s("CM42", "/imports/[id]", "imd-records", "none", "Imported student records", "The student records this import saved. Viewing them changes nothing."),
   s("CM43", "/imports/[id]", "imd-raw", "none", "Inspect the source rows", "Exactly what the uploaded CSV contained, kept as history."),
   s("CM44", "/imports/[id]", "imd-errors", "none", "Review validation errors", "Row-level reasons a row or file was rejected."),
+  s("CMT1", "/targets", "targets-filters", "click", "Pick students for a target", "Filter by squad, by belt level (e.g. everyone at Java belt 3), or by who has no target yet. Tick students, or use the top checkbox to select everyone shown."),
+  s("CMT2", "/targets", "targets-list", "none", "Monthly belt targets", "Each row shows the student's belts now, their target for the month and progress so far. Once you select students, a bar appears to set a total or per-language target and email them."),
   ...CLOSING,
 ];
 
@@ -219,6 +224,8 @@ const SUPER_ADMIN: TutorialStep[] = [
   s("SA38", "/support/inbox", "tk-severity", "guarded", "Set severity", "How urgent the issue is. It's paused during the tutorial."),
   s("SA40", "/support/inbox", "tk-changelog", "guarded", "Turn an issue into an update", "Prepare a What's new entry from a fixed ticket. It's paused during the tutorial."),
   s("SA41", "/support/inbox", "inbox-intro", "none", "Confirm before acting", "Messages, notes, ticket changes and changelog entries take effect immediately. Make sure you mean it."),
+  s("SAT1", "/targets", "targets-filters", "click", "Pick students for a target", "Filter by squad, by belt level (e.g. everyone at Java belt 3), or by who has no target yet. Tick students, or use the top checkbox to select everyone shown."),
+  s("SAT2", "/targets", "targets-list", "none", "Monthly belt targets", "Each row shows the student's belts now, their target for the month and progress so far. Once you select students, a bar appears to set a total or per-language target and email them."),
   ...CLOSING,
 ];
 

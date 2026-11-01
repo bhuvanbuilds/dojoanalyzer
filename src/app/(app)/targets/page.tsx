@@ -1,0 +1,588 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Check, Mail, Search, Target, Trash2, X } from "lucide-react";
+import { useCachedProfile } from "@/lib/auth/use-cached-profile";
+import { Frame, FrameTitle, Page } from "@/components/ui/frame";
+import { Dropdown } from "@/components/ui/dropdown";
+import { FormBanner } from "@/components/ui/form";
+import { PanelSkeleton } from "@/components/ui/skeleton";
+import { LANGUAGE_COLORS } from "@/components/dashboard/chart-kit";
+import {
+  TARGET_LANGUAGES,
+  TARGET_LANGUAGE_LABELS,
+  daysLeft,
+  describeTarget,
+  monthKey,
+  monthLabel,
+  targetProgress,
+  totalBelts,
+  type BeltTarget,
+  type Levels,
+  type TargetLanguage,
+} from "@/lib/belt-targets";
+
+type Row = {
+  id: string;
+  name: string;
+  squad_id: string;
+  squad_number: string;
+  university_id: string;
+  university_name: string | null;
+  start: Levels;
+  now: Levels;
+  tested: boolean;
+  target: BeltTarget | null;
+};
+type University = { id: string; name: string };
+
+function nextMonth() {
+  const today = new Date();
+  return monthKey(new Date(today.getFullYear(), today.getMonth() + 1, 1));
+}
+
+/** Mentors and managers set monthly belt targets for their students. */
+export default function TargetsPage() {
+  const cached = useCachedProfile();
+  const isSuperAdmin = cached?.status === "authenticated" && cached.profile.role === "super_admin";
+  const [month, setMonth] = useState(monthKey());
+  const [universities, setUniversities] = useState<University[]>([]);
+  const [universityId, setUniversityId] = useState("");
+  const [rows, setRows] = useState<Row[] | null>(null);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+
+  // Filters
+  const [search, setSearch] = useState("");
+  const [squad, setSquad] = useState("all");
+  const [beltFilter, setBeltFilter] = useState("all"); // "all" | "total:N" | "<language>:N"
+  const [targetFilter, setTargetFilter] = useState<"all" | "none" | "set">("all");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+    let active = true;
+    fetch("/api/super-admin/universities")
+      .then((response) => response.json())
+      .then((result: { universities?: University[] }) => {
+        if (!active) return;
+        const list = result.universities ?? [];
+        setUniversities(list);
+        setUniversityId((current) => current || list[0]?.id || "");
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [isSuperAdmin]);
+
+  const load = useCallback(() => {
+    if (isSuperAdmin && !universityId) return Promise.resolve();
+    const query = new URLSearchParams({ month });
+    if (isSuperAdmin) query.set("university_id", universityId);
+    return fetch(`/api/targets?${query}`, { cache: "no-store" })
+      .then(async (response) => {
+        const result = (await response.json()) as { students?: Row[]; error?: string };
+        if (!response.ok) throw new Error(result.error ?? "Couldn’t load students.");
+        setRows(result.students ?? []);
+        setError("");
+      })
+      .catch((loadError) => {
+        setRows([]);
+        setError(loadError instanceof Error ? loadError.message : "Couldn’t load students.");
+      });
+  }, [month, isSuperAdmin, universityId]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const squads = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const row of rows ?? []) map.set(row.squad_id, row.squad_number);
+    return [...map].sort((a, b) => a[1].localeCompare(b[1], undefined, { numeric: true }));
+  }, [rows]);
+
+  // Belt levels present, for "everyone at the same level" picking.
+  const levelOptions = useMemo(() => {
+    const totals = new Set<number>();
+    const perLanguage = new Map<TargetLanguage, Set<number>>(TARGET_LANGUAGES.map((language) => [language, new Set()]));
+    for (const row of rows ?? []) {
+      totals.add(totalBelts(row.now));
+      for (const language of TARGET_LANGUAGES) perLanguage.get(language)!.add(row.now[language]);
+    }
+    const sorted = (values: Set<number>) => [...values].sort((a, b) => a - b);
+    return { totals: sorted(totals), perLanguage: TARGET_LANGUAGES.map((language) => [language, sorted(perLanguage.get(language)!)] as const) };
+  }, [rows]);
+
+  const visible = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    const [kind, level] = beltFilter.split(":");
+    return (rows ?? [])
+      .filter((row) => !needle || row.name.toLowerCase().includes(needle))
+      .filter((row) => squad === "all" || row.squad_id === squad)
+      .filter((row) =>
+        beltFilter === "all"
+          ? true
+          : kind === "total"
+            ? totalBelts(row.now) === Number(level)
+            : row.now[kind as TargetLanguage] === Number(level),
+      )
+      .filter((row) => (targetFilter === "all" ? true : targetFilter === "set" ? Boolean(row.target) : !row.target))
+      .sort((a, b) => a.squad_number.localeCompare(b.squad_number, undefined, { numeric: true }) || a.name.localeCompare(b.name));
+  }, [rows, search, squad, beltFilter, targetFilter]);
+
+  const allVisibleSelected = visible.length > 0 && visible.every((row) => selected.has(row.id));
+  function toggleAllVisible() {
+    setSelected((current) => {
+      const next = new Set(current);
+      for (const row of visible) {
+        if (allVisibleSelected) next.delete(row.id);
+        else next.add(row.id);
+      }
+      return next;
+    });
+  }
+  function toggle(id: string) {
+    setSelected((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  const withTargets = (rows ?? []).filter((row) => row.target).length;
+  const reached = (rows ?? []).filter((row) => row.target && targetProgress(row.target, row.start, row.now).done).length;
+
+  return (
+    <Page>
+      <Frame>
+        <FrameTitle
+          eyebrow="Insights"
+          title="Belt targets"
+          description="Set how many belts students should gain this month, for a few students, everyone at a belt level, or a whole squad. Students get an email and see their progress on their profile."
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              {isSuperAdmin ? (
+                <Dropdown
+                  chevron
+                  aria-label="University"
+                  value={universityId}
+                  onChange={(value) => {
+                    setRows(null);
+                    setSelected(new Set());
+                    setUniversityId(value);
+                  }}
+                  className="h-9 min-w-[180px] rounded-lg border border-line-strong bg-surface px-3 text-[13px]"
+                >
+                  {universities.map((university) => (
+                    <option key={university.id} value={university.id}>
+                      {university.name}
+                    </option>
+                  ))}
+                </Dropdown>
+              ) : null}
+              <div className="flex rounded-lg bg-sunken p-0.5" role="group" aria-label="Month">
+                {[monthKey(), nextMonth()].map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-pressed={month === value}
+                    onClick={() => {
+                      setRows(null);
+                      setSelected(new Set());
+                      setMonth(value);
+                    }}
+                    className={`rounded-md px-2.5 py-1 text-[12.5px] font-medium transition ${
+                      month === value
+                        ? "bg-surface text-ink shadow-[var(--card-shadow)] ring-[0.5px] ring-line"
+                        : "text-muted hover:text-ink"
+                    }`}
+                  >
+                    {monthLabel(value)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          }
+        />
+
+        <div className="grid border-b border-line sm:grid-cols-3 sm:divide-x sm:divide-line">
+          {[
+            ["Students", rows?.length ?? 0],
+            ["With a target", withTargets],
+            ["Target reached", reached],
+          ].map(([label, value]) => (
+            <div key={label} className="px-5 py-4">
+              <p className="text-[12.5px] text-muted">{label}</p>
+              <p className="mt-0.5 text-[24px] font-semibold tracking-[-0.02em] tabular-nums">{value}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Filters */}
+        <div data-tour="targets-filters" className="flex flex-wrap items-center gap-2 bg-surface-2 px-4 py-3 sm:px-5">
+          <label className="flex h-9 min-w-52 flex-1 items-center gap-2 rounded-lg border border-line-strong bg-surface px-3">
+            <Search size={15} className="text-muted" />
+            <span className="sr-only">Search students</span>
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search students"
+              className="w-full bg-transparent text-[13.5px] outline-none placeholder:text-faint"
+            />
+          </label>
+          <Dropdown chevron aria-label="Squad" value={squad} onChange={setSquad} className="h-9 rounded-lg border border-line-strong bg-surface px-3 text-[13px]">
+            <option value="all">All squads</option>
+            {squads.map(([id, number]) => (
+              <option key={id} value={id}>
+                Squad {number}
+              </option>
+            ))}
+          </Dropdown>
+          <Dropdown chevron aria-label="Belt level" value={beltFilter} onChange={setBeltFilter} className="h-9 rounded-lg border border-line-strong bg-surface px-3 text-[13px]">
+            <option value="all">Any belt level</option>
+            <optgroup label="Total belts held">
+              {levelOptions.totals.map((level) => (
+                <option key={`total-${level}`} value={`total:${level}`}>
+                  {level} belts in total
+                </option>
+              ))}
+            </optgroup>
+            {levelOptions.perLanguage.map(([language, levels]) => (
+              <optgroup key={language} label={TARGET_LANGUAGE_LABELS[language]}>
+                {levels.map((level) => (
+                  <option key={`${language}-${level}`} value={`${language}:${level}`}>
+                    {TARGET_LANGUAGE_LABELS[language]} at belt {level}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </Dropdown>
+          <Dropdown
+            chevron
+            aria-label="Target"
+            value={targetFilter}
+            onChange={(value) => setTargetFilter(value as typeof targetFilter)}
+            className="h-9 rounded-lg border border-line-strong bg-surface px-3 text-[13px]"
+          >
+            <option value="all">With or without a target</option>
+            <option value="none">No target yet</option>
+            <option value="set">Has a target</option>
+          </Dropdown>
+        </div>
+
+        {notice ? (
+          <div className="px-4 pt-3 sm:px-5">
+            <FormBanner tone="success">{notice}</FormBanner>
+          </div>
+        ) : null}
+        {error ? (
+          <div className="px-4 pt-3 sm:px-5">
+            <FormBanner tone="error">{error}</FormBanner>
+          </div>
+        ) : null}
+
+        {rows === null ? (
+          <PanelSkeleton rows={6} label="Loading students" flat />
+        ) : (
+          <div data-tour="targets-list" className="overflow-x-auto">
+            <table className="w-full min-w-[820px] text-left text-[13.5px]">
+              <thead className="text-[12px] text-muted">
+                <tr className="border-b border-line">
+                  <th className="w-10 px-4 py-2.5 sm:px-5">
+                    <input
+                      type="checkbox"
+                      aria-label="Select all shown"
+                      checked={allVisibleSelected}
+                      onChange={toggleAllVisible}
+                      className="size-4 accent-[var(--action)]"
+                    />
+                  </th>
+                  <th className="px-3 py-2.5 font-medium">Student</th>
+                  <th className="px-3 py-2.5 font-medium">Belts now</th>
+                  <th className="px-3 py-2.5 font-medium">{monthLabel(month)} target</th>
+                  <th className="px-4 py-2.5 font-medium sm:px-5">Progress</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {visible.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-10 text-center text-muted">
+                      No students match.
+                    </td>
+                  </tr>
+                ) : (
+                  visible.map((row) => {
+                    const progress = row.target ? targetProgress(row.target, row.start, row.now) : null;
+                    return (
+                      <tr
+                        key={row.id}
+                        onClick={() => toggle(row.id)}
+                        className={`cursor-pointer transition-colors ${selected.has(row.id) ? "bg-sunken" : "hover:bg-sunken/50"}`}
+                      >
+                        <td className="px-4 py-2.5 sm:px-5" onClick={(event) => event.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            aria-label={`Select ${row.name}`}
+                            checked={selected.has(row.id)}
+                            onChange={() => toggle(row.id)}
+                            className="size-4 accent-[var(--action)]"
+                          />
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <p className="font-medium text-ink">{row.name}</p>
+                          <p className="text-[12px] text-muted">
+                            {isSuperAdmin && row.university_name ? `${row.university_name} · ` : ""}Squad {row.squad_number}
+                          </p>
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[12.5px] text-ink-2">
+                            <span className="font-semibold text-ink tabular-nums">{totalBelts(row.now)}</span>
+                            {TARGET_LANGUAGES.map((language) => (
+                              <span key={language} className="inline-flex items-center gap-1 tabular-nums">
+                                <span className="size-2 rounded-full" style={{ background: LANGUAGE_COLORS[language] }} aria-hidden="true" />
+                                {row.now[language]}
+                                <span className="sr-only">{TARGET_LANGUAGE_LABELS[language]}</span>
+                              </span>
+                            ))}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5">
+                          {row.target ? (
+                            <span className="text-ink">{describeTarget(row.target)}</span>
+                          ) : (
+                            <span className="text-faint">No target</span>
+                          )}
+                          {row.target?.set_by_name ? (
+                            <span className="block text-[11.5px] text-muted">by {row.target.set_by_name}</span>
+                          ) : null}
+                        </td>
+                        <td className="px-4 py-2.5 sm:px-5">
+                          {progress ? <ProgressBar gained={progress.gained} goal={progress.goal} done={progress.done} /> : <span className="text-faint">—</span>}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Frame>
+
+      {selected.size ? (
+        <TargetBar
+          count={selected.size}
+          month={month}
+          onClear={() => setSelected(new Set())}
+          onSave={async (input) => {
+            const response = await fetch("/api/targets", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ ...input, month, studentIds: [...selected] }),
+            });
+            const result = (await response.json()) as { saved?: number; emailed?: number; error?: string };
+            if (!response.ok) throw new Error(result.error ?? "Couldn’t save the target.");
+            setNotice(
+              `Target set for ${result.saved} student${result.saved === 1 ? "" : "s"}${
+                result.emailed ? `; ${result.emailed} emailed` : ""
+              }.`,
+            );
+            setSelected(new Set());
+            await load();
+          }}
+          onRemove={async () => {
+            const response = await fetch("/api/targets", {
+              method: "DELETE",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ month, studentIds: [...selected] }),
+            });
+            const result = (await response.json()) as { removed?: number; error?: string };
+            if (!response.ok) throw new Error(result.error ?? "Couldn’t remove the targets.");
+            setNotice(`Removed the target for ${result.removed} student${result.removed === 1 ? "" : "s"}.`);
+            setSelected(new Set());
+            await load();
+          }}
+        />
+      ) : null}
+    </Page>
+  );
+}
+
+function ProgressBar({ gained, goal, done }: { gained: number; goal: number; done: boolean }) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <div className="h-1.5 w-28 overflow-hidden rounded-full bg-sunken">
+        <div
+          className={`h-full rounded-full ${done ? "bg-success-text" : "bg-action"}`}
+          style={{ width: `${goal ? Math.min(100, (gained / goal) * 100) : 0}%` }}
+        />
+      </div>
+      <span className={`text-[12.5px] tabular-nums ${done ? "font-medium text-success-text" : "text-ink-2"}`}>
+        {gained}/{goal}
+        {done ? " ✓" : ""}
+      </span>
+    </div>
+  );
+}
+
+/** Sticky bar at the bottom: set the target for the selected students. */
+function TargetBar({
+  count,
+  month,
+  onClear,
+  onSave,
+  onRemove,
+}: {
+  count: number;
+  month: string;
+  onClear: () => void;
+  onSave: (input: { totalGain?: number; languageGains?: Partial<Levels>; note: string; notify: boolean }) => Promise<void>;
+  onRemove: () => Promise<void>;
+}) {
+  const [mode, setMode] = useState<"total" | "language">("total");
+  const [total, setTotal] = useState(2);
+  const [perLanguage, setPerLanguage] = useState<Partial<Levels>>({});
+  const [note, setNote] = useState("");
+  const [notify, setNotify] = useState(true);
+  const [busy, setBusy] = useState<"save" | "remove" | null>(null);
+  const [error, setError] = useState("");
+
+  async function run(kind: "save" | "remove") {
+    setBusy(kind);
+    setError("");
+    try {
+      if (kind === "remove") await onRemove();
+      else await onSave(mode === "total" ? { totalGain: total, note, notify } : { languageGains: perLanguage, note, notify });
+    } catch (runError) {
+      setError(runError instanceof Error ? runError.message : "Something went wrong.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  const languageTotal = Object.values(perLanguage).reduce((sum, value) => sum + (value ?? 0), 0);
+  const canSave = mode === "total" ? total >= 1 : languageTotal > 0;
+
+  return (
+    <div data-tour="targets-bar" className="sticky bottom-4 z-30 mt-4">
+      <div className="mx-auto max-w-4xl rounded-xl border border-line-strong bg-surface p-4 shadow-[var(--pop-shadow)]">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="flex items-center gap-2 text-[13.5px] font-semibold">
+            <Target size={16} className="text-brand" />
+            {count} selected · target for {monthLabel(month)}
+            {month === monthKey() ? <span className="font-normal text-muted">({daysLeft(month)} days left)</span> : null}
+          </p>
+          <div className="flex items-center gap-1">
+            <div className="flex rounded-lg bg-sunken p-0.5" role="group" aria-label="Target type">
+              {(
+                [
+                  ["total", "Total belts"],
+                  ["language", "Per language"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={mode === value}
+                  onClick={() => setMode(value)}
+                  className={`rounded-md px-2.5 py-1 text-[12.5px] font-medium transition ${
+                    mode === value ? "bg-surface text-ink shadow-[var(--card-shadow)] ring-[0.5px] ring-line" : "text-muted hover:text-ink"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <button type="button" onClick={onClear} aria-label="Clear selection" className="ml-1 rounded-lg p-1.5 text-muted hover:bg-sunken hover:text-ink">
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-end gap-3">
+          {mode === "total" ? (
+            <label className="flex flex-col gap-1 text-[12px] font-medium text-ink-2">
+              Belts to gain
+              <input
+                type="number"
+                min={1}
+                max={40}
+                value={total}
+                onChange={(event) => setTotal(Math.max(1, Math.min(40, Number(event.target.value) || 1)))}
+                className="h-9 w-24 rounded-lg border border-line-strong bg-surface px-3 text-[14px] tabular-nums outline-none focus:border-ink"
+              />
+            </label>
+          ) : (
+            TARGET_LANGUAGES.map((language) => (
+              <label key={language} className="flex flex-col gap-1 text-[12px] font-medium text-ink-2">
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="size-2 rounded-full" style={{ background: LANGUAGE_COLORS[language] }} aria-hidden="true" />
+                  {TARGET_LANGUAGE_LABELS[language]}
+                </span>
+                <input
+                  type="number"
+                  min={0}
+                  max={10}
+                  value={perLanguage[language] ?? 0}
+                  onChange={(event) =>
+                    setPerLanguage((current) => ({ ...current, [language]: Math.max(0, Math.min(10, Number(event.target.value) || 0)) }))
+                  }
+                  className="h-9 w-20 rounded-lg border border-line-strong bg-surface px-3 text-[14px] tabular-nums outline-none focus:border-ink"
+                />
+              </label>
+            ))
+          )}
+          <label className="flex min-w-48 flex-1 flex-col gap-1 text-[12px] font-medium text-ink-2">
+            Note for students (optional)
+            <input
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+              maxLength={300}
+              placeholder="e.g. Focus on Python this month"
+              className="h-9 rounded-lg border border-line-strong bg-surface px-3 text-[13.5px] outline-none placeholder:text-faint focus:border-ink"
+            />
+          </label>
+        </div>
+
+        {error ? (
+          <div className="mt-3">
+            <FormBanner tone="error">{error}</FormBanner>
+          </div>
+        ) : null}
+
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+          <label className="inline-flex items-center gap-2 text-[13px] text-ink-2">
+            <input type="checkbox" checked={notify} onChange={(event) => setNotify(event.target.checked)} className="size-4 accent-[var(--action)]" />
+            <Mail size={14} className="text-muted" /> Email each student their target
+          </label>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={busy !== null}
+              onClick={() => void run("remove")}
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line-strong px-3 text-[13px] font-medium text-ink-2 transition hover:text-ink disabled:opacity-60"
+            >
+              <Trash2 size={14} /> {busy === "remove" ? "Removing…" : "Remove target"}
+            </button>
+            <button
+              type="button"
+              disabled={busy !== null || !canSave}
+              onClick={() => void run("save")}
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-action px-3.5 text-[13px] font-semibold text-white transition hover:bg-action-hover disabled:opacity-60"
+            >
+              {busy === "save" ? (
+                <span className="size-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              ) : (
+                <Check size={14} />
+              )}
+              {busy === "save" ? "Saving…" : `Set target for ${count}`}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

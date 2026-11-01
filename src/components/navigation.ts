@@ -16,6 +16,7 @@ import {
   UserRound,
   Users,
   UserCheck,
+  Target,
   type LucideIcon,
 } from "lucide-react";
 import type { UserRole } from "@/lib/auth/profile";
@@ -124,6 +125,12 @@ export const navGroups: readonly NavGroup[] = [
         href: "/analytics",
         label: "Monthly & yearly",
         icon: TrendingUp,
+        roles: STAFF,
+      },
+      {
+        href: "/targets",
+        label: "Belt targets",
+        icon: Target,
         roles: STAFF,
       },
     ],
