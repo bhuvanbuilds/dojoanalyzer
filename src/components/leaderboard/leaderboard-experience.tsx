@@ -78,6 +78,7 @@ export function LeaderboardExperience({
   const top = entries.slice(0, 3);
   const rest = entries.slice(3);
   const you = entries.find((entry) => entry.studentId === currentStudentId);
+  const [expanded, setExpanded] = useState(false);
 
   return (
     <Page className="pb-24">
@@ -148,6 +149,8 @@ export function LeaderboardExperience({
               currentStudentId={currentStudentId}
               onOpen={openEntry}
               view={view}
+              expanded={expanded}
+              onExpanded={setExpanded}
               onView={(next) => {
                 setView(next);
                 try {
@@ -162,7 +165,15 @@ export function LeaderboardExperience({
         )}
       </Frame>
 
-      {you && you.rank > 3 && <YouPill you={you} scoreLabel={scoreLabel} />}
+      {you && you.rank > 3 && (
+        <YouPill
+          you={you}
+          scoreLabel={scoreLabel}
+          // Ranks 4+ are in the list; past the first page it must be expanded.
+          needsExpand={you.rank - 3 > PAGE && !expanded}
+          onExpand={() => setExpanded(true)}
+        />
+      )}
     </Page>
   );
 }
@@ -318,6 +329,8 @@ function RankingList({
   onOpen,
   view,
   onView,
+  expanded,
+  onExpanded,
   language,
 }: RowProps & {
   entries: RankedStudent[];
@@ -325,8 +338,9 @@ function RankingList({
   currentStudentId: string | null;
   view: RankingView;
   onView: (view: RankingView) => void;
+  expanded: boolean;
+  onExpanded: (expanded: boolean) => void;
 }) {
-  const [expanded, setExpanded] = useState(false);
   const visible = expanded ? entries : entries.slice(0, PAGE);
 
   if (entries.length === 0) return null;
@@ -412,7 +426,7 @@ function RankingList({
         <div className="border-t border-line px-5 py-3 text-center">
           <button
             type="button"
-            onClick={() => setExpanded((value) => !value)}
+            onClick={() => onExpanded(!expanded)}
             className="font-display text-[13px] font-semibold text-ink-2 hover:text-ink"
           >
             {expanded ? "Show less" : `Show all ${entries.length}`}
@@ -621,52 +635,90 @@ function ChangeBadge({ change }: { change: number }) {
 }
 
 // ─── Your position ────────────────────────────────────────────────────────────
+function scrollToRow(row: HTMLElement) {
+  const box = row.getBoundingClientRect();
+  window.scrollTo({ top: window.scrollY + box.top - (window.innerHeight - box.height) / 2, behavior: "smooth" });
+}
+
 function YouPill({
   you,
   scoreLabel,
+  needsExpand,
+  onExpand,
 }: {
   you: RankedStudent;
   scoreLabel: string;
+  /** Your row is past the first page and not rendered yet. */
+  needsExpand: boolean;
+  onExpand: () => void;
 }) {
-  const [visible, setVisible] = useState(true);
-  const observed = useRef(false);
+  // Where your row is: on screen (pill hidden), above, or below the viewport.
+  const [where, setWhere] = useState<"on" | "above" | "below">("below");
+  // Set when you ask to jump before your row exists; the jump runs once it renders.
+  const pendingJump = useRef(false);
 
-  // Hide the pill while your own row is on screen.
   useEffect(() => {
-    const row = document.getElementById("leaderboard-you");
-    if (!row || observed.current) return;
-    observed.current = true;
-    const observer = new IntersectionObserver(([entry]) =>
-      setVisible(!entry.isIntersecting),
-    );
-    observer.observe(row);
-    return () => {
-      observer.disconnect();
-      observed.current = false;
+    let frame = 0;
+    const measure = () => {
+      frame = 0;
+      const row = document.getElementById("leaderboard-you");
+      if (!row) return setWhere("below");
+      if (pendingJump.current) {
+        pendingJump.current = false;
+        // Give the newly expanded list a frame to lay out, then centre the row.
+        window.setTimeout(() => scrollToRow(row), 60);
+      }
+      const box = row.getBoundingClientRect();
+      // The pill floats near the bottom; count the row as seen once it's clear of it.
+      const bottomEdge = window.innerHeight - 80;
+      setWhere(box.bottom < 0 ? "above" : box.top > bottomEdge ? "below" : "on");
     };
-  }, [you.studentId]);
+    const schedule = () => {
+      if (!frame) frame = window.requestAnimationFrame(measure);
+    };
+    measure();
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    // The row can appear later (list expanded, layout switched, data reloaded).
+    const mutations = new MutationObserver(schedule);
+    mutations.observe(document.body, { childList: true, subtree: true });
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+      mutations.disconnect();
+    };
+  }, [you.studentId, needsExpand]);
 
+  function jump() {
+    const row = document.getElementById("leaderboard-you");
+    if (row) return scrollToRow(row);
+    // Not rendered yet: expand the list and scroll as soon as the row appears.
+    pendingJump.current = true;
+    if (needsExpand) onExpand();
+  }
+
+  const Arrow = where === "above" ? ArrowUp : ArrowDown;
   return (
     <AnimatePresence>
-      {visible && (
+      {where !== "on" && (
         <motion.button
           type="button"
           data-tour="lb-you-rank"
           initial={{ opacity: 0, y: 20, x: "-50%" }}
           animate={{ opacity: 1, y: 0, x: "-50%" }}
           exit={{ opacity: 0, y: 20, x: "-50%" }}
-          onClick={() =>
-            document
-              .getElementById("leaderboard-you")
-              ?.scrollIntoView({ behavior: "smooth", block: "center" })
-          }
+          onClick={jump}
+          aria-label={`Jump to your position, rank ${you.rank}`}
           className="fixed bottom-6 left-1/2 z-40 flex items-center gap-3 rounded-full bg-ink px-5 py-3 font-display text-[14px] font-semibold text-page shadow-[var(--pop-shadow)]"
         >
           <span className="rounded-full bg-action px-2 py-0.5 text-[12px] text-white">
             #{you.rank}
           </span>
           You · {you.score} {scoreLabel}
-          <ArrowDown size={15} />
+          <motion.span key={where} initial={{ rotate: where === "above" ? 180 : -180, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} className="inline-flex">
+            <Arrow size={15} />
+          </motion.span>
         </motion.button>
       )}
     </AnimatePresence>

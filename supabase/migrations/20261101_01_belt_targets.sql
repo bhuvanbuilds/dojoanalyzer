@@ -15,6 +15,9 @@ create table if not exists public.belt_targets (
   -- When the student first saw it in the app (for the one-time popup).
   seen_at timestamptz,
   emailed_at timestamptz,
+  -- Developer test targets: never emailed, hidden from the student, and
+  -- removable in one go from the Belt targets page.
+  is_test boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (student_id, month),
@@ -22,6 +25,10 @@ create table if not exists public.belt_targets (
   check (extract(day from month) = 1)
 );
 
+-- In case the table was created before is_test existed.
+alter table public.belt_targets add column if not exists is_test boolean not null default false;
+
 create index if not exists belt_targets_month_idx on public.belt_targets (month);
+create index if not exists belt_targets_test_idx on public.belt_targets (is_test) where is_test;
 
 alter table public.belt_targets enable row level security;

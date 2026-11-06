@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Target } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, Target } from "lucide-react";
 import { Dialog } from "@/components/ui/dialog";
 import { getCurrentUserProfile } from "@/lib/auth/profile";
 import { setTargetPopupState, whenWhatsNewDone } from "@/lib/whats-new-gate";
@@ -91,6 +92,12 @@ export function MyTargetCard() {
       </div>
       <Progress mine={mine as Required<Pick<Mine, "progress" | "month">> & Mine} />
       {mine.target.note ? <p className="mt-3 text-[13px] italic text-ink-2">“{mine.target.note}”</p> : null}
+      <Link
+        href="/student/target"
+        className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-semibold text-brand-text hover:underline"
+      >
+        Open my quest <ArrowRight size={14} />
+      </Link>
     </section>
   );
 }

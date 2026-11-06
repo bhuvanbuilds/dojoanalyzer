@@ -23,11 +23,16 @@ export async function GET() {
     const [me] = await loadTargetStudents({ ...profile, role: "super_admin", squad_ids: null }, month, {
       studentIds: [profile.student_id!],
     });
-    if (!me?.target) return NextResponse.json({ target: null });
+    if (!me) return NextResponse.json({ target: null });
+    // Test targets are for developers: only visible through "View as".
+    const target = me.target && (!me.target.is_test || profile.viewing_as) ? me.target : null;
     return NextResponse.json({
-      target: me.target,
-      progress: targetProgress(me.target, me.start, me.now),
+      target,
+      progress: target ? targetProgress(target, me.start, me.now) : undefined,
       month,
+      // Belts held now and at the month's start, for the quest page.
+      now: me.now,
+      start: me.start,
     });
   } catch {
     // No table yet, or a hiccup: the profile simply shows no target.
@@ -46,6 +51,7 @@ export async function POST() {
     .update({ seen_at: new Date().toISOString() })
     .eq("student_id", profile.student_id!)
     .eq("month", monthKey())
+    .eq("is_test", false)
     .is("seen_at", null);
   return NextResponse.json({ ok: !error });
 }

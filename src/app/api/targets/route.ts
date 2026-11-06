@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireRoles, writeAuditLog } from "@/lib/auth/authorization";
+import { requireDeveloper, requireRoles, writeAuditLog } from "@/lib/auth/authorization";
 import { isUuid } from "@/lib/is-uuid";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { noticeEmail, sendEmail } from "@/lib/email";
@@ -36,9 +36,21 @@ export async function GET(request: Request) {
     const students = await loadTargetStudents(authorization.profile, month, {
       universityId: isUuid(universityId) ? universityId : null,
     });
+    // Developers see how many test targets exist (any month), to clear them.
+    const profile = authorization.profile;
+    let testCount: number | undefined;
+    if (profile.is_developer && !profile.viewing_as) {
+      const { count, error } = await supabaseAdmin
+        .from("belt_targets")
+        .select("id", { count: "exact", head: true })
+        .eq("is_test", true);
+      if (error) throw error;
+      testCount = count ?? 0;
+    }
     // Emails stay on the server; the page only needs names and belts.
     return NextResponse.json({
       month,
+      testCount,
       students: students.map((student) => ({ ...student, email: undefined })),
     });
   } catch (error) {
@@ -50,9 +62,10 @@ export async function GET(request: Request) {
 }
 
 /**
- * POST { studentIds, month, totalGain | languageGains, note?, notify? }:
+ * POST { studentIds, month, totalGain | languageGains, note?, notify?, test? }:
  * sets (or replaces) the month's target for each student, then emails each
- * of them their own message.
+ * of them their own message. `test` (developers only) saves test targets:
+ * no email, hidden from the student, and never replacing a real target.
  */
 export async function POST(request: Request) {
   const authorization = await requireRoles(STAFF);
@@ -64,6 +77,9 @@ export async function POST(request: Request) {
     const totalGain = Number(body.totalGain);
     const languageGains = cleanLanguageGains(body.languageGains);
     const note = typeof body.note === "string" ? body.note.trim().slice(0, 300) || null : null;
+    const isTest = body.test === true;
+    if (isTest && (!authorization.profile.is_developer || authorization.profile.viewing_as))
+      return NextResponse.json({ error: "Only developers can set test targets" }, { status: 403 });
     if (!month || month < monthKey()) return NextResponse.json({ error: "Pick this month or a later one" }, { status: 400 });
     if (!studentIds.length || studentIds.length > 500)
       return NextResponse.json({ error: "Select between 1 and 500 students" }, { status: 400 });
@@ -75,6 +91,16 @@ export async function POST(request: Request) {
     const students = await loadTargetStudents(authorization.profile, month, { studentIds });
     if (students.length !== studentIds.length)
       return NextResponse.json({ error: "Some of these students aren't in your squads or campus" }, { status: 403 });
+    if (isTest) {
+      const real = students.filter((student) => student.target && !student.target.is_test).length;
+      if (real)
+        return NextResponse.json(
+          {
+            error: `${real} of these student${real === 1 ? " has" : "s have"} a real target this month. Test targets never replace real ones, so unselect them first.`,
+          },
+          { status: 409 },
+        );
+    }
 
     const now = new Date().toISOString();
     const { error } = await supabaseAdmin.from("belt_targets").upsert(
@@ -86,6 +112,7 @@ export async function POST(request: Request) {
         note,
         set_by: authorization.user.id,
         seen_at: null,
+        is_test: isTest,
         updated_at: now,
       })),
       { onConflict: "student_id,month" },
@@ -98,16 +125,18 @@ export async function POST(request: Request) {
       month,
       students: students.length,
       target: summary,
+      test: isTest,
     });
 
-    let emailed = 0;
-    if (body.notify !== false) {
+    const emailedIds: string[] = [];
+    let emailFailed = 0;
+    if (body.notify !== false && !isTest) {
       const setter = authorization.profile.full_name ?? "Your mentor";
       const link = `${origin(request)}/student`;
       // One email per student, so nobody sees anyone else's address.
       for (const student of students) {
         if (!student.email) continue;
-        await sendEmail(
+        const sent = await sendEmail(
           [student.email],
           `Your belt target for ${monthLabel(month)}: ${summary}`,
           noticeEmail({
@@ -125,16 +154,18 @@ export async function POST(request: Request) {
             cta: "See my progress",
           }),
         );
-        emailed += 1;
+        if (sent) emailedIds.push(student.id);
+        else emailFailed += 1;
       }
-      if (emailed)
+      // Only the students whose email actually went out.
+      if (emailedIds.length)
         await supabaseAdmin
           .from("belt_targets")
           .update({ emailed_at: new Date().toISOString() })
-          .in("student_id", students.map((student) => student.id))
+          .in("student_id", emailedIds)
           .eq("month", month);
     }
-    return NextResponse.json({ saved: students.length, emailed });
+    return NextResponse.json({ saved: students.length, emailed: emailedIds.length, emailFailed });
   } catch (error) {
     if (missingTable(error))
       return NextResponse.json({ error: "Belt targets aren't set up in the database yet." }, { status: 503 });
@@ -143,12 +174,17 @@ export async function POST(request: Request) {
   }
 }
 
-/** DELETE { studentIds, month }: removes those students' targets for the month. */
+/**
+ * DELETE { studentIds, month }: removes those students' targets for the month.
+ * DELETE { allTests: true }: developers only; removes every test target (any
+ * month, any campus) and nothing else.
+ */
 export async function DELETE(request: Request) {
+  const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+  if (body.allTests === true) return deleteTestTargets();
   const authorization = await requireRoles(STAFF);
   if (authorization.response) return authorization.response;
   try {
-    const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
     const month = parseMonth(body.month);
     const studentIds = Array.isArray(body.studentIds) ? [...new Set(body.studentIds.filter(isUuid))] : [];
     if (!month || !studentIds.length) return NextResponse.json({ error: "Nothing to remove" }, { status: 400 });
@@ -161,6 +197,22 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ removed: studentIds.length });
   } catch (error) {
     console.error("Targets DELETE error:", error);
+    return FAILED();
+  }
+}
+
+async function deleteTestTargets() {
+  const authorization = await requireDeveloper();
+  if (authorization.response) return authorization.response;
+  try {
+    const { data, error } = await supabaseAdmin.from("belt_targets").delete().eq("is_test", true).select("id");
+    if (error) throw error;
+    const removed = data?.length ?? 0;
+    await writeAuditLog(authorization.user.id, "belt_targets_tests_cleared", "student", null, { removed });
+    return NextResponse.json({ removed });
+  } catch (error) {
+    if (missingTable(error)) return NextResponse.json({ removed: 0 });
+    console.error("Targets test cleanup error:", error);
     return FAILED();
   }
 }

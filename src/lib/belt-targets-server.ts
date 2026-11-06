@@ -82,7 +82,7 @@ export async function loadTargetStudents(
       .eq("imports.status", "imported"),
     supabaseAdmin
       .from("belt_targets")
-      .select("student_id, month, total_gain, language_gains, note, seen_at, set_by")
+      .select("student_id, month, total_gain, language_gains, note, seen_at, set_by, is_test")
       .in("student_id", ids)
       .eq("month", month),
   ]);
@@ -118,6 +118,7 @@ export async function loadTargetStudents(
         note: row.note as string | null,
         seen_at: row.seen_at as string | null,
         set_by_name: row.set_by ? (setterName.get(row.set_by as string) ?? null) : null,
+        is_test: Boolean(row.is_test),
       } satisfies BeltTarget,
     ]),
   );

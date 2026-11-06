@@ -52,7 +52,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+        {/* Some browser extensions rewrite this tag before React loads. */}
+        <script suppressHydrationWarning dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
         {SUPABASE_URL ? <link rel="preconnect" href={SUPABASE_URL} crossOrigin="" /> : null}
       </head>
       <body className="min-h-full flex flex-col">

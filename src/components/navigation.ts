@@ -107,6 +107,12 @@ export const navGroups: readonly NavGroup[] = [
         roles: STUDENT,
         exact: true,
       },
+      {
+        href: "/student/target",
+        label: "My target",
+        icon: Target,
+        roles: STUDENT,
+      },
     ],
   },
   {

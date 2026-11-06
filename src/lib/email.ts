@@ -34,25 +34,26 @@ export function escapeHtml(value: string) {
 
 /**
  * Sends one email. Never throws: the ticket change is already saved, so a mail
- * hiccup is retried once and then only logged.
+ * hiccup is retried once and then only logged. Resolves to whether it was sent.
  */
-export async function sendEmail(to: string[], subject: string, html: string) {
+export async function sendEmail(to: string[], subject: string, html: string): Promise<boolean> {
   const mailer = resend();
   const recipients = [...new Set(to.map((address) => address.trim()).filter(Boolean))];
   if (!mailer || recipients.length === 0) {
     if (!mailer) console.warn("Email skipped: set RESEND_API_KEY to enable it.");
-    return;
+    return false;
   }
   for (let attempt = 1; attempt <= 2; attempt += 1) {
     try {
       const { error } = await mailer.emails.send({ from: FROM, to: recipients, subject, html });
-      if (!error) return;
+      if (!error) return true;
       console.error(`Email failed (attempt ${attempt}):`, error.message);
     } catch (error) {
       console.error(`Email failed (attempt ${attempt}):`, error);
     }
     if (attempt === 1) await new Promise((resolve) => setTimeout(resolve, 800));
   }
+  return false;
 }
 
 /** Alert for the support team (SUPPORT_EMAIL_TO). */

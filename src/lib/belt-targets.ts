@@ -19,6 +19,8 @@ export type BeltTarget = {
   note: string | null;
   set_by_name?: string | null;
   seen_at?: string | null;
+  /** A developer's test target: not emailed, hidden from the student. */
+  is_test?: boolean;
 };
 
 export type TargetProgress = {

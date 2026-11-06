@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Check, Mail, Search, Target, Trash2, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Check, CornerDownLeft, FlaskConical, Mail, MousePointerClick, Search, Target, Trash2, X } from "lucide-react";
 import { useCachedProfile } from "@/lib/auth/use-cached-profile";
+import { getCurrentUserProfile, type CurrentUserProfile } from "@/lib/auth/profile";
 import { Frame, FrameTitle, Page } from "@/components/ui/frame";
 import { Dropdown } from "@/components/ui/dropdown";
 import { FormBanner } from "@/components/ui/form";
@@ -36,6 +37,16 @@ type Row = {
 };
 type University = { id: string; name: string };
 
+const AUTO_PICK_KEY = "dojo-targets-autopick";
+function readAutoPick() {
+  if (typeof window === "undefined") return true;
+  try {
+    return window.localStorage.getItem(AUTO_PICK_KEY) !== "off";
+  } catch {
+    return true;
+  }
+}
+
 function nextMonth() {
   const today = new Date();
   return monthKey(new Date(today.getFullYear(), today.getMonth() + 1, 1));
@@ -43,8 +54,23 @@ function nextMonth() {
 
 /** Mentors and managers set monthly belt targets for their students. */
 export default function TargetsPage() {
-  const cached = useCachedProfile();
+  const cachedProfile = useCachedProfile();
+  // The cache is empty on a fresh page load, so fetch the profile as well.
+  const [loadedProfile, setLoadedProfile] = useState<CurrentUserProfile | null>(null);
+  useEffect(() => {
+    let active = true;
+    getCurrentUserProfile()
+      .then((result) => active && setLoadedProfile(result))
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, []);
+  const cached = loadedProfile ?? cachedProfile;
   const isSuperAdmin = cached?.status === "authenticated" && cached.profile.role === "super_admin";
+  const isDeveloper = cached?.status === "authenticated" && cached.profile.is_developer && !cached.profile.viewing_as;
+  const [testCount, setTestCount] = useState(0);
+  const [clearing, setClearing] = useState(false);
   const [month, setMonth] = useState(monthKey());
   const [universities, setUniversities] = useState<University[]>([]);
   const [universityId, setUniversityId] = useState("");
@@ -58,6 +84,17 @@ export default function TargetsPage() {
   const [beltFilter, setBeltFilter] = useState("all"); // "all" | "total:N" | "<language>:N"
   const [targetFilter, setTargetFilter] = useState<"all" | "none" | "set">("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  // Search auto-select: the top match is added once typing pauses, so typing
+  // name after name builds a list. The pick follows the search while you're
+  // still typing that name, and sticks once you clear it or press Enter.
+  const [autoPick, setAutoPick] = useState(readAutoPick);
+  const autoPicked = useRef<string | null>(null);
+  // Whether that pick was added by auto-select (vs. already ticked by hand).
+  const autoAdded = useRef(false);
+  const selectedNow = useRef(selected);
+  useEffect(() => {
+    selectedNow.current = selected;
+  }, [selected]);
 
   useEffect(() => {
     if (!isSuperAdmin) return;
@@ -82,9 +119,10 @@ export default function TargetsPage() {
     if (isSuperAdmin) query.set("university_id", universityId);
     return fetch(`/api/targets?${query}`, { cache: "no-store" })
       .then(async (response) => {
-        const result = (await response.json()) as { students?: Row[]; error?: string };
+        const result = (await response.json()) as { students?: Row[]; testCount?: number; error?: string };
         if (!response.ok) throw new Error(result.error ?? "Couldn’t load students.");
         setRows(result.students ?? []);
+        setTestCount(result.testCount ?? 0);
         setError("");
       })
       .catch((loadError) => {
@@ -132,6 +170,46 @@ export default function TargetsPage() {
       .sort((a, b) => a.squad_number.localeCompare(b.squad_number, undefined, { numeric: true }) || a.name.localeCompare(b.name));
   }, [rows, search, squad, beltFilter, targetFilter]);
 
+  const topMatch = search.trim().length >= 2 ? (visible[0]?.id ?? null) : null;
+  useEffect(() => {
+    if (!search.trim()) {
+      autoPicked.current = null;
+      return;
+    }
+    if (!autoPick || !topMatch || topMatch === autoPicked.current) return;
+    const timer = window.setTimeout(() => {
+      const previous = autoAdded.current ? autoPicked.current : null;
+      autoPicked.current = topMatch;
+      autoAdded.current = !selectedNow.current.has(topMatch);
+      setSelected((current) => {
+        const next = new Set(current);
+        // Still refining the same name: swap out the earlier guess.
+        if (previous) next.delete(previous);
+        next.add(topMatch);
+        return next;
+      });
+    }, 450);
+    return () => window.clearTimeout(timer);
+  }, [search, topMatch, autoPick]);
+
+  function pickTopAndClear() {
+    const top = visible[0];
+    if (search.trim() && top) setSelected((current) => new Set(current).add(top.id));
+    autoPicked.current = null;
+    setSearch("");
+  }
+
+  function toggleAutoPick() {
+    setAutoPick((current) => {
+      try {
+        window.localStorage.setItem(AUTO_PICK_KEY, current ? "off" : "on");
+      } catch {
+        // Storage can be blocked; the choice still applies now.
+      }
+      return !current;
+    });
+  }
+
   const allVisibleSelected = visible.length > 0 && visible.every((row) => selected.has(row.id));
   function toggleAllVisible() {
     setSelected((current) => {
@@ -152,6 +230,27 @@ export default function TargetsPage() {
     });
   }
 
+  async function clearTestTargets() {
+    if (!window.confirm(`Delete all ${testCount} test target${testCount === 1 ? "" : "s"}? Real targets are not touched.`)) return;
+    setClearing(true);
+    try {
+      const response = await fetch("/api/targets", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ allTests: true }),
+      });
+      const result = (await response.json()) as { removed?: number; error?: string };
+      if (!response.ok) throw new Error(result.error ?? "Couldn’t delete the test targets.");
+      setNotice(`Deleted ${result.removed} test target${result.removed === 1 ? "" : "s"}.`);
+      setError("");
+      await load();
+    } catch (clearError) {
+      setError(clearError instanceof Error ? clearError.message : "Couldn’t delete the test targets.");
+    } finally {
+      setClearing(false);
+    }
+  }
+
   const withTargets = (rows ?? []).filter((row) => row.target).length;
   const reached = (rows ?? []).filter((row) => row.target && targetProgress(row.target, row.start, row.now).done).length;
 
@@ -164,6 +263,17 @@ export default function TargetsPage() {
           description="Set how many belts students should gain this month, for a few students, everyone at a belt level, or a whole squad. Students get an email and see their progress on their profile."
           actions={
             <div className="flex flex-wrap items-center gap-2">
+              {isDeveloper && testCount > 0 ? (
+                <button
+                  type="button"
+                  disabled={clearing}
+                  onClick={() => void clearTestTargets()}
+                  className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 text-[13px] font-medium text-amber-600 transition hover:bg-amber-500/15 disabled:opacity-60 dark:text-amber-400"
+                >
+                  <FlaskConical size={14} />
+                  {clearing ? "Deleting…" : `Delete ${testCount} test target${testCount === 1 ? "" : "s"}`}
+                </button>
+              ) : null}
               {isSuperAdmin ? (
                 <Dropdown
                   chevron
@@ -229,10 +339,36 @@ export default function TargetsPage() {
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search students"
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  pickTopAndClear();
+                } else if (event.key === "Escape") {
+                  autoPicked.current = null;
+                  setSearch("");
+                }
+              }}
+              placeholder={autoPick ? "Type names one after another to select them" : "Search students"}
               className="w-full bg-transparent text-[13.5px] outline-none placeholder:text-faint"
             />
+            {search.trim() && visible[0] ? (
+              <span className="hidden shrink-0 items-center gap-1 text-[11.5px] text-faint sm:inline-flex">
+                <CornerDownLeft size={12} /> add {visible[0].name.split(" ")[0]}
+              </span>
+            ) : null}
           </label>
+          <button
+            type="button"
+            aria-pressed={autoPick}
+            onClick={toggleAutoPick}
+            title="Select the top match automatically while you type"
+            className={`inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-[13px] font-medium transition ${
+              autoPick ? "border-action/40 bg-action/10 text-ink" : "border-line-strong bg-surface text-muted hover:text-ink"
+            }`}
+          >
+            <MousePointerClick size={14} className={autoPick ? "text-action" : ""} />
+            Auto-select {autoPick ? "on" : "off"}
+          </button>
           <Dropdown chevron aria-label="Squad" value={squad} onChange={setSquad} className="h-9 rounded-lg border border-line-strong bg-surface px-3 text-[13px]">
             <option value="all">All squads</option>
             {squads.map(([id, number]) => (
@@ -351,7 +487,10 @@ export default function TargetsPage() {
                         </td>
                         <td className="px-3 py-2.5">
                           {row.target ? (
-                            <span className="text-ink">{describeTarget(row.target)}</span>
+                            <span className="inline-flex items-center gap-1.5 text-ink">
+                              {describeTarget(row.target)}
+                              {row.target.is_test ? <TestBadge /> : null}
+                            </span>
                           ) : (
                             <span className="text-faint">No target</span>
                           )}
@@ -376,6 +515,7 @@ export default function TargetsPage() {
         <TargetBar
           count={selected.size}
           month={month}
+          canTest={isDeveloper}
           onClear={() => setSelected(new Set())}
           onSave={async (input) => {
             const response = await fetch("/api/targets", {
@@ -383,12 +523,12 @@ export default function TargetsPage() {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ ...input, month, studentIds: [...selected] }),
             });
-            const result = (await response.json()) as { saved?: number; emailed?: number; error?: string };
+            const result = (await response.json()) as { saved?: number; emailed?: number; emailFailed?: number; error?: string };
             if (!response.ok) throw new Error(result.error ?? "Couldn’t save the target.");
             setNotice(
-              `Target set for ${result.saved} student${result.saved === 1 ? "" : "s"}${
+              `${input.test ? "Test target" : "Target"} set for ${result.saved} student${result.saved === 1 ? "" : "s"}${
                 result.emailed ? `; ${result.emailed} emailed` : ""
-              }.`,
+              }${result.emailFailed ? `; ${result.emailFailed} email${result.emailFailed === 1 ? "" : "s"} couldn’t be sent` : ""}.`,
             );
             setSelected(new Set());
             await load();
@@ -408,6 +548,14 @@ export default function TargetsPage() {
         />
       ) : null}
     </Page>
+  );
+}
+
+function TestBadge() {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/15 px-1.5 py-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+      <FlaskConical size={11} /> Test
+    </span>
   );
 }
 
@@ -432,14 +580,16 @@ function ProgressBar({ gained, goal, done }: { gained: number; goal: number; don
 function TargetBar({
   count,
   month,
+  canTest,
   onClear,
   onSave,
   onRemove,
 }: {
   count: number;
   month: string;
+  canTest: boolean;
   onClear: () => void;
-  onSave: (input: { totalGain?: number; languageGains?: Partial<Levels>; note: string; notify: boolean }) => Promise<void>;
+  onSave: (input: { totalGain?: number; languageGains?: Partial<Levels>; note: string; notify: boolean; test: boolean }) => Promise<void>;
   onRemove: () => Promise<void>;
 }) {
   const [mode, setMode] = useState<"total" | "language">("total");
@@ -447,6 +597,8 @@ function TargetBar({
   const [perLanguage, setPerLanguage] = useState<Partial<Levels>>({});
   const [note, setNote] = useState("");
   const [notify, setNotify] = useState(true);
+  // Developers start in test mode, so a real student isn't emailed by accident.
+  const [test, setTest] = useState(canTest);
   const [busy, setBusy] = useState<"save" | "remove" | null>(null);
   const [error, setError] = useState("");
 
@@ -455,7 +607,12 @@ function TargetBar({
     setError("");
     try {
       if (kind === "remove") await onRemove();
-      else await onSave(mode === "total" ? { totalGain: total, note, notify } : { languageGains: perLanguage, note, notify });
+      else
+        await onSave(
+          mode === "total"
+            ? { totalGain: total, note, notify: notify && !test, test }
+            : { languageGains: perLanguage, note, notify: notify && !test, test },
+        );
     } catch (runError) {
       setError(runError instanceof Error ? runError.message : "Something went wrong.");
     } finally {
@@ -554,10 +711,25 @@ function TargetBar({
         ) : null}
 
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-          <label className="inline-flex items-center gap-2 text-[13px] text-ink-2">
-            <input type="checkbox" checked={notify} onChange={(event) => setNotify(event.target.checked)} className="size-4 accent-[var(--action)]" />
-            <Mail size={14} className="text-muted" /> Email each student their target
-          </label>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            {canTest ? (
+              <label className="inline-flex items-center gap-2 text-[13px] font-medium text-amber-600 dark:text-amber-400">
+                <input type="checkbox" checked={test} onChange={(event) => setTest(event.target.checked)} className="size-4 accent-amber-500" />
+                <FlaskConical size={14} /> Test target
+                <span className="font-normal text-muted">(no email, hidden from students, delete anytime)</span>
+              </label>
+            ) : null}
+            <label className={`inline-flex items-center gap-2 text-[13px] text-ink-2 ${test ? "opacity-50" : ""}`}>
+              <input
+                type="checkbox"
+                disabled={test}
+                checked={notify && !test}
+                onChange={(event) => setNotify(event.target.checked)}
+                className="size-4 accent-[var(--action)]"
+              />
+              <Mail size={14} className="text-muted" /> Email each student their target
+            </label>
+          </div>
           <div className="flex gap-2">
             <button
               type="button"
@@ -578,7 +750,7 @@ function TargetBar({
               ) : (
                 <Check size={14} />
               )}
-              {busy === "save" ? "Saving…" : `Set target for ${count}`}
+              {busy === "save" ? "Saving…" : `Set ${test ? "test " : ""}target for ${count}`}
             </button>
           </div>
         </div>
