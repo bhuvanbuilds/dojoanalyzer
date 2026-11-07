@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Building2, Globe2, Search, Users, X } from "lucide-react";
+import { Building2, Globe2, Layers, Search, Star, StarHalf, Users, X } from "lucide-react";
 import { motion } from "motion/react";
 import {
   getCurrentUserProfile,
@@ -46,6 +46,8 @@ type Row = {
   language_belts?: Record<Language, number>;
   total_belts_earned?: number;
   belt_level?: number;
+  rank_language?: Language | null;
+  rank_score?: number;
 };
 type Response = {
   periods?: Period[];
@@ -54,8 +56,16 @@ type Response = {
   squads?: Squad[];
   viewer?: Viewer;
   leaderboard?: Row[];
+  without_language?: number;
   error?: string;
 };
+
+type RankBy = "total" | "primary" | "secondary";
+const RANK_BY: Array<{ id: RankBy; label: string; icon: typeof Layers }> = [
+  { id: "total", label: "All belts", icon: Layers },
+  { id: "primary", label: "Primary belt", icon: Star },
+  { id: "secondary", label: "Secondary belt", icon: StarHalf },
+];
 
 type Kind = "overall" | "language";
 
@@ -80,6 +90,8 @@ export function LeaderboardBoard({ kind }: { kind: Kind }) {
   const squadId = searchParams.get("squad") ?? "";
   const period = searchParams.get("week") ?? "";
   const search = searchParams.get("q") ?? "";
+  const askedRank = searchParams.get("rank");
+  const rankBy: RankBy = kind === "overall" && (askedRank === "primary" || askedRank === "secondary") ? askedRank : "total";
   const language: Language = LANGUAGES.includes(
     searchParams.get("language") as Language,
   )
@@ -134,8 +146,9 @@ export function LeaderboardBoard({ kind }: { kind: Kind }) {
     if (universityId) query.set("university_id", universityId);
     if (squadId) query.set("squad_id", squadId);
     if (search) query.set("search", search);
+    if (rankBy !== "total") query.set("rank", rankBy);
     return `/api/leaderboard/${kind}?${query}`;
-  }, [kind, language, period, universityId, squadId, search]);
+  }, [kind, language, period, universityId, squadId, search, rankBy]);
 
   const authenticated = profileState.status === "authenticated";
   useEffect(() => {
@@ -212,10 +225,16 @@ export function LeaderboardBoard({ kind }: { kind: Kind }) {
     university: row.university_name,
     universityId: row.university_id,
     score:
-      kind === "overall" ? (row.total_belts_earned ?? 0) : (row.belt_level ?? 0),
+      kind === "overall"
+        ? rankBy === "total"
+          ? (row.total_belts_earned ?? 0)
+          : (row.rank_score ?? 0)
+        : (row.belt_level ?? 0),
     change: row.change,
     languages: row.language_belts,
+    rankLanguage: rankBy === "total" ? undefined : (row.rank_language ?? null),
   }));
+  const rankLabel = rankBy === "primary" ? "Primary belt" : rankBy === "secondary" ? "Secondary belt" : null;
 
   const languageLabel = LANGUAGE_LABELS[language];
   const scopes: Array<{
@@ -257,6 +276,41 @@ export function LeaderboardBoard({ kind }: { kind: Kind }) {
   const controls = (
     <div data-tour="lb-controls" className="space-y-3 bg-surface-2 px-4 py-3 sm:px-5">
       <div className="flex flex-wrap items-center gap-2">
+        {kind === "overall" ? (
+          <div
+            role="radiogroup"
+            aria-label="Rank by"
+            data-tour="lb-rank-by"
+            className="flex flex-wrap gap-1 rounded-xl bg-ink/[0.045] p-1"
+          >
+            {RANK_BY.map((item) => {
+              const active = item.id === rankBy;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => setParams({ rank: item.id === "total" ? null : item.id })}
+                  className={`relative flex h-8 items-center gap-1.5 rounded-lg px-3 font-display text-[13px] font-semibold transition-colors ${
+                    active ? "text-ink" : "text-muted hover:text-ink"
+                  }`}
+                >
+                  {active ? (
+                    <motion.span
+                      layoutId="leaderboard-rank-by"
+                      className="absolute inset-0 rounded-lg bg-surface shadow-[var(--card-shadow)] ring-[0.5px] ring-line"
+                      transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                    />
+                  ) : null}
+                  <item.icon size={14} className="relative" />
+                  <span className="relative">{item.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+
         {kind === "language" ? (
           <div
             role="radiogroup"
@@ -323,7 +377,9 @@ export function LeaderboardBoard({ kind }: { kind: Kind }) {
         </div>
 
         <span className="ml-auto hidden text-[12.5px] text-muted md:inline">
-          {isLoading ? "Updating…" : `${entries.length} ranked`}
+          {isLoading
+            ? "Updating…"
+            : `${entries.length} ranked${rankLabel && data?.without_language ? ` · ${data.without_language} haven’t chosen a language yet` : ""}`}
         </span>
       </div>
 
@@ -403,21 +459,25 @@ export function LeaderboardBoard({ kind }: { kind: Kind }) {
 
   return (
     <LeaderboardExperience
-      eyebrow={`${kind === "overall" ? "Overall" : languageLabel} · ${scopeLabel} · ${weekLabel}`}
+      eyebrow={`${kind === "overall" ? (rankLabel ?? "Overall") : languageLabel} · ${scopeLabel} · ${weekLabel}`}
       title={
         kind === "overall"
-          ? squad
-            ? `Squad ${squad.squad_number} Champions`
-            : "Kalvium Dojo Champions"
+          ? rankLabel
+            ? `${rankLabel} Champions`
+            : squad
+              ? `Squad ${squad.squad_number} Champions`
+              : "Kalvium Dojo Champions"
           : `${languageLabel} Belts`
       }
       subtitle={
         kind === "overall"
-          ? "Students ranked by total belts across every language."
+          ? rankLabel
+            ? `Students ranked by the belt in their own ${rankBy} language, whichever language that is.`
+            : "Students ranked by total belts across every language."
           : `Students ranked by their ${languageLabel} belt level.`
       }
       entries={entries}
-      scoreLabel={kind === "overall" ? "belts" : "level"}
+      scoreLabel={kind === "overall" && rankBy === "total" ? "belts" : "level"}
       language={kind === "language" ? language : undefined}
       isLoading={isLoading}
       error={error}
@@ -431,6 +491,8 @@ export function LeaderboardBoard({ kind }: { kind: Kind }) {
       emptyMessage={
         search || universityId || squadId
           ? "No students match these filters."
+          : rankLabel
+            ? "No students have chosen their languages yet."
           : "No belt data has been imported yet."
       }
       controls={controls}

@@ -38,6 +38,9 @@ export type StandingRow = {
   previous: LanguageBelts | null;
   /** Whether the student has any record up to the selected period. */
   tested: boolean;
+  /** The student's chosen main and second languages, when known. */
+  primary_language: Language | null;
+  secondary_language: Language | null;
 };
 
 export type Standings = {
@@ -50,7 +53,7 @@ export type Standings = {
 
 type MembershipRow = {
   student_id: string;
-  students: One<{ id: string; name: string | null }>;
+  students: One<{ id: string; name: string | null; primary_language: string | null; secondary_language: string | null }>;
   squads: One<{ id: string; squad_number: string; university_id: string }>;
 };
 
@@ -108,6 +111,21 @@ export function periodKey(week: { academic_year: number; week_number: number }) 
   return `${week.academic_year}-${week.week_number}`;
 }
 
+const asLanguage = (value: string | null | undefined): Language | null =>
+  (LANGUAGES as readonly string[]).includes(value ?? "") ? (value as Language) : null;
+
+export type RankBy = "total" | "primary" | "secondary";
+
+export function readRankBy(searchParams: URLSearchParams): RankBy {
+  const value = searchParams.get("rank");
+  return value === "primary" || value === "secondary" ? value : "total";
+}
+
+/** The language a row is ranked on for primary/secondary boards (null for total). */
+export function rankLanguage(row: StandingRow, by: RankBy): Language | null {
+  return by === "primary" ? row.primary_language : by === "secondary" ? row.secondary_language : null;
+}
+
 export function totalOf(belts: LanguageBelts) {
   return belts.cpp + belts.java + belts.nodejs + belts.python;
 }
@@ -119,7 +137,7 @@ export async function loadStandings(requestedPeriod: string | null) {
       const { data, error } = await supabaseAdmin
         .from("student_memberships")
         .select(
-          "student_id, students!inner(id, name), squads!inner(id, squad_number, university_id)",
+          "student_id, students!inner(id, name, primary_language, secondary_language), squads!inner(id, squad_number, university_id)",
         )
         .is("end_date", null)
         .order("start_date", { ascending: false })
@@ -262,6 +280,8 @@ export async function loadStandings(requestedPeriod: string | null) {
       levels: current?.belts ?? { cpp: 0, java: 0, nodejs: 0, python: 0 },
       previous: previous.get(membership.student_id)?.belts ?? null,
       tested: Boolean(current),
+      primary_language: asLanguage(student?.primary_language),
+      secondary_language: asLanguage(student?.secondary_language),
     };
   });
 

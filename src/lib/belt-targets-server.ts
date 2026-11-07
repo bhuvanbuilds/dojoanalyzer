@@ -4,7 +4,7 @@ import type { UserProfile } from "@/lib/auth/profile";
 import { squadLimit, inSquadLimit } from "@/lib/auth/scope";
 import { keepEarnedBelts } from "@/lib/earned-belts";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { levelsOf, type BeltTarget, type Levels } from "@/lib/belt-targets";
+import { TARGET_LANGUAGES, levelsOf, type BeltTarget, type Levels, type TargetLanguage } from "@/lib/belt-targets";
 
 export type TargetStudent = {
   id: string;
@@ -14,6 +14,9 @@ export type TargetStudent = {
   squad_number: string;
   university_id: string;
   university_name: string | null;
+  /** The student's chosen main and second languages, when known. */
+  primary_language: TargetLanguage | null;
+  secondary_language: TargetLanguage | null;
   /** Belts held when the month began (or at their first test this month). */
   start: Levels;
   /** Belts held now. */
@@ -24,11 +27,16 @@ export type TargetStudent = {
 
 type Membership = {
   student_id: string;
-  students: { id: string; name: string; email: string | null } | Array<{ id: string; name: string; email: string | null }>;
+  students: StudentRow | StudentRow[];
   squads:
     | { id: string; squad_number: string; university_id: string; universities: { name: string } | Array<{ name: string }> | null }
     | Array<{ id: string; squad_number: string; university_id: string; universities: { name: string } | Array<{ name: string }> | null }>;
 };
+
+type StudentRow = { id: string; name: string; email: string | null; primary_language: string | null; secondary_language: string | null };
+
+const asLanguage = (value: string | null | undefined): TargetLanguage | null =>
+  (TARGET_LANGUAGES as readonly string[]).includes(value ?? "") ? (value as TargetLanguage) : null;
 
 const one = <T,>(value: T | T[] | null | undefined) => (Array.isArray(value) ? value[0] : value) ?? null;
 
@@ -46,7 +54,9 @@ export async function loadTargetStudents(
 
   let memberships = supabaseAdmin
     .from("student_memberships")
-    .select("student_id, students!inner(id, name, email), squads!inner(id, squad_number, university_id, universities(name:display_name))")
+    .select(
+      "student_id, students!inner(id, name, email, primary_language, secondary_language), squads!inner(id, squad_number, university_id, universities(name:display_name))",
+    )
     .is("end_date", null);
   if (universityId) memberships = memberships.eq("squads.university_id", universityId);
   if (options.studentIds) memberships = memberships.in("student_id", options.studentIds);
@@ -66,6 +76,8 @@ export async function loadTargetStudents(
       squad_number: String(squad.squad_number),
       university_id: squad.university_id,
       university_name: one(squad.universities)?.name ?? null,
+      primary_language: asLanguage(student.primary_language),
+      secondary_language: asLanguage(student.secondary_language),
     });
   }
   const ids = [...students.keys()];

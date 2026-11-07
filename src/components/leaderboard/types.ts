@@ -12,4 +12,6 @@ export type RankedStudent = {
   change: number;
   /** Per-language belts (overall leaderboard only). */
   languages?: Record<Language, number>;
+  /** On primary/secondary boards: the student's own language being ranked. */
+  rankLanguage?: Language | null;
 };

@@ -29,7 +29,7 @@ import {
   TOUR_IDS,
   TOURS,
   UPDATE_IDS,
-  UPDATES,
+  pendingUpdate,
   firstStepOn,
   nextPageIndex,
   pageMatches,
@@ -106,13 +106,15 @@ export function Tutorial() {
   const [demo, setDemo] = useState(false);
   const [checked, setChecked] = useState<string[]>([]);
   const [mode, setMode] = useState<Mode>("tour");
+  // What's new: the unseen releases' tour ids and steps.
+  const [update, setUpdate] = useState<{ ids: string[]; steps: TutorialStep[] }>({ ids: [], steps: NO_STEPS });
   const direction = useRef<1 | -1>(1);
   const cardRef = useRef<HTMLDivElement>(null);
   const returnFocus = useRef<HTMLElement | null>(null);
 
-  const steps = role ? (mode === "update" ? UPDATES[role] : TOURS[role]) : NO_STEPS;
+  const steps = role ? (mode === "update" ? update.steps : TOURS[role]) : NO_STEPS;
   const step: TutorialStep | undefined = running ? steps[index] : undefined;
-  const tourId = role ? (mode === "update" ? UPDATE_IDS[role] : TOUR_IDS[role]) : null;
+  const tourId = role ? (mode === "update" ? (update.ids.at(-1) ?? null) : TOUR_IDS[role]) : null;
 
   // ── Who is this, and have they seen it? ──────────────────────────────────
   useEffect(() => {
@@ -133,9 +135,11 @@ export function Tutorial() {
         const body = (await response.json()) as { completed?: string[] };
         const completed = body.completed ?? [];
         // Never seen the tour: the full one. Seen it: only what's new since.
-        const offer: Mode | null = !completed.includes(TOUR_IDS[tour]) ? "tour" : !completed.includes(UPDATE_IDS[tour]) ? "update" : null;
+        const pending = pendingUpdate(tour, completed);
+        const offer: Mode | null = !completed.includes(TOUR_IDS[tour]) ? "tour" : pending.steps.length ? "update" : null;
         if (!active || !offer) return;
-        if (storage("session")?.getItem(snoozeKey(offer === "update" ? UPDATE_IDS[tour] : TOUR_IDS[tour]))) return;
+        if (storage("session")?.getItem(snoozeKey(offer === "update" ? pending.ids.join("+") : TOUR_IDS[tour]))) return;
+        setUpdate(pending);
         // What's new and any new belt target come first; the tour after them.
         await whenPopupsDone();
         if (!active) return;
@@ -162,7 +166,8 @@ export function Tutorial() {
     (outcome: "completed" | "skipped") => {
       if (!tourId || !role || previewing) return;
       // The full tour already covers what's new, so it marks both as seen.
-      const tours = mode === "tour" ? [tourId, UPDATE_IDS[role]] : [tourId];
+      // The full tour already covers every release, so it marks them all as seen.
+      const tours = mode === "tour" ? [tourId, ...UPDATE_IDS[role]] : update.ids;
       for (const tour of tours)
         void fetch("/api/tutorial", {
           method: "POST",
@@ -170,7 +175,7 @@ export function Tutorial() {
           body: JSON.stringify({ tour, outcome }),
         }).catch(() => undefined);
     },
-    [tourId, role, mode, previewing],
+    [tourId, role, mode, update.ids, previewing],
   );
 
   const goTo = useCallback((next: number, dir: 1 | -1) => {
@@ -185,14 +190,14 @@ export function Tutorial() {
       if (!role) return;
       returnFocus.current = document.activeElement as HTMLElement | null;
       setMode(which);
-      const list = which === "update" ? UPDATES[role] : TOURS[role];
+      const list = which === "update" ? update.steps : TOURS[role];
       const from = fromPage ? Math.max(0, firstStepOn(list, window.location.pathname)) : 0;
       setIntro(false);
       setHelp(false);
       setRunning(true);
       goTo(from, 1);
     },
-    [role, goTo],
+    [role, update.steps, goTo],
   );
 
   const close = useCallback(() => {
@@ -214,10 +219,11 @@ export function Tutorial() {
   }, [record, close]);
 
   const remindLater = useCallback(() => {
-    if (tourId) storage("session")?.setItem(snoozeKey(tourId), "1");
+    const key = mode === "update" ? update.ids.join("+") : tourId;
+    if (key) storage("session")?.setItem(snoozeKey(key), "1");
     setIntro(false);
     close();
-  }, [tourId, close]);
+  }, [tourId, mode, update.ids, close]);
 
   const next = useCallback(() => {
     if (index >= steps.length - 1) finish();
@@ -323,7 +329,7 @@ export function Tutorial() {
   return (
     <>
       {intro ? (
-        <IntroCard role={role} mode={mode} onStart={() => start(false, mode)} onLater={remindLater} onSkip={skipTour} />
+        <IntroCard role={role} mode={mode} updateSteps={update.steps} onStart={() => start(false, mode)} onLater={remindLater} onSkip={skipTour} />
       ) : null}
       <HelpPanel
         open={help}
@@ -568,18 +574,20 @@ function Spotlight({
 function IntroCard({
   role,
   mode,
+  updateSteps,
   onStart,
   onLater,
   onSkip,
 }: {
   role: TutorialRole;
   mode: Mode;
+  updateSteps: TutorialStep[];
   onStart: () => void;
   onLater: () => void;
   onSkip: () => void;
 }) {
   const reduce = useReducedMotion();
-  const list = mode === "update" ? UPDATES[role] : TOURS[role];
+  const list = mode === "update" ? updateSteps : TOURS[role];
   const steps = list.length;
   const pages = new Set(list.map((step) => step.page).filter((page) => page !== "*")).size;
   return createPortal(
@@ -605,7 +613,7 @@ function IntroCard({
         </motion.span>
         <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.12em] text-muted">{mode === "update" ? "What’s new" : `${ROLE_LABELS[role]} tutorial`}</p>
         <h2 id="tutorial-intro-title" className="mt-1 font-display text-[21px] font-bold leading-tight tracking-[-0.025em]">
-          {mode === "update" ? "See what’s new: LeetCode, practice and targets" : "Want a guided walkthrough?"}
+          {mode === "update" ? "See what’s new" : "Want a guided walkthrough?"}
         </h2>
         <p className="mt-2 text-[14px] leading-6 text-ink-2">
           {mode === "update" ? "Only the new features, not the whole tour. " : ""}

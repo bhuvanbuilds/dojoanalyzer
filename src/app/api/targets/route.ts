@@ -5,6 +5,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { noticeEmail, sendEmail } from "@/lib/email";
 import { loadTargetStudents } from "@/lib/belt-targets-server";
 import {
+  type TargetLanguage,
   cleanLanguageGains,
   describeTarget,
   monthKey,
@@ -62,9 +63,11 @@ export async function GET(request: Request) {
 }
 
 /**
- * POST { studentIds, month, totalGain | languageGains, note?, notify?, test? }:
- * sets (or replaces) the month's target for each student, then emails each
- * of them their own message. `test` (developers only) saves test targets:
+ * POST { studentIds, month, totalGain | languageGains | primaryGain + secondaryGain,
+ * note?, notify?, test? }: sets (or replaces) the month's target for each
+ * student, then emails each of them their own message. primaryGain and
+ * secondaryGain set belts in each student's own primary and secondary
+ * language, so one target fits students with different languages. `test` (developers only) saves test targets:
  * no email, hidden from the student, and never replacing a real target.
  */
 export async function POST(request: Request) {
@@ -76,6 +79,10 @@ export async function POST(request: Request) {
     const studentIds = Array.isArray(body.studentIds) ? [...new Set(body.studentIds.filter(isUuid))] : [];
     const totalGain = Number(body.totalGain);
     const languageGains = cleanLanguageGains(body.languageGains);
+    const gain = (value: unknown) => (Number.isInteger(Number(value)) && Number(value) >= 0 && Number(value) <= 10 ? Number(value) : null);
+    const primaryGain = gain(body.primaryGain);
+    const secondaryGain = gain(body.secondaryGain);
+    const byMain = primaryGain !== null || secondaryGain !== null;
     const note = typeof body.note === "string" ? body.note.trim().slice(0, 300) || null : null;
     const isTest = body.test === true;
     if (isTest && (!authorization.profile.is_developer || authorization.profile.viewing_as))
@@ -83,7 +90,9 @@ export async function POST(request: Request) {
     if (!month || month < monthKey()) return NextResponse.json({ error: "Pick this month or a later one" }, { status: 400 });
     if (!studentIds.length || studentIds.length > 500)
       return NextResponse.json({ error: "Select between 1 and 500 students" }, { status: 400 });
-    const byTotal = !languageGains;
+    if (byMain && !((primaryGain ?? 0) + (secondaryGain ?? 0) > 0))
+      return NextResponse.json({ error: "Set at least one belt in the primary or secondary language" }, { status: 400 });
+    const byTotal = !byMain && !languageGains;
     if (byTotal && !(Number.isInteger(totalGain) && totalGain >= 1 && totalGain <= 40))
       return NextResponse.json({ error: "Set a target of 1 to 40 belts, or a number per language" }, { status: 400 });
 
@@ -91,6 +100,30 @@ export async function POST(request: Request) {
     const students = await loadTargetStudents(authorization.profile, month, { studentIds });
     if (students.length !== studentIds.length)
       return NextResponse.json({ error: "Some of these students aren't in your squads or campus" }, { status: 403 });
+    // Each student's own gains: the same numbers, on their own languages when by primary/secondary.
+    const gainsFor = (student: (typeof students)[number]) => {
+      if (!byMain) return byTotal ? null : languageGains;
+      const out: Partial<Record<TargetLanguage, number>> = {};
+      if (primaryGain && student.primary_language) out[student.primary_language] = primaryGain;
+      if (secondaryGain && student.secondary_language) out[student.secondary_language] = secondaryGain;
+      return Object.keys(out).length ? out : null;
+    };
+    if (byMain) {
+      // Without the language(s) asked for, a student would get an empty target.
+      const missing = students.filter((student) => !gainsFor(student));
+      if (missing.length)
+        return NextResponse.json(
+          {
+            error: `${missing.length} of these student${missing.length === 1 ? " hasn't" : "s haven't"} chosen ${
+              primaryGain ? "a primary" : "a secondary"
+            } language yet (${missing
+              .slice(0, 3)
+              .map((student) => student.name)
+              .join(", ")}${missing.length > 3 ? "…" : ""}). Unselect them or set a per-language target.`,
+          },
+          { status: 400 },
+        );
+    }
     if (isTest) {
       const real = students.filter((student) => student.target && !student.target.is_test).length;
       if (real)
@@ -108,7 +141,7 @@ export async function POST(request: Request) {
         student_id: student.id,
         month,
         total_gain: byTotal ? totalGain : null,
-        language_gains: byTotal ? null : languageGains,
+        language_gains: gainsFor(student),
         note,
         set_by: authorization.user.id,
         seen_at: null,
@@ -119,8 +152,11 @@ export async function POST(request: Request) {
     );
     if (error) throw error;
 
-    const target = { total_gain: byTotal ? totalGain : null, language_gains: byTotal ? null : languageGains };
-    const summary = describeTarget(target);
+    const summaryFor = (student: (typeof students)[number]) =>
+      describeTarget({ total_gain: byTotal ? totalGain : null, language_gains: gainsFor(student) });
+    const summary = byMain
+      ? [primaryGain ? `+${primaryGain} primary` : "", secondaryGain ? `+${secondaryGain} secondary` : ""].filter(Boolean).join(", ") + " belt target"
+      : summaryFor(students[0]);
     await writeAuditLog(authorization.user.id, "belt_targets_set", "student", null, {
       month,
       students: students.length,
@@ -136,6 +172,7 @@ export async function POST(request: Request) {
       // One email per student, so nobody sees anyone else's address.
       for (const student of students) {
         if (!student.email) continue;
+        const summary = summaryFor(student);
         const sent = await sendEmail(
           [student.email],
           `Your belt target for ${monthLabel(month)}: ${summary}`,

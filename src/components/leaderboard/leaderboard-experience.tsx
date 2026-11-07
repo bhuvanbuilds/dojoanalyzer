@@ -445,6 +445,14 @@ function RowBelts({
   entry: RankedStudent;
   language?: Language;
 }) {
+  if (entry.rankLanguage)
+    return (
+      <span className="hidden items-center gap-2 md:flex">
+        <LanguageLogo language={entry.rankLanguage} size={18} />
+        <BeltBadge language={entry.rankLanguage} level={entry.score} />
+        <BeltTag level={entry.score} compact />
+      </span>
+    );
   if (entry.languages)
     return (
       <span className="hidden items-center gap-1.5 md:flex">
@@ -511,6 +519,12 @@ function RankingRow({
             <span className="truncate font-display text-[14.5px] font-semibold text-ink">
               {entry.name}
             </span>
+            {entry.rankLanguage ? (
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-line px-1.5 py-0.5 text-[11px] font-semibold text-ink-2">
+                <LanguageLogo language={entry.rankLanguage} size={12} />
+                {LANGUAGE_LABELS[entry.rankLanguage]}
+              </span>
+            ) : null}
             {isYou && (
               <span className="rounded-md bg-action px-1.5 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-white">
                 You
@@ -552,8 +566,9 @@ function BeltCard({
   isYou: boolean;
 }) {
   const reduced = useReducedMotion();
-  const levels: Partial<Record<Language, number>> =
-    entry.languages ?? (language ? { [language]: entry.score } : {});
+  const levels: Partial<Record<Language, number>> = entry.rankLanguage
+    ? { [entry.rankLanguage]: entry.score }
+    : (entry.languages ?? (language ? { [language]: entry.score } : {}));
   const shown = LANGUAGES.filter((key) => key in levels);
   return (
     <motion.li

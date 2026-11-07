@@ -15,18 +15,31 @@ export const TOUR_IDS: Record<TutorialRole, string> = {
 };
 
 /**
- * Short "what's new" tours: only the steps added since the full tours above.
- * People who already finished (or skipped) their full tour get just these;
- * new people get everything in the full tour and never see them separately.
+ * Short "what's new" tours, one per release: only the steps added since the
+ * full tours above. People who already finished (or skipped) their full tour
+ * get the steps of every release they haven't seen yet, in one short tour;
+ * new people get everything in the full tour and never see these separately.
+ * Add a release (never edit an old one) to announce new features.
  */
-export const UPDATE_IDS: Record<TutorialRole, string> = {
-  student: "student-new-leetcode-v1",
-  mentor: "mentor-new-leetcode-v1",
-  campus_manager: "campus-manager-new-leetcode-v1",
-  super_admin: "super-admin-new-leetcode-v1",
+const RELEASES: Array<{ id: string; steps: string[] }> = [
+  {
+    id: "new-leetcode-v1",
+    steps: ["S10", "S11", "S12", "SL1", "SL2", "SL3", "SL4", "MT0", "ML1", "ML2", "ML3", "ML4", "CMT0", "CML1", "CML2", "CML3", "CML4", "SAT0", "SAL1", "SAL2", "SAL3", "SAL4"],
+  },
+  { id: "new-languages-v1", steps: ["S13", "MTP", "MR1", "CMTP", "CMR1", "SATP", "SAR1"] },
+];
+
+/** Stored tour id for a role's release, e.g. "mentor-new-leetcode-v1". */
+const releaseTourId = (role: TutorialRole, release: string) => `${TOUR_IDS[role].replace(/-v\d+$/, "")}-${release}`;
+
+export const UPDATE_IDS: Record<TutorialRole, string[]> = {
+  student: RELEASES.map((release) => releaseTourId("student", release.id)),
+  mentor: RELEASES.map((release) => releaseTourId("mentor", release.id)),
+  campus_manager: RELEASES.map((release) => releaseTourId("campus_manager", release.id)),
+  super_admin: RELEASES.map((release) => releaseTourId("super_admin", release.id)),
 };
 
-export const ALL_TOUR_IDS = [...Object.values(TOUR_IDS), ...Object.values(UPDATE_IDS)];
+export const ALL_TOUR_IDS = [...Object.values(TOUR_IDS), ...Object.values(UPDATE_IDS).flat()];
 
 export type TutorialAction =
   /** Read and press Next. */
@@ -121,6 +134,7 @@ const STUDENT: TutorialStep[] = [
   s("S1", "/leaderboard", "lb-hero", "none", "Welcome to the leaderboards", "See how belt progress compares across the leaderboard scopes available to you. Rankings reflect recorded Dojo belt results, not attendance."),
   s("S2", "/leaderboard", "lb-podium", "none", "The top three", "The podium highlights the three highest-ranked students in the current results. Select a student if you'd like to open their profile."),
   s("S4", "/leaderboard", "lb-scope", "click", "Change the scope", "Use the scope chips to switch between Everyone, My campus and My squad. Only the scopes available to you are shown."),
+  s("S13", "/leaderboard", "lb-rank-by", "click", "Rank by languages", "All belts ranks by total belts. Primary belt ranks everyone by the belt in their own primary language, whatever that language is; Secondary belt does the same for their second language."),
   s("S5", "/leaderboard", ["lb-you-rank", "css:#leaderboard-you"], "none", "Find your rank", "When you're outside the podium, the You indicator helps you find your own row. Your position depends on the selected scope and filters."),
   s("S3", "/leaderboard/language", "lb-languages", "click", "Explore each language", "Choose C++, Java, Node.js or Python to see language-specific rankings. The results follow the language you select."),
   s("S6", "/student", "student-stats", "none", "Your belt statistics", "Your overall, campus and squad ranks, the belts you hold, and your change since the previous test."),
@@ -159,6 +173,8 @@ const MENTOR: TutorialStep[] = [
   s("M21", "/analytics", "an-trend", "click", "Follow the trend", "See progress across the year or month by month."),
   s("MT1", "/targets", "targets-filters", "click", "Pick students for a target", "Filter by squad, by belt level (e.g. everyone at Java belt 3), or by who has no target yet. Tick students, or use the top checkbox to select everyone shown."),
   s("MT2", "/targets", "targets-list", "none", "Monthly belt targets", "Each row shows the student's belts now, their target for the month and progress so far. Once you select students, a bar appears to set a total or per-language target and email them."),
+  s("MTP", "/targets", "targets-filters", "click", "Primary and secondary languages", "Each student shows their primary (filled star) and secondary language with the belt in each. Filter by primary language or by primary or secondary belt level, then pick Primary & secondary in the target bar to set belts on each student's own languages."),
+  s("MR1", "/leaderboard", "lb-rank-by", "click", "Rank by languages", "All belts ranks by total belts. Primary belt ranks everyone by the belt in their own primary language, whatever that language is; Secondary belt does the same for their second language."),
   s("MT0", "/leetcode", "lc-tracker", "none", "Today's LeetCode check", "Every student you look after, as a card: green solved a new problem today, red hasn't yet. Sort, search or filter to follow up."),
   ...leetcodeBoard("M"),
   ...CLOSING,
@@ -208,6 +224,8 @@ const CAMPUS_MANAGER: TutorialStep[] = [
   s("CM44", "/imports/[id]", "imd-errors", "none", "Review validation errors", "Row-level reasons a row or file was rejected."),
   s("CMT1", "/targets", "targets-filters", "click", "Pick students for a target", "Filter by squad, by belt level (e.g. everyone at Java belt 3), or by who has no target yet. Tick students, or use the top checkbox to select everyone shown."),
   s("CMT2", "/targets", "targets-list", "none", "Monthly belt targets", "Each row shows the student's belts now, their target for the month and progress so far. Once you select students, a bar appears to set a total or per-language target and email them."),
+  s("CMTP", "/targets", "targets-filters", "click", "Primary and secondary languages", "Each student shows their primary (filled star) and secondary language with the belt in each. Filter by primary language or by primary or secondary belt level, then pick Primary & secondary in the target bar to set belts on each student's own languages."),
+  s("CMR1", "/leaderboard", "lb-rank-by", "click", "Rank by languages", "All belts ranks by total belts. Primary belt ranks everyone by the belt in their own primary language, whatever that language is; Secondary belt does the same for their second language."),
   s("CMT0", "/leetcode", "lc-tracker", "none", "Today's LeetCode check", "Every student you look after, as a card: green solved a new problem today, red hasn't yet. Sort, search or filter to follow up."),
   ...leetcodeBoard("CM"),
   ...CLOSING,
@@ -259,6 +277,8 @@ const SUPER_ADMIN: TutorialStep[] = [
   s("SA41", "/support/inbox", "inbox-intro", "none", "Confirm before acting", "Messages, notes, ticket changes and changelog entries take effect immediately. Make sure you mean it."),
   s("SAT1", "/targets", "targets-filters", "click", "Pick students for a target", "Filter by squad, by belt level (e.g. everyone at Java belt 3), or by who has no target yet. Tick students, or use the top checkbox to select everyone shown."),
   s("SAT2", "/targets", "targets-list", "none", "Monthly belt targets", "Each row shows the student's belts now, their target for the month and progress so far. Once you select students, a bar appears to set a total or per-language target and email them."),
+  s("SATP", "/targets", "targets-filters", "click", "Primary and secondary languages", "Each student shows their primary (filled star) and secondary language with the belt in each. Filter by primary language or by primary or secondary belt level, then pick Primary & secondary in the target bar to set belts on each student's own languages."),
+  s("SAR1", "/leaderboard", "lb-rank-by", "click", "Rank by languages", "All belts ranks by total belts. Primary belt ranks everyone by the belt in their own primary language, whatever that language is; Secondary belt does the same for their second language."),
   s("SAT0", "/leetcode", "lc-tracker", "none", "Today's LeetCode check", "Every student you look after, as a card: green solved a new problem today, red hasn't yet. Sort, search or filter to follow up."),
   ...leetcodeBoard("SA"),
   ...CLOSING,
@@ -271,19 +291,25 @@ export const TOURS: Record<TutorialRole, TutorialStep[]> = {
   super_admin: SUPER_ADMIN,
 };
 
-/** Step ids added with the LeetCode, practice and target features. */
-const NEW_STEP_IDS = new Set([
-  "S10", "S11", "S12", "SL1", "SL2", "SL3", "SL4",
-  "MT0", "ML1", "ML2", "ML3", "ML4",
-  "CMT0", "CML1", "CML2", "CML3", "CML4",
-  "SAT0", "SAL1", "SAL2", "SAL3", "SAL4",
-]);
+/**
+ * The releases this person hasn't seen: their tour ids, and their steps in
+ * full-tour order. Empty when they're up to date.
+ */
+export function pendingUpdate(role: TutorialRole, completed: string[]) {
+  const pending = RELEASES.filter((release) => !completed.includes(releaseTourId(role, release.id)));
+  const wanted = new Set(pending.flatMap((release) => release.steps));
+  return {
+    ids: pending.map((release) => releaseTourId(role, release.id)),
+    steps: TOURS[role].filter((step) => wanted.has(step.id)),
+  };
+}
 
+/** Every release's steps, for checks. */
 export const UPDATES: Record<TutorialRole, TutorialStep[]> = {
-  student: STUDENT.filter((step) => NEW_STEP_IDS.has(step.id)),
-  mentor: MENTOR.filter((step) => NEW_STEP_IDS.has(step.id)),
-  campus_manager: CAMPUS_MANAGER.filter((step) => NEW_STEP_IDS.has(step.id)),
-  super_admin: SUPER_ADMIN.filter((step) => NEW_STEP_IDS.has(step.id)),
+  student: pendingUpdate("student", []).steps,
+  mentor: pendingUpdate("mentor", []).steps,
+  campus_manager: pendingUpdate("campus_manager", []).steps,
+  super_admin: pendingUpdate("super_admin", []).steps,
 };
 
 export const ROLE_LABELS: Record<TutorialRole, string> = {

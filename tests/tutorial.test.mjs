@@ -13,7 +13,7 @@ const javascript = ts.transpileModule(source, {
   compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
 }).outputText;
 const config = await import(`data:text/javascript;base64,${Buffer.from(javascript).toString("base64")}`);
-const { TOURS, TOUR_IDS, UPDATES, UPDATE_IDS, ALL_TOUR_IDS, tutorialRoleFor, pageMatches, nextPageIndex, firstStepOn, CSV_DEMO_STAGES } = config;
+const { TOURS, TOUR_IDS, UPDATES, UPDATE_IDS, ALL_TOUR_IDS, pendingUpdate, tutorialRoleFor, pageMatches, nextPageIndex, firstStepOn, CSV_DEMO_STAGES } = config;
 
 function files(dir) {
   return readdirSync(dir).flatMap((name) => {
@@ -136,7 +136,17 @@ test("what's new tours only hold steps that are also in the full tour", () => {
     for (const step of steps) assert.ok(full.has(step.id), `${role}: ${step.id} missing from the full tour`);
     assert.ok(steps.length < TOURS[role].length, `${role}: the update tour should be shorter than the full tour`);
   }
-  for (const id of Object.values(UPDATE_IDS)) assert.ok(ALL_TOUR_IDS.includes(id));
+  for (const id of Object.values(UPDATE_IDS).flat()) assert.ok(ALL_TOUR_IDS.includes(id));
   // Full tours keep their version so finished tours aren't replayed.
   assert.deepEqual(Object.values(TOUR_IDS), ["student-v1", "mentor-v1", "campus-manager-v1", "super-admin-v1"]);
+});
+
+test("what's new only shows releases the person hasn't seen", () => {
+  const [leetcode, languages] = UPDATE_IDS.mentor;
+  assert.equal(pendingUpdate("mentor", []).steps.length, UPDATES.mentor.length);
+  const afterFirst = pendingUpdate("mentor", [TOUR_IDS.mentor, leetcode]);
+  assert.deepEqual(afterFirst.ids, [languages]);
+  assert.ok(afterFirst.steps.length > 0 && afterFirst.steps.length < UPDATES.mentor.length);
+  assert.ok(afterFirst.steps.every((step) => !step.page.startsWith("/leetcode")));
+  assert.equal(pendingUpdate("mentor", [leetcode, languages]).steps.length, 0);
 });

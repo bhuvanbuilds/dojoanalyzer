@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, CornerDownLeft, FlaskConical, Mail, MousePointerClick, Search, Target, Trash2, X } from "lucide-react";
+import { Check, CornerDownLeft, FlaskConical, Mail, MousePointerClick, Search, Star, Target, Trash2, X } from "lucide-react";
 import { useCachedProfile } from "@/lib/auth/use-cached-profile";
 import { getCurrentUserProfile, type CurrentUserProfile } from "@/lib/auth/profile";
 import { Frame, FrameTitle, Page } from "@/components/ui/frame";
@@ -30,6 +30,8 @@ type Row = {
   squad_number: string;
   university_id: string;
   university_name: string | null;
+  primary_language: TargetLanguage | null;
+  secondary_language: TargetLanguage | null;
   start: Levels;
   now: Levels;
   tested: boolean;
@@ -81,7 +83,8 @@ export default function TargetsPage() {
   // Filters
   const [search, setSearch] = useState("");
   const [squad, setSquad] = useState("all");
-  const [beltFilter, setBeltFilter] = useState("all"); // "all" | "total:N" | "<language>:N"
+  const [beltFilter, setBeltFilter] = useState("all"); // "all" | "total:N" | "primary:N" | "secondary:N" | "<language>:N"
+  const [primaryFilter, setPrimaryFilter] = useState("all"); // "all" | "none" | "<language>"
   const [targetFilter, setTargetFilter] = useState<"all" | "none" | "set">("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   // Search auto-select: the top match is added once typing pauses, so typing
@@ -144,13 +147,22 @@ export default function TargetsPage() {
   // Belt levels present, for "everyone at the same level" picking.
   const levelOptions = useMemo(() => {
     const totals = new Set<number>();
+    const primary = new Set<number>();
+    const secondary = new Set<number>();
     const perLanguage = new Map<TargetLanguage, Set<number>>(TARGET_LANGUAGES.map((language) => [language, new Set()]));
     for (const row of rows ?? []) {
       totals.add(totalBelts(row.now));
+      if (row.primary_language) primary.add(row.now[row.primary_language]);
+      if (row.secondary_language) secondary.add(row.now[row.secondary_language]);
       for (const language of TARGET_LANGUAGES) perLanguage.get(language)!.add(row.now[language]);
     }
     const sorted = (values: Set<number>) => [...values].sort((a, b) => a - b);
-    return { totals: sorted(totals), perLanguage: TARGET_LANGUAGES.map((language) => [language, sorted(perLanguage.get(language)!)] as const) };
+    return {
+      totals: sorted(totals),
+      primary: sorted(primary),
+      secondary: sorted(secondary),
+      perLanguage: TARGET_LANGUAGES.map((language) => [language, sorted(perLanguage.get(language)!)] as const),
+    };
   }, [rows]);
 
   const visible = useMemo(() => {
@@ -159,16 +171,17 @@ export default function TargetsPage() {
     return (rows ?? [])
       .filter((row) => !needle || row.name.toLowerCase().includes(needle))
       .filter((row) => squad === "all" || row.squad_id === squad)
-      .filter((row) =>
-        beltFilter === "all"
-          ? true
-          : kind === "total"
-            ? totalBelts(row.now) === Number(level)
-            : row.now[kind as TargetLanguage] === Number(level),
-      )
+      .filter((row) => (primaryFilter === "all" ? true : primaryFilter === "none" ? !row.primary_language : row.primary_language === primaryFilter))
+      .filter((row) => {
+        if (beltFilter === "all") return true;
+        if (kind === "total") return totalBelts(row.now) === Number(level);
+        if (kind === "primary") return Boolean(row.primary_language) && row.now[row.primary_language!] === Number(level);
+        if (kind === "secondary") return Boolean(row.secondary_language) && row.now[row.secondary_language!] === Number(level);
+        return row.now[kind as TargetLanguage] === Number(level);
+      })
       .filter((row) => (targetFilter === "all" ? true : targetFilter === "set" ? Boolean(row.target) : !row.target))
       .sort((a, b) => a.squad_number.localeCompare(b.squad_number, undefined, { numeric: true }) || a.name.localeCompare(b.name));
-  }, [rows, search, squad, beltFilter, targetFilter]);
+  }, [rows, search, squad, beltFilter, primaryFilter, targetFilter]);
 
   const topMatch = search.trim().length >= 2 ? (visible[0]?.id ?? null) : null;
   useEffect(() => {
@@ -377,8 +390,37 @@ export default function TargetsPage() {
               </option>
             ))}
           </Dropdown>
+          <Dropdown
+            chevron
+            aria-label="Primary language"
+            value={primaryFilter}
+            onChange={setPrimaryFilter}
+            className="h-9 rounded-lg border border-line-strong bg-surface px-3 text-[13px]"
+          >
+            <option value="all">Any primary language</option>
+            {TARGET_LANGUAGES.map((language) => (
+              <option key={language} value={language}>
+                Primary: {TARGET_LANGUAGE_LABELS[language]}
+              </option>
+            ))}
+            <option value="none">No language chosen</option>
+          </Dropdown>
           <Dropdown chevron aria-label="Belt level" value={beltFilter} onChange={setBeltFilter} className="h-9 rounded-lg border border-line-strong bg-surface px-3 text-[13px]">
             <option value="all">Any belt level</option>
+            <optgroup label="Primary language belt">
+              {levelOptions.primary.map((level) => (
+                <option key={`primary-${level}`} value={`primary:${level}`}>
+                  Primary belt {level}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="Secondary language belt">
+              {levelOptions.secondary.map((level) => (
+                <option key={`secondary-${level}`} value={`secondary:${level}`}>
+                  Secondary belt {level}
+                </option>
+              ))}
+            </optgroup>
             <optgroup label="Total belts held">
               {levelOptions.totals.map((level) => (
                 <option key={`total-${level}`} value={`total:${level}`}>
@@ -472,6 +514,7 @@ export default function TargetsPage() {
                           <p className="text-[12px] text-muted">
                             {isSuperAdmin && row.university_name ? `${row.university_name} · ` : ""}Squad {row.squad_number}
                           </p>
+                          <LanguagePair primary={row.primary_language} secondary={row.secondary_language} levels={row.now} />
                         </td>
                         <td className="px-3 py-2.5">
                           <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[12.5px] text-ink-2">
@@ -551,6 +594,30 @@ export default function TargetsPage() {
   );
 }
 
+/** The student's primary (filled star) and secondary language, with their current belt in each. */
+function LanguagePair({ primary, secondary, levels }: { primary: TargetLanguage | null; secondary: TargetLanguage | null; levels: Levels }) {
+  if (!primary) return <p className="mt-1 text-[11.5px] text-faint">No primary language chosen</p>;
+  const chip = (language: TargetLanguage, kind: "Primary" | "Secondary") => (
+    <span
+      title={`${kind}: ${TARGET_LANGUAGE_LABELS[language]}, belt ${levels[language]}`}
+      className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11.5px] font-medium ${
+        kind === "Primary" ? "bg-ink/[0.07] text-ink" : "border border-line text-ink-2"
+      }`}
+    >
+      {kind === "Primary" ? <Star size={11} className="fill-current text-amber-500" /> : <Star size={11} className="text-muted" />}
+      <span className="size-1.5 rounded-full" style={{ background: LANGUAGE_COLORS[language] }} aria-hidden="true" />
+      {TARGET_LANGUAGE_LABELS[language]}
+      <span className="tabular-nums text-muted">{levels[language]}</span>
+    </span>
+  );
+  return (
+    <p className="mt-1 flex flex-wrap gap-1">
+      {chip(primary, "Primary")}
+      {secondary ? chip(secondary, "Secondary") : null}
+    </p>
+  );
+}
+
 function TestBadge() {
   return (
     <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/15 px-1.5 py-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">
@@ -589,10 +656,21 @@ function TargetBar({
   month: string;
   canTest: boolean;
   onClear: () => void;
-  onSave: (input: { totalGain?: number; languageGains?: Partial<Levels>; note: string; notify: boolean; test: boolean }) => Promise<void>;
+  onSave: (input: {
+    totalGain?: number;
+    languageGains?: Partial<Levels>;
+    primaryGain?: number;
+    secondaryGain?: number;
+    note: string;
+    notify: boolean;
+    test: boolean;
+  }) => Promise<void>;
   onRemove: () => Promise<void>;
 }) {
-  const [mode, setMode] = useState<"total" | "language">("total");
+  // Targets are mainly on each student's own primary and secondary language.
+  const [mode, setMode] = useState<"main" | "total" | "language">("main");
+  const [primaryGain, setPrimaryGain] = useState(1);
+  const [secondaryGain, setSecondaryGain] = useState(1);
   const [total, setTotal] = useState(2);
   const [perLanguage, setPerLanguage] = useState<Partial<Levels>>({});
   const [note, setNote] = useState("");
@@ -609,9 +687,11 @@ function TargetBar({
       if (kind === "remove") await onRemove();
       else
         await onSave(
-          mode === "total"
-            ? { totalGain: total, note, notify: notify && !test, test }
-            : { languageGains: perLanguage, note, notify: notify && !test, test },
+          mode === "main"
+            ? { primaryGain, secondaryGain, note, notify: notify && !test, test }
+            : mode === "total"
+              ? { totalGain: total, note, notify: notify && !test, test }
+              : { languageGains: perLanguage, note, notify: notify && !test, test },
         );
     } catch (runError) {
       setError(runError instanceof Error ? runError.message : "Something went wrong.");
@@ -621,7 +701,7 @@ function TargetBar({
   }
 
   const languageTotal = Object.values(perLanguage).reduce((sum, value) => sum + (value ?? 0), 0);
-  const canSave = mode === "total" ? total >= 1 : languageTotal > 0;
+  const canSave = mode === "main" ? primaryGain + secondaryGain > 0 : mode === "total" ? total >= 1 : languageTotal > 0;
 
   return (
     <div data-tour="targets-bar" className="sticky bottom-4 z-30 mt-4">
@@ -636,6 +716,7 @@ function TargetBar({
             <div className="flex rounded-lg bg-sunken p-0.5" role="group" aria-label="Target type">
               {(
                 [
+                  ["main", "Primary & secondary"],
                   ["total", "Total belts"],
                   ["language", "Per language"],
                 ] as const
@@ -660,7 +741,34 @@ function TargetBar({
         </div>
 
         <div className="mt-3 flex flex-wrap items-end gap-3">
-          {mode === "total" ? (
+          {mode === "main" ? (
+            <>
+              {(
+                [
+                  ["Primary language", primaryGain, setPrimaryGain],
+                  ["Secondary language", secondaryGain, setSecondaryGain],
+                ] as const
+              ).map(([label, value, set]) => (
+                <label key={label} className="flex flex-col gap-1 text-[12px] font-medium text-ink-2">
+                  <span className="inline-flex items-center gap-1.5">
+                    <Star size={12} className={label.startsWith("Primary") ? "fill-current text-amber-500" : "text-muted"} />
+                    {label} belts
+                  </span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={10}
+                    value={value}
+                    onChange={(event) => set(Math.max(0, Math.min(10, Number(event.target.value) || 0)))}
+                    className="h-9 w-24 rounded-lg border border-line-strong bg-surface px-3 text-[14px] tabular-nums outline-none focus:border-ink"
+                  />
+                </label>
+              ))}
+              <p className="max-w-56 pb-2 text-[11.5px] leading-4 text-muted">
+                Set on each student&apos;s own languages, so a Python + Java student and a Python + Node.js student both get the right belts.
+              </p>
+            </>
+          ) : mode === "total" ? (
             <label className="flex flex-col gap-1 text-[12px] font-medium text-ink-2">
               Belts to gain
               <input
