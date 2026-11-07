@@ -1,5 +1,6 @@
 "use client";
 
+import { ProfileTabs } from "@/components/students/profile-tabs";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -259,6 +260,7 @@ export default function StudentHistoryPage() {
     <Page>
       <Frame>
         <ProfileNav position={position} />
+        {studentId ? <ProfileTabs studentId={studentId} active="overview" staff /> : null}
         <Hero
           studentId={studentId}
           name={data?.student.name ?? rosterStudent?.name ?? null}

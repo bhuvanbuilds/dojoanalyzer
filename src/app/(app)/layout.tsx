@@ -7,6 +7,7 @@ import { WhatsNewPopup } from "@/components/whats-new-popup";
 import { Tutorial } from "@/components/tutorial/tutorial";
 import { PresenceHeartbeat } from "@/components/presence-heartbeat";
 import { TargetPopup } from "@/components/targets/my-target";
+import { LeetCodeRequired } from "@/components/leetcode/leetcode-required";
 
 /**
  * Layout for all authenticated campus/mentor management pages.
@@ -33,6 +34,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       <Tutorial />
       <PresenceHeartbeat />
       <TargetPopup />
+      <LeetCodeRequired />
     </div>
   );
 }

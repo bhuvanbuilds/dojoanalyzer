@@ -16,9 +16,10 @@ import {
   Trophy,
   Zap,
 } from "lucide-react";
-import { Grainient } from "@/components/reactbits/grainient";
+import { AuroraShader } from "@/components/fx/aurora-shader";
+import { CodeRain } from "@/components/fx/code-rain";
+import { RevealText } from "@/components/fx/reveal-text";
 import { CountUp } from "@/components/reactbits/count-up";
-import { ClickSpark } from "@/components/reactbits/click-spark";
 import { ConfettiBurst } from "@/components/leaderboard/confetti-burst";
 import { BeltStrip, BeltTag, LanguageLogo } from "@/components/belts/belts";
 import { Frame, Page } from "@/components/ui/frame";
@@ -36,7 +37,8 @@ import {
   type TargetLanguage,
   type TargetProgress,
 } from "@/lib/belt-targets";
-import { DAILY_QUESTS, LANGUAGE_RESOURCES, LANGUAGE_TIPS } from "@/lib/learning-hub";
+import { LANGUAGE_RESOURCES, LANGUAGE_TIPS } from "@/lib/learning-hub";
+import { DailyChallenge } from "@/components/practice/daily-challenge";
 
 type Mine = {
   target: BeltTarget | null;
@@ -77,10 +79,8 @@ export function QuestPage() {
       <div className="flex flex-col gap-4">
         <Hero mine={mine} month={month} />
         {mine.target && mine.progress ? <QuestMap target={mine.target} progress={mine.progress} start={start} now={now} /> : null}
-        <div className="grid items-start gap-4 xl:grid-cols-[1.35fr_1fr]">
-          <BeltLadder now={now} start={start} progress={mine.progress} />
-          <DailyQuests />
-        </div>
+        <DailyChallenge showPracticeLink />
+        <BeltLadder now={now} start={start} progress={mine.progress} />
         <TrainingGround focus={focus} />
       </div>
     </Page>
@@ -93,23 +93,10 @@ function Hero({ mine, month }: { mine: Mine; month: string }) {
   const done = Boolean(progress?.done);
   const left = daysLeft(month);
   return (
-    <section className="relative isolate overflow-hidden rounded-xl border border-line bg-[#0b0b0e] text-white shadow-[var(--card-shadow)]">
-      <div aria-hidden="true" className="absolute inset-0 opacity-90">
-        <Grainient
-          color1="#09090b"
-          color2={done ? "#123d24" : "#40181a"}
-          color3={done ? "#3dbb6f" : "#ef3837"}
-          timeSpeed={0.14}
-          warpStrength={0.9}
-          warpAmplitude={45}
-          grainAmount={0.08}
-          contrast={1.2}
-          saturation={0.95}
-          zoom={1.05}
-          centerX={0.7}
-        />
-      </div>
-      <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-r from-[#0b0b0e] via-[#0b0b0e]/70 to-transparent" />
+    <section className="relative isolate overflow-hidden rounded-2xl border border-white/10 bg-[#07070a] text-white shadow-[0_30px_80px_-40px_rgba(0,0,0,0.8)]">
+      <AuroraShader base="#060609" mid={done ? "#0d2a19" : "#2a0e10"} glow={done ? "#3dbb6f" : "#ef3837"} intensity={1.05} />
+      <CodeRain accent={done ? "61,187,111" : "255,161,22"} density={0.8} />
+      <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-r from-[#07070a] via-[#07070a]/70 to-transparent" />
       {done ? <ConfettiBurst delay={500} /> : null}
 
       <div className="relative grid items-center gap-8 px-6 py-8 sm:px-10 sm:py-10 md:grid-cols-[1fr_auto]">
@@ -121,14 +108,9 @@ function Hero({ mine, month }: { mine: Mine; month: string }) {
           >
             <Swords size={13} /> Season · {monthLabel(month)}
           </motion.p>
-          <motion.h1
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.05 }}
-            className="mt-3 font-display text-[34px] font-extrabold leading-[1.05] tracking-[-0.04em] sm:text-[48px]"
-          >
-            {done ? "Quest complete." : mine.target ? "Your belt quest" : "Your training hall"}
-          </motion.h1>
+          <h1 className="mt-4 font-display text-[40px] font-extrabold leading-[0.98] tracking-[-0.045em] sm:text-[60px]">
+            <RevealText parts={[done ? "Quest complete." : mine.target ? "Your belt quest" : "Your training hall"]} />
+          </h1>
           <motion.p
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -505,126 +487,6 @@ function BeltLadder({ now, start, progress }: { now: Levels; start: Levels; prog
             </motion.div>
           );
         })}
-      </div>
-    </Frame>
-  );
-}
-
-// ─── Daily quests (saved on this device) ──────────────────────────────────────
-const dayKey = (date = new Date()) =>
-  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-
-function readJson<T>(key: string, fallback: T): T {
-  try {
-    const raw = window.localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-function writeJson(key: string, value: unknown) {
-  try {
-    window.localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    // Storage can be blocked; progress still shows for this visit.
-  }
-}
-
-type Streak = { last: string; count: number };
-
-function DailyQuests() {
-  // Fixed for this visit, so a render never sees a different day.
-  const [{ today, yesterday }] = useState(() => {
-    const now = new Date();
-    return { today: dayKey(now), yesterday: dayKey(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)) };
-  });
-  const storeKey = `dojo-quests-${today}`;
-  const [doneIds, setDoneIds] = useState<string[]>(() => readJson<string[]>(storeKey, []));
-  const [streak, setStreak] = useState<Streak>(() => readJson<Streak>("dojo-quest-streak", { last: "", count: 0 }));
-  const total = DAILY_QUESTS.reduce((sum, quest) => sum + quest.xp, 0);
-  const xp = DAILY_QUESTS.filter((quest) => doneIds.includes(quest.id)).reduce((sum, quest) => sum + quest.xp, 0);
-  const shownStreak = streak.last === today || streak.last === yesterday ? streak.count : 0;
-
-  function toggle(id: string) {
-    const next = doneIds.includes(id) ? doneIds.filter((item) => item !== id) : [...doneIds, id];
-    setDoneIds(next);
-    writeJson(storeKey, next);
-    // The first quest of the day extends the streak.
-    if (next.length && streak.last !== today) {
-      const updated = { last: today, count: streak.last === yesterday ? streak.count + 1 : 1 };
-      setStreak(updated);
-      writeJson("dojo-quest-streak", updated);
-    }
-  }
-
-  return (
-    <Frame>
-      <div className="flex items-end justify-between gap-3 px-5 py-4">
-        <div>
-          <p className="text-[11.5px] font-semibold uppercase tracking-[0.08em] text-brand-text">Daily quests</p>
-          <h2 className="font-display text-[20px] font-bold tracking-[-0.02em]">Today’s training</h2>
-        </div>
-        <motion.span
-          key={shownStreak}
-          initial={{ scale: 0.7, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          className="inline-flex items-center gap-1.5 rounded-full bg-[#ffb36b]/15 px-3 py-1 text-[13px] font-semibold text-[#c2620c] dark:text-[#ffb36b]"
-          title="Days in a row with at least one quest done"
-        >
-          <Flame size={15} /> {shownStreak} day streak
-        </motion.span>
-      </div>
-      <div className="px-5 py-4">
-        <div className="flex items-center justify-between text-[12.5px]">
-          <span className="font-medium text-ink-2">
-            <span className="tabular-nums">{xp}</span> / {total} XP today
-          </span>
-          {xp === total ? <span className="font-semibold text-success-text">All done 🎉</span> : null}
-        </div>
-        <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-sunken">
-          <motion.div
-            className="h-full rounded-full"
-            style={{ background: "linear-gradient(90deg, #ffb36b, #ef3837)" }}
-            animate={{ width: `${(xp / total) * 100}%` }}
-            transition={{ type: "spring", stiffness: 120, damping: 20 }}
-          />
-        </div>
-        <ClickSpark sparkColor="#ef3837" sparkCount={10} sparkRadius={22}>
-          <ul className="mt-4 flex flex-col gap-2">
-            {DAILY_QUESTS.map((quest) => {
-              const done = doneIds.includes(quest.id);
-              return (
-                <li key={quest.id}>
-                  <button
-                    type="button"
-                    aria-pressed={done}
-                    onClick={() => toggle(quest.id)}
-                    className={`flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left text-[13.5px] transition ${
-                      done ? "border-success-text/30 bg-success-soft" : "border-line hover:border-line-strong hover:bg-sunken/60"
-                    }`}
-                  >
-                    <span
-                      className={`grid size-5 shrink-0 place-items-center rounded-md border transition ${
-                        done ? "border-success-text bg-success-text text-white" : "border-line-strong"
-                      }`}
-                    >
-                      <AnimatePresence>
-                        {done ? (
-                          <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}>
-                            <Check size={13} strokeWidth={3} />
-                          </motion.span>
-                        ) : null}
-                      </AnimatePresence>
-                    </span>
-                    <span className={`flex-1 ${done ? "text-muted line-through" : "text-ink"}`}>{quest.label}</span>
-                    <span className="text-[11.5px] font-semibold tabular-nums text-brand-text">+{quest.xp} XP</span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </ClickSpark>
-        <p className="mt-3 text-[11.5px] text-faint">Saved on this device. Resets every day.</p>
       </div>
     </Frame>
   );

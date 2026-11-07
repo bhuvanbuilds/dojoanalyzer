@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import { DB_OPTIONS } from "@/lib/supabase/schema";
 import { NextResponse, type NextRequest } from "next/server";
 import { getCurrentUserProfile } from "@/lib/auth/profile";
 import { getMaintenance } from "@/lib/maintenance";
@@ -10,6 +11,7 @@ export async function proxy(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
+      db: DB_OPTIONS.db,
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -162,6 +164,8 @@ export const config = {
     "/analytics",
     "/analytics/:path*",
     "/targets",
+    "/leetcode",
+    "/leetcode/:path*",
     "/universities",
     "/universities/:path*",
     "/users",

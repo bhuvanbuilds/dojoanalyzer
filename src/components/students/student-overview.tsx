@@ -1,5 +1,6 @@
 "use client";
 
+import { ProfileTabs } from "@/components/students/profile-tabs";
 import { MyTargetCard } from "@/components/targets/my-target";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -167,6 +168,7 @@ export function StudentOverviewPage({ studentId }: { studentId: string | null })
           ) : null}
         </div>
 
+        <ProfileTabs studentId={studentId} active="overview" staff={false} />
         <Hero studentId={studentId} data={data} />
         {data?.isSelf ? <MyTargetCard /> : null}
 

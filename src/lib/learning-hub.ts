@@ -128,12 +128,3 @@ export const LANGUAGE_RESOURCES: Record<TargetLanguage, Resource[]> = {
     { name: "Exercism · JavaScript", url: "https://exercism.org/tracks/javascript", what: "Free practice problems with tests and feedback.", kind: "Practice" },
   ],
 };
-
-/** Small daily habits, ticked off on the quest page and saved on this device. */
-export const DAILY_QUESTS = [
-  { id: "solve", label: "Solve one practice problem", xp: 30 },
-  { id: "tip", label: "Try one tip from the training ground", xp: 15 },
-  { id: "review", label: "Re-read code you wrote yesterday and tidy it", xp: 20 },
-  { id: "errors", label: "Fix one bug without searching first", xp: 25 },
-  { id: "teach", label: "Explain a concept to a squadmate", xp: 20 },
-] as const;

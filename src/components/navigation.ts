@@ -17,9 +17,16 @@ import {
   Users,
   UserCheck,
   Target,
+  Dumbbell,
+  Lightbulb,
   type LucideIcon,
 } from "lucide-react";
+import type { ComponentType } from "react";
 import type { UserRole } from "@/lib/auth/profile";
+import { LeetCodeNavIcon } from "@/components/leetcode/leetcode-logo";
+
+/** A lucide icon, or any icon taking the same props (like the LeetCode mark). */
+export type NavIcon = LucideIcon | ComponentType<{ size?: number; className?: string; strokeWidth?: number }>;
 
 // ─── Navigation map ────────────────────────────────────────────────────────────
 // The navbar shows groups; each group's pages appear as tabs under the navbar.
@@ -28,7 +35,7 @@ import type { UserRole } from "@/lib/auth/profile";
 export type NavTab = {
   href: string;
   label: string;
-  icon: LucideIcon;
+  icon: NavIcon;
   roles: readonly UserRole[];
   /** Match only this exact path (e.g. /leaderboard must not match /leaderboard/language). */
   exact?: boolean;
@@ -92,6 +99,32 @@ export const navGroups: readonly NavGroup[] = [
         icon: Languages,
         roles: EVERYONE,
       },
+      {
+        href: "/leaderboard/leetcode",
+        label: "LeetCode",
+        icon: LeetCodeNavIcon,
+        roles: EVERYONE,
+      },
+    ],
+  },
+  {
+    key: "practice",
+    label: "Practice",
+    icon: Dumbbell,
+    roles: STUDENT,
+    tabs: [
+      {
+        href: "/student/practice",
+        label: "Suggested problems",
+        icon: Lightbulb,
+        roles: STUDENT,
+      },
+      {
+        href: "/student/leetcode",
+        label: "LeetCode",
+        icon: LeetCodeNavIcon,
+        roles: STUDENT,
+      },
     ],
   },
   {
@@ -137,6 +170,12 @@ export const navGroups: readonly NavGroup[] = [
         href: "/targets",
         label: "Belt targets",
         icon: Target,
+        roles: STAFF,
+      },
+      {
+        href: "/leetcode",
+        label: "LeetCode",
+        icon: LeetCodeNavIcon,
         roles: STAFF,
       },
     ],

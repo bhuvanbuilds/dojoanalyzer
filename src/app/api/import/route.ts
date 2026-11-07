@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import { DB_OPTIONS } from "@/lib/supabase/schema";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import Papa from "papaparse";
@@ -828,6 +829,7 @@ export async function POST(request: Request) {
       supabaseUrl,
       publishableKey,
       {
+        db: DB_OPTIONS.db,
         cookies: {
           getAll() {
             return cookieStore.getAll();

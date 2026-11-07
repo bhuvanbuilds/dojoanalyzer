@@ -10,7 +10,8 @@ import { CHANGELOG_LABELS, type ChangelogEntry, type ChangelogKind } from "@/lib
 import { setWhatsNewState } from "@/lib/whats-new-gate";
 
 const SEEN_KEY = "dojo:changelog-seen";
-const FIRST_VISIT_LIMIT = 3;
+// Someone with no record yet only hears about recent notes, never the backlog.
+const FIRST_VISIT_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
 
 const KIND_STYLE: Record<ChangelogKind, { icon: typeof Bug; tint: string; soft: string }> = {
   fix: { icon: Bug, tint: "#dc2626", soft: "color-mix(in srgb, #ef4444 13%, transparent)" },
@@ -30,13 +31,29 @@ function writeSeen(value: string) {
   try {
     window.localStorage.setItem(SEEN_KEY, value);
   } catch {
-    // Private mode or blocked storage: the popup may show again; that's fine.
+    // Private mode or blocked storage: the account record below still applies.
   }
+  void fetch("/api/changelog/seen", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ seenAt: value }),
+  }).catch(() => {});
 }
+
+function fetchAccountSeen(): Promise<string | null> {
+  return fetch("/api/changelog/seen", { cache: "no-store" })
+    .then((response) => (response.ok ? response.json() : { seenAt: null }))
+    .then((result: { seenAt?: string | null }) => result.seenAt ?? null)
+    .catch(() => null);
+}
+
+const later = (a: string | null, b: string | null) =>
+  !a ? b : !b ? a : new Date(a).getTime() >= new Date(b).getTime() ? a : b;
 
 /**
  * After new release notes are published, shows them once when someone opens
- * the app. "Seen" is remembered per browser by the newest publish time.
+ * the app. "Seen" is remembered per account (and per browser as a fallback)
+ * by the newest publish time, so signing in again never replays old notes.
  */
 export function WhatsNewPopup() {
   const pathname = usePathname();
@@ -46,26 +63,33 @@ export function WhatsNewPopup() {
 
   useEffect(() => {
     let active = true;
-    fetch("/api/changelog", { cache: "no-store" })
-      .then((response) => (response.ok ? response.json() : { entries: [] }))
-      .then((result: { entries?: ChangelogEntry[] }) => {
+    Promise.all([
+      fetch("/api/changelog", { cache: "no-store" }).then((response) => (response.ok ? response.json() : { entries: [] })),
+      fetchAccountSeen(),
+    ])
+      .then(([result, accountSeen]: [{ entries?: ChangelogEntry[] }, string | null]) => {
         if (!active) return;
         const nothing = () => setWhatsNewState("done");
+        const time = (value: string) => new Date(value).getTime();
         const published = (result.entries ?? [])
           .filter((entry) => entry.published && entry.published_at)
-          .sort((a, b) => b.published_at!.localeCompare(a.published_at!));
+          .sort((a, b) => time(b.published_at!) - time(a.published_at!));
         const newest = published[0]?.published_at;
         if (!newest) return nothing();
-        const seen = readSeen();
-        if (seen && seen >= newest) return nothing();
+        const seen = later(accountSeen, readSeen());
+        if (seen && time(seen) >= time(newest)) return nothing();
         // Reading the changelog itself counts as having seen it.
         if (window.location.pathname === "/changelog") {
           writeSeen(newest);
           return nothing();
         }
         const fresh = seen
-          ? published.filter((entry) => entry.published_at! > seen)
-          : published.slice(0, FIRST_VISIT_LIMIT);
+          ? published.filter((entry) => time(entry.published_at!) > time(seen))
+          : published.filter((entry) => Date.now() - time(entry.published_at!) < FIRST_VISIT_WINDOW_MS);
+        if (!fresh.length) {
+          writeSeen(newest);
+          return nothing();
+        }
         setEntries(fresh);
         setOpen(fresh.length > 0);
         setWhatsNewState(fresh.length > 0 ? "open" : "done");

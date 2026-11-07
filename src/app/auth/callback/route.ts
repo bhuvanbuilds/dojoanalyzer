@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import { DB_OPTIONS } from "@/lib/supabase/schema";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getCurrentUserProfile } from "@/lib/auth/profile";
@@ -19,6 +20,7 @@ export async function GET(request: Request) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
+      db: DB_OPTIONS.db,
       cookies: {
         getAll() {
           return cookieStore.getAll();
