@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { Award, Crown, Flame, Info } from "lucide-react";
+import { Award, Crown, Flame, Info, Zap } from "lucide-react";
 import { LightRays } from "@/components/reactbits/light-rays";
 import { Embers } from "@/components/fx/embers";
 import { LiquidGlass } from "@/components/fx/liquid-glass";
@@ -12,10 +12,12 @@ import { CountUp } from "@/components/reactbits/count-up";
 import { Dropdown } from "@/components/ui/dropdown";
 import { Frame, Page } from "@/components/ui/frame";
 import { Avatar } from "@/components/leetcode/leetcode-card";
+import { Heatmap } from "@/components/leetcode/heatmap";
 import { LeetCodeLogo, LEETCODE_ORANGE } from "@/components/leetcode/leetcode-logo";
 import { getCurrentUserProfile, type CurrentUserProfile } from "@/lib/auth/profile";
 import { useCachedProfile } from "@/lib/auth/use-cached-profile";
 import { DAILY_BONUS, POINTS } from "@/lib/gamification";
+import { istDay } from "@/lib/leetcode";
 
 type Period = "week" | "month" | "all";
 type Row = {
@@ -31,6 +33,11 @@ type Row = {
   daily: number;
   badges: number;
   isMe: boolean;
+  /** LeetCode submissions per IST day, last 18 weeks. */
+  activity_days: Record<string, number>;
+  total_solved: number | null;
+  streak: number | null;
+  solved_today: number;
 };
 type University = { id: string; name: string };
 
@@ -102,6 +109,7 @@ export function LeetCodeLeaderboard() {
     };
   }, [ready, isSuperAdmin, universityId, period]);
 
+  const [today] = useState(() => istDay());
   const top = (rows ?? []).slice(0, 3);
   const rest = (rows ?? []).slice(3);
   const me = (rows ?? []).find((row) => row.isMe);
@@ -196,9 +204,9 @@ export function LeetCodeLeaderboard() {
               </span>
             </div>
             {rest.length ? (
-              <ol className="divide-y divide-line border-t border-line">
+              <ol className="grid gap-px border-t border-line bg-line lg:grid-cols-2">
                 {rest.map((row, index) => (
-                  <RankRow key={row.student_id} row={row} index={index} />
+                  <RankCard key={row.student_id} row={row} index={index} today={today} />
                 ))}
               </ol>
             ) : null}
@@ -283,42 +291,59 @@ function Podium({ top }: { top: Row[] }) {
   );
 }
 
-function RankRow({ row, index }: { row: Row; index: number }) {
+/** One student: rank and photo, their numbers, then the green-dot activity calendar. */
+function RankCard({ row, index, today }: { row: Row; index: number; today: string }) {
+  const reduce = useReducedMotion();
   return (
     <motion.li
-      initial={{ opacity: 0, x: -8 }}
-      whileInView={{ opacity: 1, x: 0 }}
+      initial={reduce ? false : { opacity: 0, y: 10 }}
+      whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
-      transition={{ delay: Math.min(index, 10) * 0.025 }}
-      className={row.isMe ? "bg-[#FFA116]/10" : ""}
+      transition={{ delay: reduce ? 0 : Math.min(index, 10) * 0.03 }}
     >
-      <Link href={`/student/${row.student_id}/leetcode`} className="flex items-center gap-3 px-4 py-3 transition hover:bg-sunken/60 sm:px-5">
-      <span className="w-8 shrink-0 text-right font-display text-[15px] font-bold tabular-nums text-muted">{row.rank}</span>
-      <Avatar name={row.name} src={row.avatar_url} size={36} />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[14px] font-semibold text-ink">
-          {row.name}
-          {row.isMe ? <span className="ml-1.5 rounded bg-[#FFA116] px-1.5 py-0.5 text-[10.5px] font-bold text-[#0b0b0e]">YOU</span> : null}
-        </p>
-        <p className="truncate text-[12px] text-muted">
-          Squad {row.squad_number} · @{row.username}
-        </p>
-      </div>
-      <div className="hidden items-center gap-2 text-[11.5px] font-semibold tabular-nums sm:flex">
-        <span className="rounded-md bg-emerald-500/12 px-1.5 py-0.5 text-emerald-700 dark:text-emerald-300">E {row.solved.easy}</span>
-        <span className="rounded-md bg-amber-500/15 px-1.5 py-0.5 text-amber-700 dark:text-amber-300">M {row.solved.medium}</span>
-        <span className="rounded-md bg-red-500/12 px-1.5 py-0.5 text-red-700 dark:text-red-300">H {row.solved.hard}</span>
-      </div>
-      <span className="hidden w-14 items-center justify-end gap-1 text-[12px] text-muted md:inline-flex" title="Daily challenges done">
-        <Flame size={13} className="text-[#e8883a]" /> {row.daily}
-      </span>
-      <span className="hidden w-12 items-center justify-end gap-1 text-[12px] text-muted md:inline-flex" title="Achievements unlocked">
-        <Award size={13} className="text-[#d9a400]" /> {row.badges}
-      </span>
-      <span className="w-20 text-right font-display text-[17px] font-bold tabular-nums text-ink">
-        {row.points}
-        <span className="ml-0.5 text-[11px] font-medium text-muted">pts</span>
-      </span>
+      <Link
+        href={`/student/${row.student_id}/leetcode`}
+        className={`flex h-full flex-col gap-4 p-4 transition-colors sm:flex-row sm:items-center sm:px-5 ${row.isMe ? "bg-[#FFA116]/10" : "bg-surface hover:bg-surface-2"}`}
+      >
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <span className="w-9 shrink-0 text-right font-display text-[18px] font-bold tabular-nums text-faint">#{row.rank}</span>
+          <Avatar name={row.name} src={row.avatar_url} size={48} />
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-display text-[15px] font-semibold text-ink">
+              {row.name}
+              {row.isMe ? <span className="ml-1.5 rounded bg-[#FFA116] px-1.5 py-0.5 text-[10.5px] font-bold text-[#0b0b0e]">YOU</span> : null}
+            </p>
+            <p className="truncate text-[12px] text-muted">
+              Squad {row.squad_number} · @{row.username}
+            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11.5px] font-semibold tabular-nums">
+              <span className="font-display text-[17px] font-bold text-ink">
+                {row.points}
+                <span className="ml-0.5 text-[11px] font-medium text-muted">pts</span>
+              </span>
+              <span className="rounded-md bg-emerald-500/12 px-1.5 py-0.5 text-emerald-700 dark:text-emerald-300">E {row.solved.easy}</span>
+              <span className="rounded-md bg-amber-500/15 px-1.5 py-0.5 text-amber-700 dark:text-amber-300">M {row.solved.medium}</span>
+              <span className="rounded-md bg-red-500/12 px-1.5 py-0.5 text-red-700 dark:text-red-300">H {row.solved.hard}</span>
+            </div>
+            <div className="mt-1.5 flex flex-wrap items-center gap-3 text-[11.5px] text-muted">
+              <span className="inline-flex items-center gap-1" title="Total problems solved on LeetCode">
+                <Zap size={12} className="text-[#FFA116]" /> {row.total_solved ?? "–"} solved
+              </span>
+              <span className="inline-flex items-center gap-1" title="LeetCode day streak">
+                <Flame size={12} className="text-[#e8883a]" /> {row.streak ?? 0}d streak
+              </span>
+              <span className="inline-flex items-center gap-1" title="Achievements unlocked">
+                <Award size={12} className="text-[#d9a400]" /> {row.badges}
+              </span>
+            </div>
+          </div>
+        </div>
+        <div className="shrink-0 self-start sm:self-center">
+          <Heatmap days={row.activity_days} today={today} weeks={18} cell={9} gap={2} unit="submissions" />
+          <p className={`mt-1 text-[11px] ${row.solved_today > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-faint"}`}>
+            {row.solved_today > 0 ? `Solved ${row.solved_today} new today` : "No new solve yet today"}
+          </p>
+        </div>
       </Link>
     </motion.li>
   );
