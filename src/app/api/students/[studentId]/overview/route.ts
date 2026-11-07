@@ -9,6 +9,7 @@ import {
   type LanguageBelts,
 } from "@/lib/leaderboard/standings";
 import { isUuid } from "@/lib/is-uuid";
+import { loadLinks } from "@/lib/student-links-server";
 
 type RouteContext = { params: Promise<{ studentId: string }> };
 
@@ -125,6 +126,11 @@ export async function GET(_request: Request, context: RouteContext) {
       });
     }
 
+    const [links, leetcode] = await Promise.all([
+      loadLinks([studentId]),
+      supabaseAdmin.from("leetcode_accounts").select("username").eq("student_id", studentId).maybeSingle(),
+    ]);
+
     return NextResponse.json({
       student: {
         id: row.student_id,
@@ -132,6 +138,8 @@ export async function GET(_request: Request, context: RouteContext) {
         squad_number: row.squad_number,
         university_name: row.university_name,
       },
+      links: links.get(studentId) ?? { github: null, linkedin: null, codechef: null },
+      leetcode: (leetcode.data?.username as string | undefined) ?? null,
       levels: row.levels,
       previous: row.previous,
       total: totalOf(row.levels),

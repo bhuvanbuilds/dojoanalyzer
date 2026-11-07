@@ -438,7 +438,7 @@ export function LeaderboardBoard({ kind }: { kind: Kind }) {
   );
 }
 
-function SelectBox({
+export function SelectBox({
   label,
   value,
   onChange,

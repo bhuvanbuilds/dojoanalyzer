@@ -28,6 +28,8 @@ import {
   ROLE_LABELS,
   TOUR_IDS,
   TOURS,
+  UPDATE_IDS,
+  UPDATES,
   firstStepOn,
   nextPageIndex,
   pageMatches,
@@ -81,6 +83,8 @@ function readChecklist(role: TutorialRole): string[] {
 }
 
 type Status = "searching" | "ready" | "elsewhere";
+/** The full role tour, or the short tour of what's new since it. */
+type Mode = "tour" | "update";
 
 /**
  * Role-aware guided tutorial: a first-visit intro, a spotlight tour that the
@@ -101,13 +105,14 @@ export function Tutorial() {
   const [rect, setRect] = useState<DOMRect | null>(null);
   const [demo, setDemo] = useState(false);
   const [checked, setChecked] = useState<string[]>([]);
+  const [mode, setMode] = useState<Mode>("tour");
   const direction = useRef<1 | -1>(1);
   const cardRef = useRef<HTMLDivElement>(null);
   const returnFocus = useRef<HTMLElement | null>(null);
 
-  const steps = role ? TOURS[role] : NO_STEPS;
+  const steps = role ? (mode === "update" ? UPDATES[role] : TOURS[role]) : NO_STEPS;
   const step: TutorialStep | undefined = running ? steps[index] : undefined;
-  const tourId = role ? TOUR_IDS[role] : null;
+  const tourId = role ? (mode === "update" ? UPDATE_IDS[role] : TOUR_IDS[role]) : null;
 
   // ── Who is this, and have they seen it? ──────────────────────────────────
   useEffect(() => {
@@ -123,14 +128,19 @@ export function Tutorial() {
         setChecked(readChecklist(tour));
         // View as never auto-starts; developers launch it from the banner.
         if (viewing) return;
-        if (storage("session")?.getItem(snoozeKey(TOUR_IDS[tour]))) return;
         const response = await fetch("/api/tutorial", { cache: "no-store" });
         if (!response.ok) return; // Unknown state: don't risk nagging.
         const body = (await response.json()) as { completed?: string[] };
-        if (!active || (body.completed ?? []).includes(TOUR_IDS[tour])) return;
+        const completed = body.completed ?? [];
+        // Never seen the tour: the full one. Seen it: only what's new since.
+        const offer: Mode | null = !completed.includes(TOUR_IDS[tour]) ? "tour" : !completed.includes(UPDATE_IDS[tour]) ? "update" : null;
+        if (!active || !offer) return;
+        if (storage("session")?.getItem(snoozeKey(offer === "update" ? UPDATE_IDS[tour] : TOUR_IDS[tour]))) return;
         // What's new and any new belt target come first; the tour after them.
         await whenPopupsDone();
-        if (active) setIntro(true);
+        if (!active) return;
+        setMode(offer);
+        setIntro(true);
       })
       .catch(() => undefined);
     return () => {
@@ -150,14 +160,17 @@ export function Tutorial() {
 
   const record = useCallback(
     (outcome: "completed" | "skipped") => {
-      if (!tourId || previewing) return;
-      void fetch("/api/tutorial", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tour: tourId, outcome }),
-      }).catch(() => undefined);
+      if (!tourId || !role || previewing) return;
+      // The full tour already covers what's new, so it marks both as seen.
+      const tours = mode === "tour" ? [tourId, UPDATE_IDS[role]] : [tourId];
+      for (const tour of tours)
+        void fetch("/api/tutorial", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tour, outcome }),
+        }).catch(() => undefined);
     },
-    [tourId, previewing],
+    [tourId, role, mode, previewing],
   );
 
   const goTo = useCallback((next: number, dir: 1 | -1) => {
@@ -168,10 +181,12 @@ export function Tutorial() {
   }, []);
 
   const start = useCallback(
-    (fromPage = false) => {
+    (fromPage = false, which: Mode = "tour") => {
       if (!role) return;
       returnFocus.current = document.activeElement as HTMLElement | null;
-      const from = fromPage ? Math.max(0, firstStepOn(TOURS[role], window.location.pathname)) : 0;
+      setMode(which);
+      const list = which === "update" ? UPDATES[role] : TOURS[role];
+      const from = fromPage ? Math.max(0, firstStepOn(list, window.location.pathname)) : 0;
       setIntro(false);
       setHelp(false);
       setRunning(true);
@@ -308,7 +323,7 @@ export function Tutorial() {
   return (
     <>
       {intro ? (
-        <IntroCard role={role} onStart={() => start(false)} onLater={remindLater} onSkip={skipTour} />
+        <IntroCard role={role} mode={mode} onStart={() => start(false, mode)} onLater={remindLater} onSkip={skipTour} />
       ) : null}
       <HelpPanel
         open={help}
@@ -316,7 +331,7 @@ export function Tutorial() {
         pathname={pathname}
         checked={checked}
         onClose={() => setHelp(false)}
-        onStart={start}
+        onStart={(fromPage?: boolean) => start(fromPage, "tour")}
         onOpenHelp={() => setChecked(readChecklist(role))}
       />
       {step ? (
@@ -552,18 +567,21 @@ function Spotlight({
 // ─── First-visit intro ─────────────────────────────────────────────────────────
 function IntroCard({
   role,
+  mode,
   onStart,
   onLater,
   onSkip,
 }: {
   role: TutorialRole;
+  mode: Mode;
   onStart: () => void;
   onLater: () => void;
   onSkip: () => void;
 }) {
   const reduce = useReducedMotion();
-  const steps = TOURS[role].length;
-  const pages = new Set(TOURS[role].map((step) => step.page).filter((page) => page !== "*")).size;
+  const list = mode === "update" ? UPDATES[role] : TOURS[role];
+  const steps = list.length;
+  const pages = new Set(list.map((step) => step.page).filter((page) => page !== "*")).size;
   return createPortal(
     <div className="fixed inset-0 z-[300] grid place-items-end p-3 sm:place-items-center">
       <div aria-hidden="true" className="fixed inset-0 bg-[color-mix(in_srgb,#0a0a0c_45%,transparent)]" />
@@ -585,11 +603,12 @@ function IntroCard({
         >
           <Compass size={22} />
         </motion.span>
-        <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.12em] text-muted">{ROLE_LABELS[role]} tutorial</p>
+        <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.12em] text-muted">{mode === "update" ? "What’s new" : `${ROLE_LABELS[role]} tutorial`}</p>
         <h2 id="tutorial-intro-title" className="mt-1 font-display text-[21px] font-bold leading-tight tracking-[-0.025em]">
-          Want a guided walkthrough?
+          {mode === "update" ? "See what’s new: LeetCode, practice and targets" : "Want a guided walkthrough?"}
         </h2>
         <p className="mt-2 text-[14px] leading-6 text-ink-2">
+          {mode === "update" ? "Only the new features, not the whole tour. " : ""}
           {steps} short steps across {pages} {pages === 1 ? "page" : "pages"}. You click through the real app yourself, and nothing is changed for you. You can skip a page or stop at any time, and replay it later from Help.
         </p>
         <div className="mt-5 flex flex-wrap items-center justify-between gap-2">

@@ -87,7 +87,7 @@ export function PracticePage() {
   return (
     <Page className="pb-16">
       <AchievementToasts list={achievements} />
-      <div className="flex flex-col gap-4">
+      <div data-tour="practice" className="flex flex-col gap-4">
         <Hero
           data={data}
           onLanguage={(next) => {

@@ -13,7 +13,7 @@ const javascript = ts.transpileModule(source, {
   compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
 }).outputText;
 const config = await import(`data:text/javascript;base64,${Buffer.from(javascript).toString("base64")}`);
-const { TOURS, TOUR_IDS, tutorialRoleFor, pageMatches, nextPageIndex, firstStepOn, CSV_DEMO_STAGES } = config;
+const { TOURS, TOUR_IDS, UPDATES, UPDATE_IDS, ALL_TOUR_IDS, tutorialRoleFor, pageMatches, nextPageIndex, firstStepOn, CSV_DEMO_STAGES } = config;
 
 function files(dir) {
   return readdirSync(dir).flatMap((name) => {
@@ -127,4 +127,16 @@ test("Remind me later never records completion", () => {
   const remind = ui.slice(ui.indexOf("const remindLater"), ui.indexOf("const next = useCallback"));
   assert.ok(remind.length > 0);
   assert.ok(!remind.includes("record("));
+});
+
+test("what's new tours only hold steps that are also in the full tour", () => {
+  for (const [role, steps] of Object.entries(UPDATES)) {
+    assert.ok(steps.length > 0, `${role} has no new steps`);
+    const full = new Set(TOURS[role].map((step) => step.id));
+    for (const step of steps) assert.ok(full.has(step.id), `${role}: ${step.id} missing from the full tour`);
+    assert.ok(steps.length < TOURS[role].length, `${role}: the update tour should be shorter than the full tour`);
+  }
+  for (const id of Object.values(UPDATE_IDS)) assert.ok(ALL_TOUR_IDS.includes(id));
+  // Full tours keep their version so finished tours aren't replayed.
+  assert.deepEqual(Object.values(TOUR_IDS), ["student-v1", "mentor-v1", "campus-manager-v1", "super-admin-v1"]);
 });

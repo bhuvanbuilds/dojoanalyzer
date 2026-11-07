@@ -104,6 +104,7 @@ function MyLeetCode({ readOnly }: { readOnly: boolean }) {
             description="Solve at least one new problem every day (12 am to 12 am IST) to keep your card green. Re-solving a problem you already solved doesn’t count, but a problem you failed before and finally get accepted does."
           />
           <form
+            data-tour="lc-link"
             className="flex flex-wrap items-center gap-2 px-4 py-4 sm:px-5"
             onSubmit={(event) => {
               event.preventDefault();

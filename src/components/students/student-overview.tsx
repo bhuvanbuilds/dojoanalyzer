@@ -2,6 +2,7 @@
 
 import { ProfileTabs } from "@/components/students/profile-tabs";
 import { MyTargetCard } from "@/components/targets/my-target";
+import { ProfileLinks, type ProfileLinksData } from "@/components/students/profile-links";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
@@ -55,6 +56,8 @@ export type StudentOverview = {
     levels: Levels;
   }>;
   isSelf: boolean;
+  links?: ProfileLinksData;
+  leetcode?: string | null;
 };
 
 type Load =
@@ -314,6 +317,14 @@ function Hero({
               </span>
             ) : null}
           </p>
+          {data?.links || data?.leetcode ? (
+            <ProfileLinks
+              links={data.links ?? { github: null, linkedin: null, codechef: null }}
+              leetcode={data.leetcode}
+              size={34}
+              className="mt-3"
+            />
+          ) : null}
         </div>
         {data ? (
           <div className="flex items-center gap-5">

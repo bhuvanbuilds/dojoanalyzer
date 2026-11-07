@@ -167,6 +167,7 @@ export default function LeetCodeTrackerPage() {
 
   return (
     <Page>
+      <div data-tour="lc-tracker">
       <Frame>
         <FrameTitle
           eyebrow="Insights"
@@ -315,6 +316,7 @@ export default function LeetCodeTrackerPage() {
           </div>
         )}
       </Frame>
+      </div>
     </Page>
   );
 }

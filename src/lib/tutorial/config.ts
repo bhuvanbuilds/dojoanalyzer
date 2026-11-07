@@ -14,7 +14,19 @@ export const TOUR_IDS: Record<TutorialRole, string> = {
   super_admin: "super-admin-v1",
 };
 
-export const ALL_TOUR_IDS = Object.values(TOUR_IDS);
+/**
+ * Short "what's new" tours: only the steps added since the full tours above.
+ * People who already finished (or skipped) their full tour get just these;
+ * new people get everything in the full tour and never see them separately.
+ */
+export const UPDATE_IDS: Record<TutorialRole, string> = {
+  student: "student-new-leetcode-v1",
+  mentor: "mentor-new-leetcode-v1",
+  campus_manager: "campus-manager-new-leetcode-v1",
+  super_admin: "super-admin-new-leetcode-v1",
+};
+
+export const ALL_TOUR_IDS = [...Object.values(TOUR_IDS), ...Object.values(UPDATE_IDS)];
 
 export type TutorialAction =
   /** Read and press Next. */
@@ -57,6 +69,11 @@ export const PAGE_LABELS: Record<string, string> = {
   "/users": "Users",
   "/audit-logs": "Audit logs",
   "/support/inbox": "Tickets",
+  "/leaderboard/leetcode": "LeetCode leaderboard",
+  "/leetcode": "LeetCode tracker",
+  "/student/leetcode": "My LeetCode",
+  "/student/practice": "Practice",
+  "/student/target": "My target",
   "*": "Any page",
 };
 
@@ -91,6 +108,14 @@ const CLOSING: TutorialStep[] = [
   s("G5", "*", "account", "click", "Your account", "Use the account menu to open your profile, read What's new, or sign out."),
 ];
 
+// ─── LeetCode (shared by every role) ─────────────────────────────────────────────
+const leetcodeBoard = (prefix: string): TutorialStep[] => [
+  s(`${prefix}L1`, "/leaderboard/leetcode", "lc-hero", "none", "The LeetCode leaderboard", "Students earn points for every new LeetCode problem: more for Medium and Hard, plus a bonus for each daily challenge. Pick this week, this month or all time."),
+  s(`${prefix}L2`, "/leaderboard/leetcode", "lc-today", "click", "Green or red today", "A green ring means the student solved a new problem today (12 am to 12 am IST). Red means not yet. Use these chips to show only one group."),
+  s(`${prefix}L3`, "/leaderboard/leetcode", "lc-filters", "click", "Same filters as the belt board", "Narrow by university, squad or period, or search for a name. The scope chips switch between everyone, a campus and a squad."),
+  s(`${prefix}L4`, "/leaderboard/leetcode", "lc-cards", "none", "Every student's card", "Points, the Easy, Medium and Hard split, total solved, streak, badges and six months of activity. The round icons open their LeetCode, GitHub, LinkedIn and CodeChef profiles."),
+];
+
 // ─── Student ───────────────────────────────────────────────────────────────────
 const STUDENT: TutorialStep[] = [
   s("S1", "/leaderboard", "lb-hero", "none", "Welcome to the leaderboards", "See how belt progress compares across the leaderboard scopes available to you. Rankings reflect recorded Dojo belt results, not attendance."),
@@ -102,6 +127,10 @@ const STUDENT: TutorialStep[] = [
   s("S7", "/student", "belts", "none", "Belts you've earned", "Your current belt in each language and any recent move up. An earned belt is kept even if you miss a later test."),
   s("S8", "/student", "progress", "none", "Follow your progress", "The weekly graph and language breakdown show how your results develop. Week numbers belong to an academic year, so compare within the same year."),
   s("S9", "/student", "student-compare", "none", "Compare your progress", "Where data is available, see how each language compares with your squad and campus averages. Use it as context for your own history."),
+  s("S10", "/student/target", "quest-hero", "none", "Your monthly target", "When your mentor or campus manager sets a belt target for the month, it appears here with your progress. You'll get an email when a new one is set."),
+  s("S11", "/student/practice", "practice", "none", "Practice for your next belt", "Problems picked for the next belt in each language, plus a daily challenge that earns bonus LeetCode points."),
+  s("S12", "/student/leetcode", "lc-link", "none", "LeetCode is required", "Every student links their LeetCode username here. Until it's linked, the app brings you back to this page. Your stats then sync on their own."),
+  ...leetcodeBoard("S"),
   ...CLOSING,
 ];
 
@@ -130,6 +159,8 @@ const MENTOR: TutorialStep[] = [
   s("M21", "/analytics", "an-trend", "click", "Follow the trend", "See progress across the year or month by month."),
   s("MT1", "/targets", "targets-filters", "click", "Pick students for a target", "Filter by squad, by belt level (e.g. everyone at Java belt 3), or by who has no target yet. Tick students, or use the top checkbox to select everyone shown."),
   s("MT2", "/targets", "targets-list", "none", "Monthly belt targets", "Each row shows the student's belts now, their target for the month and progress so far. Once you select students, a bar appears to set a total or per-language target and email them."),
+  s("MT0", "/leetcode", "lc-tracker", "none", "Today's LeetCode check", "Every student you look after, as a card: green solved a new problem today, red hasn't yet. Sort, search or filter to follow up."),
+  ...leetcodeBoard("M"),
   ...CLOSING,
 ];
 
@@ -177,6 +208,8 @@ const CAMPUS_MANAGER: TutorialStep[] = [
   s("CM44", "/imports/[id]", "imd-errors", "none", "Review validation errors", "Row-level reasons a row or file was rejected."),
   s("CMT1", "/targets", "targets-filters", "click", "Pick students for a target", "Filter by squad, by belt level (e.g. everyone at Java belt 3), or by who has no target yet. Tick students, or use the top checkbox to select everyone shown."),
   s("CMT2", "/targets", "targets-list", "none", "Monthly belt targets", "Each row shows the student's belts now, their target for the month and progress so far. Once you select students, a bar appears to set a total or per-language target and email them."),
+  s("CMT0", "/leetcode", "lc-tracker", "none", "Today's LeetCode check", "Every student you look after, as a card: green solved a new problem today, red hasn't yet. Sort, search or filter to follow up."),
+  ...leetcodeBoard("CM"),
   ...CLOSING,
 ];
 
@@ -226,6 +259,8 @@ const SUPER_ADMIN: TutorialStep[] = [
   s("SA41", "/support/inbox", "inbox-intro", "none", "Confirm before acting", "Messages, notes, ticket changes and changelog entries take effect immediately. Make sure you mean it."),
   s("SAT1", "/targets", "targets-filters", "click", "Pick students for a target", "Filter by squad, by belt level (e.g. everyone at Java belt 3), or by who has no target yet. Tick students, or use the top checkbox to select everyone shown."),
   s("SAT2", "/targets", "targets-list", "none", "Monthly belt targets", "Each row shows the student's belts now, their target for the month and progress so far. Once you select students, a bar appears to set a total or per-language target and email them."),
+  s("SAT0", "/leetcode", "lc-tracker", "none", "Today's LeetCode check", "Every student you look after, as a card: green solved a new problem today, red hasn't yet. Sort, search or filter to follow up."),
+  ...leetcodeBoard("SA"),
   ...CLOSING,
 ];
 
@@ -234,6 +269,21 @@ export const TOURS: Record<TutorialRole, TutorialStep[]> = {
   mentor: MENTOR,
   campus_manager: CAMPUS_MANAGER,
   super_admin: SUPER_ADMIN,
+};
+
+/** Step ids added with the LeetCode, practice and target features. */
+const NEW_STEP_IDS = new Set([
+  "S10", "S11", "S12", "SL1", "SL2", "SL3", "SL4",
+  "MT0", "ML1", "ML2", "ML3", "ML4",
+  "CMT0", "CML1", "CML2", "CML3", "CML4",
+  "SAT0", "SAL1", "SAL2", "SAL3", "SAL4",
+]);
+
+export const UPDATES: Record<TutorialRole, TutorialStep[]> = {
+  student: STUDENT.filter((step) => NEW_STEP_IDS.has(step.id)),
+  mentor: MENTOR.filter((step) => NEW_STEP_IDS.has(step.id)),
+  campus_manager: CAMPUS_MANAGER.filter((step) => NEW_STEP_IDS.has(step.id)),
+  super_admin: SUPER_ADMIN.filter((step) => NEW_STEP_IDS.has(step.id)),
 };
 
 export const ROLE_LABELS: Record<TutorialRole, string> = {
@@ -274,12 +324,17 @@ export const CHECKLISTS: Record<TutorialRole, ChecklistItem[]> = {
     { id: "profile", label: "Look at your belts and progress", href: "/student" },
     { id: "leaderboard", label: "Find your rank on the leaderboard", href: "/leaderboard" },
     { id: "language", label: "Check a language leaderboard", href: "/leaderboard/language" },
+    { id: "leetcode", label: "Link your LeetCode", href: "/student/leetcode" },
+    { id: "leetcode-board", label: "Find yourself on the LeetCode board", href: "/leaderboard/leetcode" },
+    { id: "target", label: "Check this month's target", href: "/student/target" },
   ],
   mentor: [
     { id: "dashboard", label: "Check this week's dashboard", href: "/" },
     { id: "comparison", label: "Compare two weeks", href: "/weekly-comparison" },
     { id: "analytics", label: "Look at monthly analytics", href: "/analytics" },
     { id: "leaderboard", label: "Browse the leaderboard", href: "/leaderboard" },
+    { id: "targets", label: "Set a monthly belt target", href: "/targets" },
+    { id: "leetcode", label: "See who solved LeetCode today", href: "/leetcode" },
   ],
   campus_manager: [
     { id: "dashboard", label: "Check this week's dashboard", href: "/" },
@@ -287,6 +342,8 @@ export const CHECKLISTS: Record<TutorialRole, ChecklistItem[]> = {
     { id: "mentors", label: "Add your mentors and their squads", href: "/mentors" },
     { id: "imports", label: "Look through import history", href: "/imports" },
     { id: "comparison", label: "Compare two weeks", href: "/weekly-comparison" },
+    { id: "targets", label: "Set a monthly belt target", href: "/targets" },
+    { id: "leetcode", label: "See who solved LeetCode today", href: "/leetcode" },
   ],
   super_admin: [
     { id: "universities", label: "Review universities", href: "/universities" },

@@ -93,7 +93,7 @@ function Hero({ mine, month }: { mine: Mine; month: string }) {
   const done = Boolean(progress?.done);
   const left = daysLeft(month);
   return (
-    <section className="relative isolate overflow-hidden rounded-2xl border border-white/10 bg-[#07070a] text-white shadow-[0_30px_80px_-40px_rgba(0,0,0,0.8)]">
+    <section data-tour="quest-hero" className="relative isolate overflow-hidden rounded-2xl border border-white/10 bg-[#07070a] text-white shadow-[0_30px_80px_-40px_rgba(0,0,0,0.8)]">
       <AuroraShader base="#060609" mid={done ? "#0d2a19" : "#2a0e10"} glow={done ? "#3dbb6f" : "#ef3837"} intensity={1.05} />
       <CodeRain accent={done ? "61,187,111" : "255,161,22"} density={0.8} />
       <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-r from-[#07070a] via-[#07070a]/70 to-transparent" />
