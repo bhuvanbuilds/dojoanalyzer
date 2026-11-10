@@ -142,11 +142,13 @@ test("what's new tours only hold steps that are also in the full tour", () => {
 });
 
 test("what's new only shows releases the person hasn't seen", () => {
-  const [leetcode, languages] = UPDATE_IDS.mentor;
+  const [leetcode, languages, accounts] = UPDATE_IDS.mentor;
   assert.equal(pendingUpdate("mentor", []).steps.length, UPDATES.mentor.length);
   const afterFirst = pendingUpdate("mentor", [TOUR_IDS.mentor, leetcode]);
-  assert.deepEqual(afterFirst.ids, [languages]);
+  assert.deepEqual(afterFirst.ids, [languages, accounts]);
   assert.ok(afterFirst.steps.length > 0 && afterFirst.steps.length < UPDATES.mentor.length);
-  assert.ok(afterFirst.steps.every((step) => !step.page.startsWith("/leetcode")));
-  assert.equal(pendingUpdate("mentor", [leetcode, languages]).steps.length, 0);
+  const onlyAccounts = pendingUpdate("mentor", [TOUR_IDS.mentor, leetcode, languages]);
+  assert.deepEqual(onlyAccounts.ids, [accounts]);
+  assert.deepEqual(onlyAccounts.steps.map((step) => step.id), ["MX1", "MX2"]);
+  assert.equal(pendingUpdate("mentor", [leetcode, languages, accounts]).steps.length, 0);
 });

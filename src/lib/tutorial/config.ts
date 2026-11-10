@@ -27,6 +27,7 @@ const RELEASES: Array<{ id: string; steps: string[] }> = [
     steps: ["S10", "S11", "S12", "SL1", "SL2", "SL3", "SL4", "MT0", "ML1", "ML2", "ML3", "ML4", "CMT0", "CML1", "CML2", "CML3", "CML4", "SAT0", "SAL1", "SAL2", "SAL3", "SAL4"],
   },
   { id: "new-languages-v1", steps: ["S13", "MTP", "MR1", "CMTP", "CMR1", "SATP", "SAR1"] },
+  { id: "new-accounts-v1", steps: ["MX1", "MX2", "CMX1", "CMX2", "SAX1", "SAX2"] },
 ];
 
 /** Stored tour id for a role's release, e.g. "mentor-new-leetcode-v1". */
@@ -122,6 +123,12 @@ const CLOSING: TutorialStep[] = [
 ];
 
 // ─── LeetCode (shared by every role) ─────────────────────────────────────────────
+/** Staff tools added in Nov 2026: weekly LeetCode report and editing a student's languages and accounts. */
+const staffAccounts = (prefix: string): TutorialStep[] => [
+  s(`${prefix}X1`, "/leetcode", "lc-report", "none", "Weekly LeetCode report", "Pick a week and download an Excel sheet: every student, each day marked active or inactive on LeetCode, with the days they missed listed. Students without LeetCode linked are flagged."),
+  s(`${prefix}X2`, "/leetcode", "lc-tracker", "none", "Edit languages and accounts", "Open any student's profile and choose Edit languages & accounts to set their primary and secondary language, personal email, and LeetCode, GitHub, LinkedIn and CodeChef. Linking LeetCode there starts tracking at once."),
+];
+
 const leetcodeBoard = (prefix: string): TutorialStep[] => [
   s(`${prefix}L1`, "/leaderboard/leetcode", "lc-hero", "none", "The LeetCode leaderboard", "Students earn points for every new LeetCode problem: more for Medium and Hard, plus a bonus for each daily challenge. Pick this week, this month or all time."),
   s(`${prefix}L2`, "/leaderboard/leetcode", "lc-today", "click", "Green or red today", "A green ring means the student solved a new problem today (12 am to 12 am IST). Red means not yet. Use these chips to show only one group."),
@@ -177,6 +184,7 @@ const MENTOR: TutorialStep[] = [
   s("MR1", "/leaderboard", "lb-rank-by", "click", "Rank by languages", "All belts ranks by total belts. Primary belt ranks everyone by the belt in their own primary language, whatever that language is; Secondary belt does the same for their second language."),
   s("MT0", "/leetcode", "lc-tracker", "none", "Today's LeetCode check", "Every student you look after, as a card: green solved a new problem today, red hasn't yet. Sort, search or filter to follow up."),
   ...leetcodeBoard("M"),
+  ...staffAccounts("M"),
   ...CLOSING,
 ];
 
@@ -228,6 +236,7 @@ const CAMPUS_MANAGER: TutorialStep[] = [
   s("CMR1", "/leaderboard", "lb-rank-by", "click", "Rank by languages", "All belts ranks by total belts. Primary belt ranks everyone by the belt in their own primary language, whatever that language is; Secondary belt does the same for their second language."),
   s("CMT0", "/leetcode", "lc-tracker", "none", "Today's LeetCode check", "Every student you look after, as a card: green solved a new problem today, red hasn't yet. Sort, search or filter to follow up."),
   ...leetcodeBoard("CM"),
+  ...staffAccounts("CM"),
   ...CLOSING,
 ];
 
@@ -281,6 +290,7 @@ const SUPER_ADMIN: TutorialStep[] = [
   s("SAR1", "/leaderboard", "lb-rank-by", "click", "Rank by languages", "All belts ranks by total belts. Primary belt ranks everyone by the belt in their own primary language, whatever that language is; Secondary belt does the same for their second language."),
   s("SAT0", "/leetcode", "lc-tracker", "none", "Today's LeetCode check", "Every student you look after, as a card: green solved a new problem today, red hasn't yet. Sort, search or filter to follow up."),
   ...leetcodeBoard("SA"),
+  ...staffAccounts("SA"),
   ...CLOSING,
 ];
 

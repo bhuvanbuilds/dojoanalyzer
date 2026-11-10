@@ -233,6 +233,7 @@ export default function LeetCodeTrackerPage() {
               >
                 <Upload size={14} /> Import usernames
               </button>
+              <span data-tour="lc-report" className="inline-flex items-center gap-2">
               <input
                 type="week"
                 aria-label="Report week"
@@ -250,6 +251,7 @@ export default function LeetCodeTrackerPage() {
               >
                 <Download size={14} /> Weekly report
               </a>
+              </span>
               <button
                 type="button"
                 disabled={syncing}
