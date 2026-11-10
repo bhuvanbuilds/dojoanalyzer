@@ -1,6 +1,7 @@
 "use client";
 
 import { ProfileTabs } from "@/components/students/profile-tabs";
+import { StudentAccounts } from "@/components/students/student-accounts";
 import { MyTargetCard } from "@/components/targets/my-target";
 import { ProfileLinks, type ProfileLinksData } from "@/components/students/profile-links";
 import Link from "next/link";
@@ -172,6 +173,7 @@ export function StudentOverviewPage({ studentId }: { studentId: string | null })
         </div>
 
         <ProfileTabs studentId={studentId} active="overview" staff={false} />
+        <StudentAccounts studentId={studentId} />
         <Hero studentId={studentId} data={data} />
         {data?.isSelf ? <MyTargetCard /> : null}
 

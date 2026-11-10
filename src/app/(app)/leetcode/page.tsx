@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { RefreshCw, Search, Upload } from "lucide-react";
+import { Download, RefreshCw, Search, Upload } from "lucide-react";
 import { getCurrentUserProfile, type CurrentUserProfile } from "@/lib/auth/profile";
 import { useCachedProfile } from "@/lib/auth/use-cached-profile";
 import { Frame, FrameTitle, Page } from "@/components/ui/frame";
@@ -16,6 +16,25 @@ type Sort = "status" | "today" | "streak" | "total" | "name";
 const STATUS_ORDER: Record<CardStatus, number> = { pending: 0, solved: 1, missing: 2 };
 
 /** Staff view: who solved LeetCode problems today, as colour-coded cards. */
+/** "2026-W46" for a date (ISO week). */
+function isoWeek(date: Date) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const day = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - day);
+  const start = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const week = Math.ceil(((d.getTime() - start.getTime()) / 86_400_000 + 1) / 7);
+  return `${d.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
+}
+/** Monday of an ISO week value, as YYYY-MM-DD. */
+function weekToDay(value: string) {
+  const match = /^(\d{4})-W(\d{2})$/.exec(value);
+  if (!match) return "";
+  const jan4 = new Date(Date.UTC(Number(match[1]), 0, 4));
+  const monday = new Date(jan4);
+  monday.setUTCDate(jan4.getUTCDate() - ((jan4.getUTCDay() + 6) % 7) + (Number(match[2]) - 1) * 7);
+  return monday.toISOString().slice(0, 10);
+}
+
 export default function LeetCodeTrackerPage() {
   const cachedProfile = useCachedProfile();
   const [loadedProfile, setLoadedProfile] = useState<CurrentUserProfile | null>(null);
@@ -35,6 +54,8 @@ export default function LeetCodeTrackerPage() {
   const [today] = useState(() => istDay());
   const [universities, setUniversities] = useState<University[]>([]);
   const [universityId, setUniversityId] = useState("");
+  // <input type="week"> value, e.g. "2026-W46"; defaults to this week.
+  const [reportWeek, setReportWeek] = useState(() => isoWeek(new Date()));
   const [cards, setCards] = useState<LeetCodeCard[] | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState("");
@@ -212,6 +233,23 @@ export default function LeetCodeTrackerPage() {
               >
                 <Upload size={14} /> Import usernames
               </button>
+              <input
+                type="week"
+                aria-label="Report week"
+                value={reportWeek}
+                onChange={(event) => setReportWeek(event.target.value)}
+                className="h-9 rounded-lg border border-line-strong bg-surface px-2 text-[13px] text-ink-2"
+              />
+              <a
+                href={`/api/leetcode/report?${new URLSearchParams({
+                  week: weekToDay(reportWeek),
+                  ...(isSuperAdmin && universityId ? { university_id: universityId } : {}),
+                })}`}
+                title="Who was active on LeetCode on each day of that week"
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line-strong bg-surface px-3 text-[13px] font-medium text-ink-2 hover:text-ink"
+              >
+                <Download size={14} /> Weekly report
+              </a>
               <button
                 type="button"
                 disabled={syncing}
