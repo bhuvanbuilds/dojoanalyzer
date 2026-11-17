@@ -2,15 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { Award, Building2, Check, Crown, Flame, Globe2, Info, RefreshCw, Search, Users, X, Zap } from "lucide-react";
+import { Award, Building2, Check, Flame, Globe2, Info, RefreshCw, Search, Users, X, Zap } from "lucide-react";
 import { LightRays } from "@/components/reactbits/light-rays";
 import { Embers } from "@/components/fx/embers";
 import { LiquidGlass } from "@/components/fx/liquid-glass";
 import { RevealText } from "@/components/fx/reveal-text";
-import { CountUp } from "@/components/reactbits/count-up";
 import { SelectBox } from "@/components/leaderboard/board";
+import { Podium } from "@/components/leaderboard/podium";
 import { Frame, Page } from "@/components/ui/frame";
 import { Avatar } from "@/components/leetcode/leetcode-card";
 import { Heatmap } from "@/components/leetcode/heatmap";
@@ -61,7 +61,6 @@ const PERIODS: Array<[Period, string]> = [
   ["month", "This month"],
   ["all", "All time"],
 ];
-const MEDAL = ["#F5C451", "#C9D1D9", "#D08A57"];
 const DONE = "#22c55e";
 const PENDING = "#ef4444";
 
@@ -72,6 +71,7 @@ const PENDING = "#ef4444";
  * "solved today" filter. Every role sees every campus.
  */
 export function LeetCodeLeaderboard() {
+  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const cachedProfile = useCachedProfile();
@@ -249,7 +249,21 @@ export function LeetCodeLeaderboard() {
                 {filtered ? "No students match these filters." : "No one has linked LeetCode yet. Link yours under Practice → LeetCode to claim the first spot."}
               </div>
             ) : (
-              <Podium top={top} />
+              <Podium
+                top={top.map((row) => ({
+                  rank: row.rank,
+                  studentId: row.student_id,
+                  name: row.name,
+                  squad: row.squad_number,
+                  university: row.university_name,
+                  universityId: null,
+                  score: row.total,
+                  change: 0,
+                }))}
+                scoreLabel="solved"
+                currentStudentId={top.find((row) => row.isMe)?.student_id ?? null}
+                onOpen={(student) => router.push(`/student/${student.studentId}/leetcode`)}
+              />
             )}
           </div>
         </section>
@@ -428,60 +442,6 @@ function StatusAvatar({ row, size, ring }: { row: Row; size: number; ring?: stri
         {done ? <Check size={dot - 4} strokeWidth={3.5} className="text-white" /> : <X size={dot - 4} strokeWidth={3.5} className="text-white" />}
       </span>
     </span>
-  );
-}
-
-function Podium({ top }: { top: Row[] }) {
-  const reduce = useReducedMotion();
-  // Second, first, third, so the winner stands in the middle.
-  const order = useMemo(() => [top[1], top[0], top[2]], [top]);
-  const heights = [132, 176, 108];
-  return (
-    <div className="mx-auto grid max-w-3xl grid-cols-3 items-end gap-3 sm:gap-6">
-      {order.map((row, slot) => {
-        const place = slot === 1 ? 0 : slot === 0 ? 1 : 2;
-        if (!row) return <div key={slot} />;
-        return (
-          <motion.div
-            key={row.student_id}
-            className="flex flex-col items-center"
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: reduce ? 0 : 0.15 + (2 - place) * 0.12, type: "spring", stiffness: 160, damping: 18 }}
-          >
-            <Link href={`/student/${row.student_id}/leetcode`} className="flex flex-col items-center transition hover:scale-[1.03]">
-              <div className="relative">
-                {place === 0 ? (
-                  <motion.span
-                    className="absolute -top-6 left-1/2 z-10 -translate-x-1/2"
-                    animate={reduce ? undefined : { y: [0, -4, 0], rotate: [0, -6, 6, 0] }}
-                    transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
-                  >
-                    <Crown size={22} fill={MEDAL[0]} color={MEDAL[0]} />
-                  </motion.span>
-                ) : null}
-                <StatusAvatar row={row} size={place === 0 ? 72 : 58} ring={`conic-gradient(${MEDAL[place]}, #ffffff40, ${MEDAL[place]})`} />
-              </div>
-              <p className={`mt-2 max-w-[150px] truncate text-center text-[13.5px] font-semibold ${row.isMe ? "text-[#ffcf8a]" : ""}`}>
-                {row.name}
-                {row.isMe ? " (you)" : ""}
-              </p>
-              <p className="text-[11.5px] text-white/50">Squad {row.squad_number}</p>
-            </Link>
-            <div
-              className="mt-3 flex w-full flex-col items-center justify-start rounded-t-xl border border-b-0 border-white/10 pt-3"
-              style={{ height: heights[slot], background: `linear-gradient(180deg, ${MEDAL[place]}33, #ffffff08 70%)` }}
-            >
-              <span className="font-display text-[26px] font-extrabold leading-none tabular-nums" style={{ color: MEDAL[place] }}>
-                <CountUp to={row.total} duration={1.1} />
-              </span>
-              <span className="mt-1 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-white/45">solved</span>
-              <span className="mt-2 font-display text-[34px] font-extrabold leading-none text-white/15">{place + 1}</span>
-            </div>
-          </motion.div>
-        );
-      })}
-    </div>
   );
 }
 
