@@ -530,7 +530,7 @@ function RankCard({ row, index, today }: { row: Row; index: number; today: strin
       <Link href={`/student/${row.student_id}/leetcode`} aria-label={`Open ${row.name}’s LeetCode profile`} className="absolute inset-0" />
       <span aria-hidden="true" className="absolute inset-y-0 left-0 w-[3px]" style={{ background: done ? DONE : PENDING }} />
       <div className="pointer-events-none relative flex h-full flex-col gap-4 p-4 sm:flex-row sm:items-center sm:px-5">
-        <div className="flex min-w-0 flex-1 items-center gap-3">
+        <div className="flex min-w-0 flex-1 items-center gap-3 sm:w-[380px] sm:flex-none">
           <span className="w-9 shrink-0 text-right font-display text-[18px] font-bold tabular-nums text-faint">#{row.rank}</span>
           <StatusAvatar row={row} size={48} />
           <div className="min-w-0 flex-1">
@@ -560,8 +560,8 @@ function RankCard({ row, index, today }: { row: Row; index: number; today: strin
             <ProfileLinks links={row.links} leetcode={row.username} size={28} className="pointer-events-auto relative mt-3" />
           </div>
         </div>
-        <div className="shrink-0 self-start sm:self-center">
-          <Heatmap days={row.activity_days} today={today} weeks={26} cell={10} gap={2} unit="submissions" />
+        <div className="w-full min-w-0 self-start sm:w-auto sm:flex-1 sm:self-center">
+          <Heatmap days={row.activity_days} today={today} weeks={53} cell={12} gap={3} showMonths fill unit="submissions" />
           <p
             className={`mt-1.5 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${
               done ? "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300" : "bg-red-500/10 text-red-700 dark:text-red-300"

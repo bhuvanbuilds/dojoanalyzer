@@ -9,8 +9,8 @@ import { loadLinks } from "@/lib/student-links-server";
 // A Refresh pulls every student on the view from LeetCode, which takes a while.
 export const maxDuration = 60;
 
-// The cards show the last 26 weeks of LeetCode activity.
-const CALENDAR_DAYS = 26 * 7;
+// The cards show up to a year of LeetCode activity (as many weeks as fit).
+const CALENDAR_DAYS = 53 * 7;
 
 /**
  * GET ?period=week|month|all&university_id&squad_id&search&today=done|pending&refresh=1:

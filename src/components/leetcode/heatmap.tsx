@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -32,6 +32,7 @@ export function Heatmap({
   showMonths = false,
   unit = "problems",
   className = "",
+  fill = false,
 }: {
   days: Record<string, number>;
   today: string;
@@ -41,30 +42,46 @@ export function Heatmap({
   showMonths?: boolean;
   unit?: string;
   className?: string;
+  /** Show as many weeks as fit the container's width (up to `weeks`). */
+  fill?: boolean;
 }) {
+  const box = useRef<HTMLDivElement>(null);
+  const [fitted, setFitted] = useState<number | null>(null);
+  useEffect(() => {
+    const host = box.current;
+    if (!fill || !host) return;
+    const observer = new ResizeObserver(([entry]) => {
+      const room = Math.floor((entry.contentRect.width + gap) / (cell + gap));
+      setFitted(Math.max(4, Math.min(weeks, room)));
+    });
+    observer.observe(host);
+    return () => observer.disconnect();
+  }, [fill, weeks, cell, gap]);
+  const shown = fill ? (fitted ?? Math.min(weeks, 26)) : weeks;
+
   const columns = useMemo(() => {
     const weekday = new Date(`${today}T00:00:00Z`).getUTCDay();
-    const start = addDays(today, -weekday - (weeks - 1) * 7);
-    return Array.from({ length: weeks }, (_, week) =>
+    const start = addDays(today, -weekday - (shown - 1) * 7);
+    return Array.from({ length: shown }, (_, week) =>
       Array.from({ length: 7 }, (_, dow) => {
         const day = addDays(start, week * 7 + dow);
         return { day, future: day > today, count: days[day] ?? 0 };
       }),
     );
-  }, [days, today, weeks]);
+  }, [days, today, shown]);
 
-  const width = weeks * (cell + gap) - gap;
+  const width = shown * (cell + gap) - gap;
   const top = showMonths ? 14 : 0;
   const height = top + 7 * (cell + gap) - gap;
 
-  return (
+  const chart = (
     <svg
       width={width}
       height={height}
       viewBox={`0 0 ${width} ${height}`}
       className={`block max-w-full ${className}`}
       role="img"
-      aria-label={`Activity over the last ${weeks} weeks`}
+      aria-label={`Activity over the last ${shown} weeks`}
       style={
         {
           "--heat-0": "color-mix(in srgb, var(--ink) 8%, transparent)",
@@ -108,5 +125,12 @@ export function Heatmap({
         ),
       )}
     </svg>
+  );
+  return fill ? (
+    <div ref={box} className="w-full min-w-0">
+      {chart}
+    </div>
+  ) : (
+    chart
   );
 }
