@@ -130,8 +130,29 @@ export function totalOf(belts: LanguageBelts) {
   return belts.cpp + belts.java + belts.nodejs + belts.python;
 }
 
+// Standings only change when belts are imported, but every leaderboard view
+// (each belt, scope and search) asks for them. Share one load per period for
+// a short while instead of re-reading every record on each click.
+const STANDINGS_CACHE_MS = 20_000;
+const standingsCache = new Map<string, { at: number; value: ReturnType<typeof readStandings> }>();
+
+/** Drop cached standings (after an import changes belts). */
+export function clearStandingsCache() {
+  standingsCache.clear();
+}
+
 /** Loads standings for a period key ("2026-14"); defaults to the latest. */
-export async function loadStandings(requestedPeriod: string | null) {
+export function loadStandings(requestedPeriod: string | null) {
+  const key = requestedPeriod ?? "";
+  const hit = standingsCache.get(key);
+  if (hit && Date.now() - hit.at < STANDINGS_CACHE_MS) return hit.value;
+  const value = readStandings(requestedPeriod);
+  standingsCache.set(key, { at: Date.now(), value });
+  value.catch(() => standingsCache.delete(key));
+  return value;
+}
+
+async function readStandings(requestedPeriod: string | null) {
   const [memberships, weeks] = await Promise.all([
     loadAll(async (from, to) => {
       const { data, error } = await supabaseAdmin

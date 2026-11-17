@@ -126,28 +126,67 @@ export async function getCurrentUserProfile(
   return cached.promise;
 }
 
-/** A mentor's assigned squads; an error counts as none, so nothing leaks. */
-async function loadMentorSquads(client: SupabaseClient, profileId: string) {
-  const { data, error } = await client
-    .from("mentor_squads")
-    .select("squad_id")
-    .eq("profile_id", profileId);
-  if (error) return [];
-  return (data ?? []).map((row) => row.squad_id as string);
-}
-
 /** Applies a developer's "View as" choice; everyone else is untouched. */
 function withViewAs(result: CurrentUserProfile, raw: string | null | undefined): CurrentUserProfile {
   if (result.status !== "authenticated") return result;
   return { ...result, profile: applyViewAs(result.profile, raw) };
 }
 
+/**
+ * The signed-in user, verified from the session JWT. The project signs JWTs
+ * with an asymmetric key, so getClaims checks the signature locally (keys are
+ * cached) instead of a round trip to the auth server on every request.
+ */
+async function verifiedUser(client: SupabaseClient): Promise<User | null> {
+  const { data, error } = await client.auth.getClaims();
+  const claims = data?.claims;
+  if (error || !claims?.sub) return null;
+  return {
+    id: claims.sub,
+    email: typeof claims.email === "string" ? claims.email : undefined,
+    phone: typeof claims.phone === "string" ? claims.phone : undefined,
+    role: typeof claims.role === "string" ? claims.role : undefined,
+    aud: typeof claims.aud === "string" ? claims.aud : "authenticated",
+    app_metadata: (claims.app_metadata ?? {}) as User["app_metadata"],
+    user_metadata: (claims.user_metadata ?? {}) as User["user_metadata"],
+    created_at: "",
+  } as User;
+}
+
+// Server-side: the proxy and the API route both look up the same person for
+// every request. Keep each person's profile row for a short while so a page
+// load doesn't repeat the same queries several times.
+const SERVER_CACHE_MS = 30_000;
+const serverProfiles = new Map<string, { at: number; value: Promise<{ profile: ProfileRow | null; squads: string[]; error: boolean }> }>();
+
+function loadProfileRow(client: SupabaseClient, userId: string) {
+  const onServer = typeof window === "undefined";
+  const hit = onServer ? serverProfiles.get(userId) : undefined;
+  if (hit && Date.now() - hit.at < SERVER_CACHE_MS) return hit.value;
+  const value = Promise.all([
+    client.from("profiles").select("id, full_name, role, university_id, student_id").eq("id", userId).maybeSingle(),
+    client.from("mentor_squads").select("squad_id").eq("profile_id", userId),
+  ]).then(([profileResult, squadsResult]) => {
+    const result = {
+      profile: (profileResult.data as ProfileRow | null) ?? null,
+      // An error counts as no squads, so nothing leaks.
+      squads: squadsResult.error ? [] : (squadsResult.data ?? []).map((row) => row.squad_id as string),
+      error: Boolean(profileResult.error),
+    };
+    if (result.error) serverProfiles.delete(userId);
+    return result;
+  });
+  if (onServer) {
+    if (serverProfiles.size > 500) serverProfiles.clear();
+    serverProfiles.set(userId, { at: Date.now(), value });
+  }
+  return value;
+}
+
 async function loadCurrentUserProfile(
   client: SupabaseClient,
 ): Promise<CurrentUserProfile> {
-  const {
-    data: { user },
-  } = await client.auth.getUser();
+  const user = await verifiedUser(client);
 
   if (!user) {
     return {
@@ -157,11 +196,7 @@ async function loadCurrentUserProfile(
     };
   }
 
-  const { data: profileData, error } = await client
-    .from("profiles")
-    .select("id, full_name, role, university_id, student_id")
-    .eq("id", user.id)
-    .maybeSingle();
+  const { profile: profileData, squads, error } = await loadProfileRow(client, user.id);
 
   if (error) {
     return {
@@ -214,7 +249,7 @@ async function loadCurrentUserProfile(
       ...profile,
       role: profile.role,
       is_developer: false,
-      squad_ids: profile.role === "mentor" ? await loadMentorSquads(client, profile.id) : null,
+      squad_ids: profile.role === "mentor" ? squads : null,
     },
   };
 }

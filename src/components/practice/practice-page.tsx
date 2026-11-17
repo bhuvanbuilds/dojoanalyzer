@@ -53,33 +53,63 @@ const DOT: Record<Difficulty, string> = { Easy: "bg-emerald-500", Medium: "bg-am
 const leetcodeUrl = (slug: string) => `https://leetcode.com/problems/${slug}/`;
 
 /** Belt-based practice: next belt's topics, weakest first, with LeetCode problems to solve. */
+// Plans already loaded in this tab, by query, so switching back to a language
+// or belt is instant (and the other languages are preloaded after the first).
+const PLANS = new Map<string, Suggestions>();
+const LOADING = new Map<string, Promise<Suggestions>>();
+function loadPlan(key: string): Promise<Suggestions> {
+  let pending = LOADING.get(key);
+  if (!pending) {
+    pending = fetch(`/api/suggestions?${key}`, { cache: "no-store" })
+      .then(async (response) => {
+        const result = (await response.json()) as Suggestions & { error?: string };
+        if (!response.ok) throw new Error(result.error ?? "Couldn’t load suggestions.");
+        PLANS.set(key, result);
+        return result;
+      })
+      .finally(() => LOADING.delete(key));
+    LOADING.set(key, pending);
+  }
+  return pending;
+}
+const planKey = (language: TargetLanguage | null, belt: number | null) => {
+  const query = new URLSearchParams();
+  if (language) query.set("language", language);
+  if (belt) query.set("belt", String(belt));
+  return query.toString();
+};
+
 export function PracticePage() {
   const [language, setLanguage] = useState<TargetLanguage | null>(null);
   // null = their next belt in that language; otherwise any belt they pick.
   const [belt, setBelt] = useState<number | null>(null);
-  const [data, setData] = useState<Suggestions | null>(null);
+  const [loaded, setLoaded] = useState<{ key: string; plan: Suggestions } | null>(null);
   const [error, setError] = useState("");
   const achievements = useAchievements();
+  const key = planKey(language, belt);
 
   useEffect(() => {
     let active = true;
-    const query = new URLSearchParams();
-    if (language) query.set("language", language);
-    if (belt) query.set("belt", String(belt));
-    fetch(`/api/suggestions?${query}`, { cache: "no-store" })
-      .then(async (response) => {
-        const result = (await response.json()) as Suggestions & { error?: string };
-        if (!response.ok) throw new Error(result.error ?? "Couldn’t load suggestions.");
-        if (active) {
-          setData(result);
-          setError("");
-        }
+    loadPlan(key)
+      .then((result) => {
+        if (!active) return;
+        setLoaded({ key, plan: result });
+        setError("");
+        // Preload the other languages so switching to one is instant.
+        for (const other of TARGET_LANGUAGES)
+          if (other !== result.language) void loadPlan(planKey(other, null)).catch(() => undefined);
       })
       .catch((loadError) => active && setError(loadError instanceof Error ? loadError.message : "Couldn’t load suggestions."));
     return () => {
       active = false;
     };
-  }, [language, belt]);
+  }, [key]);
+
+  // The plan for the current pick if we have it; otherwise the last one stays
+  // on screen (dimmed) while the new one loads.
+  const ready = loaded?.key === key ? loaded.plan : PLANS.get(key);
+  const data = ready ?? loaded?.plan ?? null;
+  const pending = !ready;
 
   if (error && !data) return <PageState message="Couldn’t load your practice plan" detail={error} />;
   if (!data) return <PageState message="Reading your belts…" loading />;
@@ -90,12 +120,16 @@ export function PracticePage() {
       <div data-tour="practice" className="flex flex-col gap-4">
         <Hero
           data={data}
+          selectedLanguage={language ?? data.language}
+          selectedBelt={belt}
           onLanguage={(next) => {
             setLanguage(next);
             setBelt(null);
           }}
           onBelt={setBelt}
+          onPreload={(nextLanguage, nextBelt) => void loadPlan(planKey(nextLanguage, nextBelt)).catch(() => undefined)}
         />
+        <div className={`flex flex-col gap-4 transition-opacity duration-150 ${pending ? "pointer-events-none opacity-50" : ""}`}>
         {!data.leetcode.personalised ? <LinkBanner linked={Boolean(data.leetcode.username)} /> : null}
         {data.next ? (
           <>
@@ -114,6 +148,7 @@ export function PracticePage() {
           </Frame>
         )}
         {data.review ? <Review plan={data.review} /> : null}
+        </div>
         <p className="px-1 text-[12px] leading-relaxed text-faint">
           Try each problem on your own first. Stuck? Use the GPS order from the Dojo guide: look up the concept (not the answer), talk it through with a peer, then ask your mentor.
         </p>
@@ -124,13 +159,22 @@ export function PracticePage() {
 
 function Hero({
   data,
+  selectedLanguage,
+  selectedBelt,
   onLanguage,
   onBelt,
+  onPreload,
 }: {
   data: Suggestions;
+  selectedLanguage: TargetLanguage;
+  selectedBelt: number | null;
   onLanguage: (language: TargetLanguage) => void;
   onBelt: (belt: number | null) => void;
+  onPreload: (language: TargetLanguage, belt: number | null) => void;
 }) {
+  // What's highlighted follows the click at once, before the plan arrives.
+  const shownLevel = Math.max(0, Math.min(SYLLABUS.length, data.levels[selectedLanguage] ?? 0));
+  const shownFocus = selectedBelt ?? (shownLevel < SYLLABUS.length ? shownLevel + 1 : null);
   const target = dojoBelt(data.next ? data.next.level : Math.max(1, data.level));
   const revising = Boolean(data.next && data.next.level <= data.level);
   return (
@@ -186,7 +230,7 @@ function Hero({
           <LiquidGlass className="rounded-2xl p-2">
             <div className="flex flex-wrap gap-1" role="tablist" aria-label="Language">
               {TARGET_LANGUAGES.map((language) => {
-                const active = language === data.language;
+                const active = language === selectedLanguage;
                 return (
                   <button
                     key={language}
@@ -194,7 +238,10 @@ function Hero({
                     role="tab"
                     aria-selected={active}
                     onClick={() => onLanguage(language)}
-                    className="relative inline-flex items-center gap-2 rounded-xl px-3 py-2 text-left"
+                    onPointerEnter={() => onPreload(language, null)}
+                    className={`group relative inline-flex items-center gap-2 rounded-xl px-3 py-2 text-left transition-[background-color,box-shadow,transform] duration-150 active:scale-[0.96] ${
+                      active ? "" : "hover:-translate-y-px hover:bg-white/12 hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.22),0_6px_18px_-8px_rgba(0,0,0,0.6)]"
+                    }`}
                   >
                     {active ? (
                       <motion.span
@@ -207,7 +254,7 @@ function Hero({
                       <LanguageLogo language={language} size={20} />
                     </span>
                     <span className="relative">
-                      <span className={`block text-[13px] font-semibold ${active ? "text-white" : "text-white/70"}`}>{TARGET_LANGUAGE_LABELS[language]}</span>
+                      <span className={`block text-[13px] font-semibold transition-colors ${active ? "text-white" : "text-white/70 group-hover:text-white"}`}>{TARGET_LANGUAGE_LABELS[language]}</span>
                       <span className="block text-[11px] text-white/45">{beltOf(data.levels[language]).name} belt</span>
                     </span>
                   </button>
@@ -218,9 +265,9 @@ function Hero({
             <div className="flex flex-wrap gap-1" role="radiogroup" aria-label="Belt">
               {Array.from({ length: 10 }, (_, index) => index + 1).map((level) => {
                 const belt = dojoBelt(level);
-                const selected = level === data.focusLevel;
-                const earned = level <= data.level;
-                const isNext = level === data.level + 1;
+                const selected = level === shownFocus;
+                const earned = level <= shownLevel;
+                const isNext = level === shownLevel + 1;
                 return (
                   <button
                     key={level}
@@ -228,8 +275,11 @@ function Hero({
                     role="radio"
                     aria-checked={selected}
                     onClick={() => onBelt(isNext ? null : level)}
+                    onPointerEnter={() => onPreload(selectedLanguage, isNext ? null : level)}
                     title={`${belt.name} belt${earned ? " · earned" : isNext ? " · your next belt" : ""}`}
-                    className="relative inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12px] font-semibold"
+                    className={`group relative inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12px] font-semibold transition-[background-color,box-shadow,transform] duration-150 active:scale-[0.95] ${
+                      selected ? "" : "hover:-translate-y-px hover:bg-white/12 hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.22),0_6px_18px_-8px_rgba(0,0,0,0.6)]"
+                    }`}
                   >
                     {selected ? (
                       <motion.span
@@ -244,7 +294,7 @@ function Hero({
                       className="relative h-2.5 w-4 rounded-[2px]"
                       style={{ background: belt.color, transform: "skewX(-14deg)", opacity: earned || selected || isNext ? 1 : 0.4 }}
                     />
-                    <span className={`relative ${selected ? "text-white" : "text-white/60 hover:text-white"}`}>{belt.name}</span>
+                    <span className={`relative transition-colors ${selected ? "text-white" : "text-white/60 group-hover:text-white"}`}>{belt.name}</span>
                     {earned ? <Check size={11} strokeWidth={3} className="relative text-emerald-300" /> : null}
                     {isNext ? <span className="relative rounded bg-white/15 px-1 text-[10px] font-medium text-white/80">next</span> : null}
                   </button>

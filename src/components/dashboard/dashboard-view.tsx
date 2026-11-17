@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
   ArrowDownRight,
@@ -66,7 +66,6 @@ type LoadState =
 
 // ─── Data loading ─────────────────────────────────────────────────────────────
 export function DashboardView() {
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const requestedYear = searchParams.get("academicYear") ?? "";
@@ -110,9 +109,8 @@ export function DashboardView() {
     }
     const query = params.toString();
     // Each filter change is its own history entry, so Back steps through them.
-    router.push(query ? `${pathname}?${query}` : pathname, {
-      scroll: false,
-    });
+    // Query-only change: update the URL in place, no server round trip.
+    window.history.pushState(null, "", query ? `${pathname}?${query}` : pathname);
   }
 
   if (state.status === "loading")

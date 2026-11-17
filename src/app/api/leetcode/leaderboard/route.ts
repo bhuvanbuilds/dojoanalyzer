@@ -6,12 +6,15 @@ import { loadCards, loadScopedStudents, syncStale } from "@/lib/leetcode-server"
 import { istDay } from "@/lib/leetcode";
 import { loadLinks } from "@/lib/student-links-server";
 
+// A Refresh pulls every student on the view from LeetCode, which takes a while.
+export const maxDuration = 60;
+
 // The cards show the last 26 weeks of LeetCode activity.
 const CALENDAR_DAYS = 26 * 7;
 
 /**
- * GET ?period=week|month|all&university_id&squad_id&search&today=done|pending:
- * LeetCode points table. Like the belt leaderboards, every role sees every
+ * GET ?period=week|month|all&university_id&squad_id&search&today=done|pending&refresh=1:
+ * LeetCode problems-solved table. Like the belt leaderboards, every role sees every
  * campus and the filters only narrow the view. Each row carries the student's
  * recent activity calendar, whether they solved a new problem today and their
  * GitHub / LinkedIn / CodeChef links. Viewing it also refreshes, in the
@@ -49,6 +52,10 @@ export async function GET(request: Request) {
         (!search || [s.name, s.university_name, s.squad_number].filter(Boolean).join(" ").toLowerCase().includes(search)),
     );
     const ids = students.map((student) => student.id);
+    // Refresh button: pull everyone on this view from LeetCode first (skipping
+    // anyone pulled in the last minute, so repeated clicks don't hammer it).
+    const refresh = params.get("refresh") === "1";
+    if (refresh) await syncStale(ids, 1, 400, 8);
     const [board, cards, links] = await Promise.all([
       loadBoard(students, period, current.profile.role === "student" ? current.profile.student_id : null),
       loadCards(students),
@@ -70,7 +77,7 @@ export async function GET(request: Request) {
     });
     const doneToday = all.filter((row) => row.solved_today > 0).length;
     const rows = today === "done" ? all.filter((row) => row.solved_today > 0) : today === "pending" ? all.filter((row) => row.solved_today === 0) : all;
-    after(() => syncStale(ids, 60, 30).catch(() => undefined));
+    if (!refresh) after(() => syncStale(ids, 60, 30).catch(() => undefined));
     return NextResponse.json({
       period,
       rows,

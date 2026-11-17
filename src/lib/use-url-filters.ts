@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 
 /**
  * Filters that live in the URL, so every filter combination is its own
@@ -8,7 +8,6 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
  * Values equal to their default are left out of the URL.
  */
 export function useUrlFilters<T extends Record<string, string>>(defaults: T) {
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -32,8 +31,10 @@ export function useUrlFilters<T extends Record<string, string>>(defaults: T) {
     }
     const query = params.toString();
     const href = query ? `${pathname}?${query}` : pathname;
-    if (replace) router.replace(href, { scroll: false });
-    else router.push(href, { scroll: false });
+    // Only the query changes: update the URL in place (useSearchParams follows
+    // it) instead of a router navigation, which waits on a server round trip.
+    if (replace) window.history.replaceState(null, "", href);
+    else window.history.pushState(null, "", href);
   }
 
   return [values, setFilters] as const;

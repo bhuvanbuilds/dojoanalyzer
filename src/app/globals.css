@@ -920,3 +920,114 @@ html {
 [data-theme="dark"] .noise-card::after {
   opacity: 0.09;
 }
+
+/* Tailwind's reset gives buttons the arrow cursor, which made every tab,
+   chip and belt feel unclickable. Anything you can press gets the hand. */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="tab"],
+  [role="radio"],
+  select,
+  summary,
+  label:has(> input[type="checkbox"]),
+  label:has(> input[type="radio"]) {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+}
+
+/* ─── Login stage ───────────────────────────────────────────────────────────
+   Below 1024px the stage sits above the sign-in form; from 1024px it is the
+   left column (7fr, form column min 400px). The name is typed on two lines
+   ("Dojo Belt" / "Analyzer", ~4.8em wide); each step keeps it inside its
+   padding with room to spare. */
+.text-type-cursor {
+  display: inline-block;
+  margin-left: 0.04em;
+  font-weight: 300;
+  animation: text-type-blink 1s step-end infinite;
+}
+@keyframes text-type-blink {
+  50% {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .text-type-cursor {
+    animation: none;
+  }
+}
+
+.login-stage {
+  min-height: 240px;
+}
+.login-pad {
+  padding-inline: 20px;
+}
+.login-title {
+  font-size: 44px;
+  line-height: 0.95;
+  letter-spacing: -0.045em;
+  white-space: pre;
+}
+.login-tagline {
+  font-size: 13.5px;
+}
+
+/* Small phones (360–479) */
+@media (min-width: 360px) {
+  .login-pad { padding-inline: 24px; }
+  .login-title { font-size: 54px; }
+  .login-stage { min-height: 260px; }
+}
+/* Large phones (480–639) */
+@media (min-width: 480px) {
+  .login-pad { padding-inline: 32px; }
+  .login-title { font-size: 70px; }
+  .login-tagline { font-size: 14px; }
+  .login-stage { min-height: 300px; }
+}
+/* Small tablets (640–767) */
+@media (min-width: 640px) {
+  .login-pad { padding-inline: 40px; }
+  .login-title { font-size: 86px; }
+  .login-tagline { font-size: 15px; }
+  .login-stage { min-height: 340px; }
+}
+/* Tablets (768–1023) */
+@media (min-width: 768px) {
+  .login-pad { padding-inline: 48px; }
+  .login-title { font-size: 108px; }
+  .login-stage { min-height: 400px; }
+}
+/* Laptops, split layout (1024–1279): stage is about 624–880px wide */
+@media (min-width: 1024px) {
+  .login-pad { padding-inline: 48px; }
+  .login-title { font-size: min(92px, 11vh); }
+  .login-stage { min-height: 100%; }
+}
+/* Desktops (1280–1535) */
+@media (min-width: 1280px) {
+  .login-pad { padding-inline: 56px; }
+  .login-title { font-size: min(128px, 12vh); }
+}
+/* Large desktops (1536–1919) */
+@media (min-width: 1536px) {
+  .login-title { font-size: min(156px, 13vh); }
+  .login-tagline { font-size: 17px; }
+}
+/* Full HD and up (1920–2559) */
+@media (min-width: 1920px) {
+  .login-pad { padding-inline: 72px; }
+  .login-title { font-size: min(188px, 14vh); }
+  .login-tagline { font-size: 18px; max-width: 34rem; }
+}
+/* 1440p / 4K (2560+) */
+@media (min-width: 2560px) {
+  .login-pad { padding-inline: 96px; }
+  .login-title { font-size: min(248px, 15vh); }
+  .login-tagline { font-size: 21px; max-width: 40rem; }
+}

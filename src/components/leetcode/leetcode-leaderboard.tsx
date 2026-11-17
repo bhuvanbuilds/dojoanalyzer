@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { Award, Building2, Check, Crown, Flame, Globe2, Info, Search, Users, X, Zap } from "lucide-react";
+import { Award, Building2, Check, Crown, Flame, Globe2, Info, RefreshCw, Search, Users, X, Zap } from "lucide-react";
 import { LightRays } from "@/components/reactbits/light-rays";
 import { Embers } from "@/components/fx/embers";
 import { LiquidGlass } from "@/components/fx/liquid-glass";
@@ -18,7 +18,6 @@ import { LeetCodeLogo, LEETCODE_ORANGE } from "@/components/leetcode/leetcode-lo
 import { ProfileLinks, type ProfileLinksData } from "@/components/students/profile-links";
 import { getCurrentUserProfile, type CurrentUserProfile } from "@/lib/auth/profile";
 import { useCachedProfile } from "@/lib/auth/use-cached-profile";
-import { DAILY_BONUS, POINTS } from "@/lib/gamification";
 import { istDay } from "@/lib/leetcode";
 
 type Period = "week" | "month" | "all";
@@ -31,7 +30,7 @@ type Row = {
   university_name: string | null;
   username: string;
   avatar_url: string | null;
-  points: number;
+  total: number;
   solved: { easy: number; medium: number; hard: number };
   daily: number;
   badges: number;
@@ -67,13 +66,12 @@ const DONE = "#22c55e";
 const PENDING = "#ef4444";
 
 /**
- * LeetCode points leaderboard: podium for the top three, then a card per
+ * LeetCode leaderboard, ranked by problems solved: podium for the top three, then a card per
  * student. Filters work exactly like the belt leaderboards (scope chips,
  * university, squad, period and search, all kept in the URL), plus a
  * "solved today" filter. Every role sees every campus.
  */
 export function LeetCodeLeaderboard() {
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const cachedProfile = useCachedProfile();
@@ -108,8 +106,10 @@ export function LeetCodeLeaderboard() {
     }
     const query = params.toString();
     const href = query ? `${pathname}?${query}` : pathname;
-    if (replace) router.replace(href, { scroll: false });
-    else router.push(href, { scroll: false });
+    // Only the query changes: update the URL in place (useSearchParams follows
+    // it) instead of a router navigation, which waits on a server round trip.
+    if (replace) window.history.replaceState(null, "", href);
+    else window.history.pushState(null, "", href);
   }
 
   // Debounce typing into the URL.
@@ -153,9 +153,31 @@ export function LeetCodeLeaderboard() {
     return () => controller.abort();
   }, [ready, requestKey]);
 
+  // Refresh: pull the latest numbers straight from LeetCode for everyone on
+  // this view, then show the updated board.
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshedAt, setRefreshedAt] = useState<Date | null>(null);
+  async function refreshFromLeetCode() {
+    setRefreshing(true);
+    try {
+      const response = await fetch(`${requestKey}&refresh=1`, { cache: "no-store" });
+      const result = (await response.json()) as Response;
+      if (!response.ok) throw new Error(result.error ?? "Couldn’t refresh from LeetCode.");
+      setData(result);
+      setError("");
+      setLoadedKey(requestKey);
+      setRefreshedAt(new Date());
+    } catch (refreshError) {
+      setError(refreshError instanceof Error ? refreshError.message : "Couldn’t refresh from LeetCode.");
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   const [day] = useState(() => istDay());
   const isLoading = loadedKey !== requestKey;
-  const rows = isLoading ? null : (data?.rows ?? []);
+  // Keep the last board on screen while a filter change loads.
+  const rows = data ? (data.rows ?? []) : isLoading ? null : [];
   const top = (rows ?? []).slice(0, 3);
   const rest = (rows ?? []).slice(3);
   const me = (rows ?? []).find((row) => row.isMe);
@@ -216,12 +238,12 @@ export function LeetCodeLeaderboard() {
               <RevealText parts={["Problem Solvers"]} />
             </h1>
             <p className="mx-auto mt-2 max-w-xl text-[14px] text-white/60">
-              Points for every new problem: Easy {POINTS.Easy}, Medium {POINTS.Medium}, Hard {POINTS.Hard}, plus {DAILY_BONUS} for each daily challenge.
+              Ranked by problems solved. Ties go to whoever solved more Hard, then Medium.
             </p>
           </div>
           <div className="relative px-3 pb-0 pt-6 sm:px-10">
             {rows === null ? (
-              <div className="flex h-64 items-center justify-center text-[13px] text-white/50">{error || "Counting points…"}</div>
+              <div className="flex h-64 items-center justify-center text-[13px] text-white/50">{error || "Counting solves…"}</div>
             ) : rows.length === 0 ? (
               <div className="flex h-56 items-center justify-center px-6 pb-10 text-center text-[14px] text-white/60">
                 {filtered ? "No students match these filters." : "No one has linked LeetCode yet. Link yours under Practice → LeetCode to claim the first spot."}
@@ -254,6 +276,16 @@ export function LeetCodeLeaderboard() {
             <span className="ml-auto hidden text-[12.5px] text-muted md:inline">
               {isLoading ? "Updating…" : `${rows?.length ?? 0} ranked${data?.unlinked ? ` · ${data.unlinked} haven’t linked LeetCode` : ""}`}
             </span>
+            <button
+              type="button"
+              onClick={() => void refreshFromLeetCode()}
+              disabled={refreshing || !ready}
+              title={refreshedAt ? `Last pulled from LeetCode at ${refreshedAt.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })}` : "Pull the latest solves from LeetCode"}
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line-strong bg-surface px-3 text-[12.5px] font-semibold text-ink-2 transition-[color,background-color,transform] duration-150 hover:bg-sunken hover:text-ink active:scale-[0.96] disabled:opacity-60"
+            >
+              <RefreshCw size={13} className={refreshing ? "animate-spin" : ""} />
+              {refreshing ? "Refreshing from LeetCode…" : "Refresh"}
+            </button>
           </div>
 
           <div data-tour="lc-filters" className="grid gap-2 sm:grid-cols-2 xl:grid-cols-[repeat(3,minmax(0,220px))_minmax(0,1fr)]">
@@ -341,7 +373,7 @@ export function LeetCodeLeaderboard() {
               <span className="rounded-full px-2 py-0.5 text-[12px] text-[#0b0b0e]" style={{ background: LEETCODE_ORANGE }}>
                 #{me.rank}
               </span>
-              You · {me.points} pts
+              You · {me.total} solved
             </LiquidGlass>
           </motion.div>
         ) : null}
@@ -365,7 +397,7 @@ function Chip({ active, layoutId, onClick, children }: { active: boolean; layout
       role="radio"
       aria-checked={active}
       onClick={onClick}
-      className={`relative flex h-8 items-center gap-1.5 rounded-lg px-3 font-display text-[13px] font-semibold transition-colors ${active ? "text-ink" : "text-muted hover:text-ink"}`}
+      className={`relative flex h-8 items-center gap-1.5 rounded-lg px-3 font-display text-[13px] font-semibold transition-[color,background-color,transform] duration-150 active:scale-[0.96] ${active ? "text-ink" : "text-muted hover:bg-surface/70 hover:text-ink hover:shadow-[var(--card-shadow)]"}`}
     >
       {active ? (
         <motion.span
@@ -441,9 +473,9 @@ function Podium({ top }: { top: Row[] }) {
               style={{ height: heights[slot], background: `linear-gradient(180deg, ${MEDAL[place]}33, #ffffff08 70%)` }}
             >
               <span className="font-display text-[26px] font-extrabold leading-none tabular-nums" style={{ color: MEDAL[place] }}>
-                <CountUp to={row.points} duration={1.1} />
+                <CountUp to={row.total} duration={1.1} />
               </span>
-              <span className="mt-1 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-white/45">points</span>
+              <span className="mt-1 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-white/45">solved</span>
               <span className="mt-2 font-display text-[34px] font-extrabold leading-none text-white/15">{place + 1}</span>
             </div>
           </motion.div>
@@ -510,8 +542,8 @@ function RankCard({ row, index, today }: { row: Row; index: number; today: strin
               Squad {row.squad_number} · @{row.username}
             </p>
             <p className="mt-1.5 font-display text-[19px] font-bold leading-none text-ink">
-              {row.points}
-              <span className="ml-1 text-[11px] font-medium text-muted">pts</span>
+              {row.total}
+              <span className="ml-1 text-[11px] font-medium text-muted">solved</span>
             </p>
             <Difficulty solved={row.solved} />
             <div className="mt-2 flex flex-wrap items-center gap-3 text-[11.5px] text-muted">

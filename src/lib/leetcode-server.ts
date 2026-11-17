@@ -211,7 +211,7 @@ async function fillDifficulties(studentId: string) {
 }
 
 /** Syncs accounts not refreshed in `staleMinutes`, a few at a time to be gentle with LeetCode. */
-export async function syncStale(studentIds: string[] | null, staleMinutes = 10, limit = 60) {
+export async function syncStale(studentIds: string[] | null, staleMinutes = 10, limit = 60, concurrency = 4) {
   const cutoff = new Date(Date.now() - staleMinutes * 60_000).toISOString();
   let query = supabaseAdmin
     .from("leetcode_accounts")
@@ -226,7 +226,7 @@ export async function syncStale(studentIds: string[] | null, staleMinutes = 10, 
   const { data, error } = await query;
   if (error) throw error;
   const queue = [...((data ?? []) as AccountRow[])];
-  const workers = Array.from({ length: 4 }, async () => {
+  const workers = Array.from({ length: concurrency }, async () => {
     for (let account = queue.shift(); account; account = queue.shift()) {
       try {
         await syncAccount(account);

@@ -130,10 +130,10 @@ const staffAccounts = (prefix: string): TutorialStep[] => [
 ];
 
 const leetcodeBoard = (prefix: string): TutorialStep[] => [
-  s(`${prefix}L1`, "/leaderboard/leetcode", "lc-hero", "none", "The LeetCode leaderboard", "Students earn points for every new LeetCode problem: more for Medium and Hard, plus a bonus for each daily challenge. Pick this week, this month or all time."),
+  s(`${prefix}L1`, "/leaderboard/leetcode", "lc-hero", "none", "The LeetCode leaderboard", "Students are ranked by how many LeetCode problems they solve; more Hard, then Medium, breaks a tie. Pick this week, this month or all time."),
   s(`${prefix}L2`, "/leaderboard/leetcode", "lc-today", "click", "Green or red today", "A green ring means the student solved a new problem today (12 am to 12 am IST). Red means not yet. Use these chips to show only one group."),
   s(`${prefix}L3`, "/leaderboard/leetcode", "lc-filters", "click", "Same filters as the belt board", "Narrow by university, squad or period, or search for a name. The scope chips switch between everyone, a campus and a squad."),
-  s(`${prefix}L4`, "/leaderboard/leetcode", "lc-cards", "none", "Every student's card", "Points, the Easy, Medium and Hard split, total solved, streak, badges and six months of activity. The round icons open their LeetCode, GitHub, LinkedIn and CodeChef profiles."),
+  s(`${prefix}L4`, "/leaderboard/leetcode", "lc-cards", "none", "Every student's card", "Problems solved, the Easy, Medium and Hard split, total solved, streak, badges and six months of activity. The round icons open their LeetCode, GitHub, LinkedIn and CodeChef profiles."),
 ];
 
 // ─── Student ───────────────────────────────────────────────────────────────────
@@ -149,7 +149,7 @@ const STUDENT: TutorialStep[] = [
   s("S8", "/student", "progress", "none", "Follow your progress", "The weekly graph and language breakdown show how your results develop. Week numbers belong to an academic year, so compare within the same year."),
   s("S9", "/student", "student-compare", "none", "Compare your progress", "Where data is available, see how each language compares with your squad and campus averages. Use it as context for your own history."),
   s("S10", "/student/target", "quest-hero", "none", "Your monthly target", "When your mentor or campus manager sets a belt target for the month, it appears here with your progress. You'll get an email when a new one is set."),
-  s("S11", "/student/practice", "practice", "none", "Practice for your next belt", "Problems picked for the next belt in each language, plus a daily challenge that earns bonus LeetCode points."),
+  s("S11", "/student/practice", "practice", "none", "Practice for your next belt", "Problems picked for the next belt in each language, plus a daily challenge to keep your streak going."),
   s("S12", "/student/leetcode", "lc-link", "none", "LeetCode is required", "Every student links their LeetCode username here. Until it's linked, the app brings you back to this page. Your stats then sync on their own."),
   ...leetcodeBoard("S"),
   ...CLOSING,

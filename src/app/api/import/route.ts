@@ -19,8 +19,15 @@ import {
   type ValidatedRecord,
 } from "@/lib/import/validation";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { clearStandingsCache } from "@/lib/leaderboard/standings";
 
 const STUDENT_PAGE_SIZE = 500;
+/** Students removed from Dojo; belt imports must never re-create them. */
+const BLOCKED_EMAILS = new Set([
+  "jamesrj.26300879@kalvium.community",
+  "jayaseelan.d.s.139@kalvium.community",
+  "dheenadayalan.r.s.139@kalvium.community",
+]);
 
 type ImportRowOutcome = {
   row_number: number;
@@ -499,6 +506,7 @@ async function provisionDistinctStudentRows({
       group.entries.map(({ row }) => row.squad_number?.trim() ?? ""),
     );
 
+    if (BLOCKED_EMAILS.has(group.email)) errors.push("Student was removed from Dojo and is blocked from import.");
     if (!group.email) errors.push("Student email is required");
     if (!studentName) errors.push("Student name is required");
     if (!squadNumber) errors.push("Squad number is required");
@@ -802,6 +810,15 @@ async function findIdenticalCurrentImports(batches: MultiWeekBatch[]) {
 }
 
 export async function POST(request: Request) {
+  // New belts change every leaderboard; drop cached standings once it's done.
+  try {
+    return await importBelts(request);
+  } finally {
+    clearStandingsCache();
+  }
+}
+
+async function importBelts(request: Request) {
   let createdImportId: string | null = null;
 
   try {

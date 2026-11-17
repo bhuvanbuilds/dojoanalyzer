@@ -53,7 +53,7 @@ export async function GET(_request: Request, context: { params: Promise<{ studen
     ]);
     const standing = (board: Awaited<ReturnType<typeof loadBoard>>) => {
       const row = board.rows.find((item) => item.student_id === studentId);
-      return { rank: row?.rank ?? null, of: board.rows.length, points: row?.points ?? 0 };
+      return { rank: row?.rank ?? null, of: board.rows.length, solved: row?.total ?? 0 };
     };
 
     // Daily challenge: last 30 days and streaks.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Building2, Globe2, Layers, Search, Star, StarHalf, Users, X } from "lucide-react";
 import { motion } from "motion/react";
@@ -69,6 +69,30 @@ const RANK_BY: Array<{ id: RankBy; label: string; icon: typeof Layers }> = [
 
 type Kind = "overall" | "language";
 
+// Results per view for this browser tab, so switching back and forth between
+// belts, ranks and scopes shows data immediately while it refreshes.
+const RESPONSES = new Map<string, Response>();
+const IN_FLIGHT = new Map<string, Promise<Response>>();
+async function load(key: string, signal?: AbortSignal): Promise<Response> {
+  let pending = IN_FLIGHT.get(key);
+  if (!pending) {
+    pending = fetch(key)
+      .then(async (response) => {
+        const result = (await response.json()) as Response;
+        if (!response.ok) throw new Error(result.error ?? "Unable to load the leaderboard.");
+        RESPONSES.set(key, result);
+        return result;
+      })
+      .finally(() => IN_FLIGHT.delete(key));
+    IN_FLIGHT.set(key, pending);
+  }
+  if (!signal) return pending;
+  return new Promise<Response>((resolve, reject) => {
+    signal.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")), { once: true });
+    pending.then(resolve, reject);
+  });
+}
+
 /**
  * Data, filters and page chrome for both leaderboards. Every role sees every
  * university; the scope chips and selects only narrow the view. Filters live
@@ -112,8 +136,10 @@ export function LeaderboardBoard({ kind }: { kind: Kind }) {
     }
     const query = params.toString();
     const href = query ? `${pathname}?${query}` : pathname;
-    if (replace) router.replace(href, { scroll: false });
-    else router.push(href, { scroll: false });
+    // Only the query changes: update the URL in place (useSearchParams follows
+    // it) instead of a router navigation, which waits on a server round trip.
+    if (replace) window.history.replaceState(null, "", href);
+    else window.history.pushState(null, "", href);
   }
 
   useEffect(() => {
@@ -139,26 +165,26 @@ export function LeaderboardBoard({ kind }: { kind: Kind }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- setParams reads the live URL
   }, [searchInput, search]);
 
-  const requestKey = useMemo(() => {
+  const keyFor = (next: { language?: Language; rank?: RankBy } = {}) => {
     const query = new URLSearchParams();
-    if (kind === "language") query.set("language", language);
+    if (kind === "language") query.set("language", next.language ?? language);
     if (period) query.set("period", period);
     if (universityId) query.set("university_id", universityId);
     if (squadId) query.set("squad_id", squadId);
     if (search) query.set("search", search);
-    if (rankBy !== "total") query.set("rank", rankBy);
+    const rank = next.rank ?? rankBy;
+    if (rank !== "total") query.set("rank", rank);
     return `/api/leaderboard/${kind}?${query}`;
-  }, [kind, language, period, universityId, squadId, search, rankBy]);
+  };
+  const requestKey = keyFor();
 
   const authenticated = profileState.status === "authenticated";
   useEffect(() => {
     if (!authenticated) return;
+    const cached = RESPONSES.has(requestKey);
     const controller = new AbortController();
-    fetch(requestKey, { signal: controller.signal })
-      .then(async (response) => {
-        const result = (await response.json()) as Response;
-        if (!response.ok)
-          throw new Error(result.error ?? "Unable to load the leaderboard.");
+    load(requestKey, controller.signal)
+      .then((result) => {
         setData(result);
         setError("");
         setLoadedKey(requestKey);
@@ -166,6 +192,7 @@ export function LeaderboardBoard({ kind }: { kind: Kind }) {
       .catch((loadError) => {
         if (loadError instanceof DOMException && loadError.name === "AbortError")
           return;
+        if (cached) return;
         setError(
           loadError instanceof Error
             ? loadError.message
@@ -175,6 +202,11 @@ export function LeaderboardBoard({ kind }: { kind: Kind }) {
       });
     return () => controller.abort();
   }, [authenticated, requestKey]);
+
+  /** Start loading a view the pointer is resting on, so the click is instant. */
+  const prefetch = (key: string) => {
+    if (authenticated && !RESPONSES.has(key)) void load(key).catch(() => undefined);
+  };
 
   if (profileState.status === "loading")
     return <AccountState message="Checking your account..." loading />;
@@ -201,10 +233,13 @@ export function LeaderboardBoard({ kind }: { kind: Kind }) {
     return <AccountState message="Account role not supported" />;
   const profile = profileState.profile;
   const isStudent = profile.role === "student";
-  const isLoading = loadedKey !== requestKey;
-  const universities = data?.universities ?? [];
-  const squads = data?.squads ?? [];
-  const viewer = data?.viewer ?? null;
+  // A view seen before (or prefetched on hover) shows at once while it refreshes.
+  const cachedView = loadedKey === requestKey ? undefined : RESPONSES.get(requestKey);
+  const view = cachedView ?? data;
+  const isLoading = loadedKey !== requestKey && !cachedView;
+  const universities = view?.universities ?? [];
+  const squads = view?.squads ?? [];
+  const viewer = view?.viewer ?? null;
   const universityName = new Map(universities.map((u) => [u.id, u.name]));
   const squad = squads.find((item) => item.id === squadId) ?? null;
   const scopeLabel = squad
@@ -212,12 +247,12 @@ export function LeaderboardBoard({ kind }: { kind: Kind }) {
     : universityId
       ? (universityName.get(universityId) ?? "University")
       : "All universities";
-  const selectedPeriod = data?.period ?? null;
+  const selectedPeriod = view?.period ?? null;
   const weekLabel = selectedPeriod
     ? `Week ${selectedPeriod.week_number}`
     : "latest week";
 
-  const entries: RankedStudent[] = (data?.leaderboard ?? []).map((row) => ({
+  const entries: RankedStudent[] = (view?.leaderboard ?? []).map((row) => ({
     rank: row.rank,
     studentId: row.student_id,
     name: row.student_name ?? "Unnamed student",
@@ -292,8 +327,9 @@ export function LeaderboardBoard({ kind }: { kind: Kind }) {
                   role="radio"
                   aria-checked={active}
                   onClick={() => setParams({ rank: item.id === "total" ? null : item.id })}
-                  className={`relative flex h-8 items-center gap-1.5 rounded-lg px-3 font-display text-[13px] font-semibold transition-colors ${
-                    active ? "text-ink" : "text-muted hover:text-ink"
+                  onPointerEnter={() => prefetch(keyFor({ rank: item.id }))}
+                  className={`relative flex h-8 items-center gap-1.5 rounded-lg px-3 font-display text-[13px] font-semibold transition-[color,background-color,transform] duration-150 active:scale-[0.96] ${
+                    active ? "text-ink" : "text-muted hover:bg-surface/70 hover:text-ink hover:shadow-[var(--card-shadow)]"
                   }`}
                 >
                   {active ? (
@@ -327,8 +363,9 @@ export function LeaderboardBoard({ kind }: { kind: Kind }) {
                   role="radio"
                   aria-checked={active}
                   onClick={() => setParams({ language: item })}
-                  className={`relative flex h-8 items-center gap-1.5 rounded-lg px-3 font-display text-[13px] font-semibold transition-colors ${
-                    active ? "text-ink" : "text-muted hover:text-ink"
+                  onPointerEnter={() => prefetch(keyFor({ language: item }))}
+                  className={`relative flex h-8 items-center gap-1.5 rounded-lg px-3 font-display text-[13px] font-semibold transition-[color,background-color,transform] duration-150 active:scale-[0.96] ${
+                    active ? "text-ink" : "text-muted hover:bg-surface/70 hover:text-ink hover:shadow-[var(--card-shadow)]"
                   }`}
                 >
                   {active ? (
@@ -359,8 +396,8 @@ export function LeaderboardBoard({ kind }: { kind: Kind }) {
               role="radio"
               aria-checked={scope.active}
               onClick={() => setParams(scope.apply)}
-              className={`relative flex h-8 items-center gap-1.5 rounded-lg px-3 font-display text-[13px] font-semibold transition-colors ${
-                scope.active ? "text-ink" : "text-muted hover:text-ink"
+              className={`relative flex h-8 items-center gap-1.5 rounded-lg px-3 font-display text-[13px] font-semibold transition-[color,background-color,transform] duration-150 active:scale-[0.96] ${
+                scope.active ? "text-ink" : "text-muted hover:bg-surface/70 hover:text-ink hover:shadow-[var(--card-shadow)]"
               }`}
             >
               {scope.active ? (
@@ -379,7 +416,7 @@ export function LeaderboardBoard({ kind }: { kind: Kind }) {
         <span className="ml-auto hidden text-[12.5px] text-muted md:inline">
           {isLoading
             ? "Updating…"
-            : `${entries.length} ranked${rankLabel && data?.without_language ? ` · ${data.without_language} haven’t chosen a language yet` : ""}`}
+            : `${entries.length} ranked${rankLabel && view?.without_language ? ` · ${view.without_language} haven’t chosen a language yet` : ""}`}
         </span>
       </div>
 
@@ -423,7 +460,7 @@ export function LeaderboardBoard({ kind }: { kind: Kind }) {
           onChange={(value) => setParams({ week: value || null })}
         >
           <option value="">Latest week</option>
-          {(data?.periods ?? []).map((item) => (
+          {(view?.periods ?? []).map((item) => (
             <option key={item.key} value={item.key}>
               Week {item.week_number} · {item.academic_year} ·{" "}
               {formatWeekDateRange(item.start_date, item.end_date)}

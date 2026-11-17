@@ -127,16 +127,6 @@ export function AuroraShader({
     observer.observe(host);
     resize();
 
-    // The cursor eases towards its target instead of snapping.
-    const target = [0.5, 0.5];
-    const mouse = [0.5, 0.5];
-    const onMove = (event: PointerEvent) => {
-      const box = host.getBoundingClientRect();
-      target[0] = (event.clientX - box.left) / box.width;
-      target[1] = (event.clientY - box.top) / box.height;
-    };
-    window.addEventListener("pointermove", onMove, { passive: true });
-
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let visible = true;
     const seen = new IntersectionObserver(([entry]) => (visible = entry.isIntersecting));
@@ -145,7 +135,15 @@ export function AuroraShader({
     let frame = 0;
     let last = performance.now();
     let time = 7;
+    // 30 fps is plenty for an ambient background and leaves the main thread
+    // free, so clicks and hovers on top of it respond at once.
+    let lastPaint = 0;
     const draw = (now: number) => {
+      if (now - lastPaint < 32) {
+        if (!reduce) frame = requestAnimationFrame(draw);
+        return;
+      }
+      lastPaint = now;
       const { base: b, mid: m, glow: g, intensity: i, speed: s } = colors.current;
       program.uniforms.uBase.value = rgb(b);
       program.uniforms.uMid.value = rgb(m);
@@ -155,10 +153,7 @@ export function AuroraShader({
       last = now;
       if (visible && !document.hidden) {
         time += delta * s;
-        mouse[0] += (target[0] - mouse[0]) * 0.04;
-        mouse[1] += (target[1] - mouse[1]) * 0.04;
         program.uniforms.uTime.value = time;
-        program.uniforms.uMouse.value = mouse;
         renderer.render({ scene: mesh });
       }
       if (!reduce) frame = requestAnimationFrame(draw);
@@ -169,7 +164,6 @@ export function AuroraShader({
       cancelAnimationFrame(frame);
       observer.disconnect();
       seen.disconnect();
-      window.removeEventListener("pointermove", onMove);
       gl.getExtension("WEBGL_lose_context")?.loseContext();
       canvas.remove();
     };

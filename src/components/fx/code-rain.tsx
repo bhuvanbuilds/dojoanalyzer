@@ -66,18 +66,6 @@ export function CodeRain({
     observer.observe(canvas);
     resize();
 
-    const mouse = { x: -9999, y: -9999 };
-    const onMove = (event: PointerEvent) => {
-      const box = canvas.getBoundingClientRect();
-      mouse.x = event.clientX - box.left;
-      mouse.y = event.clientY - box.top;
-    };
-    const onLeave = () => {
-      mouse.x = -9999;
-      mouse.y = -9999;
-    };
-    window.addEventListener("pointermove", onMove, { passive: true });
-    document.addEventListener("pointerleave", onLeave);
 
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let visible = true;
@@ -86,7 +74,15 @@ export function CodeRain({
 
     let frame = 0;
     let last = performance.now();
+    // 30 fps is plenty for an ambient background and leaves the main thread
+    // free, so clicks and hovers on top of it respond at once.
+    let lastPaint = 0;
     const draw = (now: number) => {
+      if (now - lastPaint < 32) {
+        if (!reduce) frame = requestAnimationFrame(draw);
+        return;
+      }
+      lastPaint = now;
       const delta = Math.min(0.05, (now - last) / 1000);
       last = now;
       if (visible && !document.hidden) {
@@ -96,16 +92,6 @@ export function CodeRain({
           glyph.phase += delta;
           glyph.y -= glyph.vy * delta;
           glyph.x += Math.sin(glyph.phase) * glyph.drift * delta;
-          // Push away from the cursor, more for nearer (larger) symbols.
-          const dx = glyph.x - mouse.x;
-          const dy = glyph.y - mouse.y;
-          const distance = Math.hypot(dx, dy);
-          if (distance < 130 && distance > 0.1) {
-            const push = ((130 - distance) / 130) * 90 * glyph.z * delta;
-            glyph.x += (dx / distance) * push;
-            glyph.y += (dy / distance) * push;
-            glyph.lit = Math.max(glyph.lit, 0.6);
-          }
           if (Math.random() < 0.0006) glyph.lit = 1;
           glyph.lit = Math.max(0, glyph.lit - delta * 0.7);
           if (glyph.y < -30) glyphs[index] = spawn(false);
@@ -134,8 +120,6 @@ export function CodeRain({
       cancelAnimationFrame(frame);
       observer.disconnect();
       seen.disconnect();
-      window.removeEventListener("pointermove", onMove);
-      document.removeEventListener("pointerleave", onLeave);
     };
   }, [color, accent, density]);
 

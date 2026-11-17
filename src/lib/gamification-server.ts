@@ -3,7 +3,7 @@ import "server-only";
 import type { UserProfile } from "@/lib/auth/profile";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { loadScopedStudents, type ScopedStudent } from "@/lib/leetcode-server";
-import { DAILY_BONUS, achievements, lifetimePoints, pointsFor, type Achievement } from "@/lib/gamification";
+import { achievements, type Achievement } from "@/lib/gamification";
 import { istDay } from "@/lib/leetcode";
 
 export type Period = "week" | "month" | "all";
@@ -16,7 +16,8 @@ export type BoardRow = {
   university_name: string | null;
   username: string;
   avatar_url: string | null;
-  points: number;
+  /** Problems solved in the period (all time: LeetCode's lifetime count). */
+  total: number;
   solved: { easy: number; medium: number; hard: number };
   daily: number;
   badges: number;
@@ -92,9 +93,9 @@ const unlockedCount = (activity: Activity, id: string) => {
 };
 
 /**
- * Points table for these students. Week and month count new problems tracked
- * in that period plus daily-challenge bonuses; all time uses LeetCode's
- * lifetime solved counts plus every daily bonus.
+ * Problems-solved table for these students. Week and month count new
+ * problems tracked in that period; all time uses LeetCode's lifetime solved
+ * counts. Ties go to more Hard, then more Medium.
  */
 export async function loadBoard(students: ScopedStudent[], period: Period, meId: string | null) {
   const ids = students.map((student) => student.id);
@@ -112,11 +113,7 @@ export async function loadBoard(students: ScopedStudent[], period: Period, meId:
     const count = (level: string) => solves.filter((solve) => (solve.difficulty ?? "Easy") === level).length;
     const solved =
       period === "all" ? { easy: account.easy, medium: account.medium, hard: account.hard } : { easy: count("Easy"), medium: count("Medium"), hard: count("Hard") };
-    const points =
-      (period === "all"
-        ? lifetimePoints(account.easy, account.medium, account.hard)
-        : solves.reduce((sum, solve) => sum + pointsFor(solve.difficulty), 0)) +
-      daily * DAILY_BONUS;
+    const total = solved.easy + solved.medium + solved.hard;
     rows.push({
       student_id: student.id,
       name: student.name,
@@ -124,18 +121,24 @@ export async function loadBoard(students: ScopedStudent[], period: Period, meId:
       university_name: student.university_name,
       username: account.username,
       avatar_url: account.avatar_url,
-      points,
+      total,
       solved,
       daily,
       badges: unlockedCount(activity, student.id),
       isMe: student.id === meId,
     });
   }
-  rows.sort((a, b) => b.points - a.points || b.solved.hard - a.solved.hard || a.name.localeCompare(b.name));
-  // Equal points share a rank.
+  // Ranked by problems solved; harder problems break ties.
+  const same = (a: (typeof rows)[number], b: (typeof rows)[number]) =>
+    a.total === b.total && a.solved.hard === b.solved.hard && a.solved.medium === b.solved.medium;
+  rows.sort(
+    (a, b) =>
+      b.total - a.total || b.solved.hard - a.solved.hard || b.solved.medium - a.solved.medium || a.name.localeCompare(b.name),
+  );
+  // Exactly equal counts share a rank.
   let rank = 0;
   const ranked = rows.map((row, index) => {
-    if (index === 0 || row.points !== rows[index - 1].points) rank = index + 1;
+    if (index === 0 || !same(row, rows[index - 1])) rank = index + 1;
     return { ...row, rank };
   });
   return { rows: ranked, unlinked: students.length - rows.length };

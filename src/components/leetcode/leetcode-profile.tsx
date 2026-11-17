@@ -17,7 +17,7 @@ import { AchievementGrid } from "@/components/leetcode/achievements";
 import { istDay, type LeetCodeCard } from "@/lib/leetcode";
 import type { Achievement } from "@/lib/gamification";
 
-type Standing = { rank: number | null; of: number; points: number };
+type Standing = { rank: number | null; of: number; solved: number };
 type Profile = {
   student: { id: string; name: string; squad_number: string; university_name: string | null };
   card: LeetCodeCard | null;
@@ -133,7 +133,7 @@ export function LeetCodeProfile({ studentId }: { studentId: string }) {
                   <span className="ml-1 text-[11px] font-medium text-white/40">/ {item.of}</span>
                 </p>
                 <p className="mt-1 text-[11.5px] tabular-nums" style={{ color: LEETCODE_ORANGE }}>
-                  {item.points} pts
+                  {item.solved} solved
                 </p>
               </motion.div>
             ))}
