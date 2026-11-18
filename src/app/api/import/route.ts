@@ -975,7 +975,9 @@ async function importBelts(request: Request) {
       );
     }
 
-    const rows = parsed.data;
+    // Removed students never come back: their rows are dropped before either
+    // import path (single week or multi-week) can create them again.
+    const rows = parsed.data.filter((row) => !BLOCKED_EMAILS.has(row.email?.trim().toLowerCase() ?? ""));
 
     if (rows.length === 0) {
       return NextResponse.json(
